@@ -24,7 +24,7 @@ function WheelSteerCtrlr:initialize()
     self.rearSteeringPID = PIDController(self.rearSteeringPower, 0, 0, -10, 10, self.rearSteeringDamping)
 
     self.steerPower = 1.5
-    self.steerDamping = 0.03
+    self.steerDamping = 0.02 -- gets overridden by highSpeedDamping in :update
     self.frontLeftPID = PIDController(self.steerPower, 0, 0, -1, 1, self.steerDamping)
     self.frontRightPID = PIDController(self.steerPower, 0, 0, -1, 1, self.steerDamping)
     self.rearLeftPID = PIDController(self.steerPower, 0, 0, -1, 1, self.steerDamping)
@@ -111,16 +111,17 @@ function WheelSteerCtrlr:update(dt)
     state.control.countersteer = math.sign(driftAngle) ~= math.sign(car.steer) and math.abs(car.steer) * math.min(math.abs(driftAngle / math.rad(30)), 1) or 0
     state.control.countersteer = helpers.mapRange(car.speedKmh, 20, 40, 0, 1, true) * math.clamp(state.control.countersteer, -90, 90)
 
-    self.frontSteeringPID.p = helpers.mapRange(game.car_cphys.speedKmh, 0, 20, 1, self.frontSteeringPower, true)
-    self.rearSteeringPID.p = helpers.mapRange(game.car_cphys.speedKmh, 0, 20, 1, self.rearSteeringPower, true) * helpers.mapRange(state.control.countersteer, 0, 1, 1, 0, true) * helpers.mapRange(car.brake, 0, 1, 1, 0, true)
-    self.frontLeftPID.p = helpers.mapRange(game.car_cphys.speedKmh, 2, 5, 0.1, self.steerPower, true)
-    self.frontLeftPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 5, 0.01, self.steerDamping, true)
-    self.frontRightPID.p = helpers.mapRange(game.car_cphys.speedKmh, 2, 5, 0.1, self.steerPower, true)
-    self.frontRightPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 5, 0.01, self.steerDamping, true)
-    self.rearLeftPID.p = helpers.mapRange(game.car_cphys.speedKmh, 2, 5, 0.1, self.steerPower, true)
-    self.rearLeftPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 5, 0.01, self.steerDamping, true)
-    self.rearRightPID.p = helpers.mapRange(game.car_cphys.speedKmh, 2, 5, 0.1, self.steerPower, true)
-    self.rearRightPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 5, 0.01, self.steerDamping, true)
+    self.frontSteeringPID.p = helpers.mapRange(game.car_cphys.speedKmh, 0, 20, 1.5, self.frontSteeringPower, true)
+    self.rearSteeringPID.p = helpers.mapRange(game.car_cphys.speedKmh, 0, 20, 0.5, self.rearSteeringPower, true) * helpers.mapRange(state.control.countersteer, 0, 1, 1, 0, true) * helpers.mapRange(car.brake, 0, 1, 1, 0, true)
+    self.frontLeftPID.p = helpers.mapRange(game.car_cphys.speedKmh, 2, 5, 0.05, self.steerPower, true)
+    local highSpeedDamping = helpers.mapRange(game.car_cphys.speedKmh, 100, 400, 0.04, 0.01, true)
+    self.frontLeftPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 5, 0.01, highSpeedDamping, true)
+    self.frontRightPID.p = helpers.mapRange(game.car_cphys.speedKmh, 2, 5, 0.05, self.steerPower, true)
+    self.frontRightPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 5, 0.01, highSpeedDamping, true)
+    self.rearLeftPID.p = helpers.mapRange(game.car_cphys.speedKmh, 2, 5, 0.05, self.steerPower, true)
+    self.rearLeftPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 5, 0.01, highSpeedDamping, true)
+    self.rearRightPID.p = helpers.mapRange(game.car_cphys.speedKmh, 2, 5, 0.05, self.steerPower, true)
+    self.rearRightPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 5, 0.01, highSpeedDamping, true)
 
     local driftAngleSetpoint = self.driftAnglePID:update(targetDriftAngle, driftAngle, dt)
 
