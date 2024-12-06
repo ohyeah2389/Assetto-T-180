@@ -111,8 +111,8 @@ function WheelSteerCtrlr:update(dt)
     state.control.countersteer = math.sign(driftAngle) ~= math.sign(car.steer) and math.abs(car.steer) * math.min(math.abs(driftAngle / math.rad(30)), 1) or 0
     state.control.countersteer = helpers.mapRange(car.speedKmh, 20, 40, 0, 1, true) * math.clamp(state.control.countersteer, -90, 90)
 
-    self.frontSteeringPID.p = helpers.mapRange(game.car_cphys.speedKmh, 0, 20, 1.5, self.frontSteeringPower, true)
-    self.rearSteeringPID.p = helpers.mapRange(game.car_cphys.speedKmh, 0, 20, 0.5, self.rearSteeringPower, true) * helpers.mapRange(state.control.countersteer, 0, 1, 1, 0, true) * helpers.mapRange(car.brake, 0, 1, 1, 0, true)
+    self.frontSteeringPID.p = helpers.mapRange(game.car_cphys.speedKmh, 0, 20, 1.5, self.frontSteeringPower * ((car.extraC or car.extraD) and 2 or 1), true)
+    self.rearSteeringPID.p = helpers.mapRange(game.car_cphys.speedKmh, 0, 20, 0.5, self.rearSteeringPower * (car.extraD and 1.5 or 1), true) * helpers.mapRange(state.control.countersteer, 0, 1, 1, 0, true) * helpers.mapRange(car.brake, 0, 1, 1, 0, true)
     self.frontLeftPID.p = helpers.mapRange(game.car_cphys.speedKmh, 2, 5, 0.05, self.steerPower, true)
     local highSpeedDamping = helpers.mapRange(game.car_cphys.speedKmh, 100, 400, 0.04, 0.01, true)
     self.frontLeftPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 5, 0.01, highSpeedDamping, true)
@@ -125,20 +125,20 @@ function WheelSteerCtrlr:update(dt)
 
     local driftAngleSetpoint = self.driftAnglePID:update(targetDriftAngle, driftAngle, dt)
 
-    local slipAngleFrontCommanded = self.frontSteeringPID:update(driftAngleSetpoint, -game.car_cphys.localAngularVelocity.y, dt) * (car.extraC and 0 or 1)
-    local slipAngleRearCommanded = self.rearSteeringPID:update(-driftAngleSetpoint, game.car_cphys.localAngularVelocity.y, dt) * (car.extraD and 0 or 1)
+    local slipAngleFrontCommanded = self.frontSteeringPID:update(driftAngleSetpoint, -game.car_cphys.localAngularVelocity.y, dt)
+    local slipAngleRearCommanded = self.rearSteeringPID:update(-driftAngleSetpoint, game.car_cphys.localAngularVelocity.y, dt)
 
     local steerNormalized = helpers.mapRange(car.steer, -90, 90, -1, 1, true)
 
     local steerFrontLeft = self.frontLeftPID:update(slipAngleFrontCommanded + (steerNormalized * (self.crabAngleGainFront * (math.abs(steerNormalized) ^ 0.6)) * helpers.mapRange(state.control.countersteer, 0, 1, 1, 0, true)), -game.car_cphys.wheels[0].slipAngle, dt)
     local steerFrontRight = self.frontRightPID:update(slipAngleFrontCommanded + (steerNormalized * (self.crabAngleGainFront * (math.abs(steerNormalized) ^ 0.6)) * helpers.mapRange(state.control.countersteer, 0, 1, 1, 0, true)), -game.car_cphys.wheels[1].slipAngle, dt)
-    local steerRearLeft = self.rearLeftPID:update(slipAngleRearCommanded + (steerNormalized * (self.crabAngleGainRear * (math.abs(steerNormalized) ^ 0.6)) * helpers.mapRange(state.control.countersteer, 0, 1, 1, 0, true)), -game.car_cphys.wheels[2].slipAngle, dt)
-    local steerRearRight = self.rearRightPID:update(slipAngleRearCommanded + (steerNormalized * (self.crabAngleGainRear * (math.abs(steerNormalized) ^ 0.6)) * helpers.mapRange(state.control.countersteer, 0, 1, 1, 0, true)), -game.car_cphys.wheels[3].slipAngle, dt)
+    local steerRearLeft = self.rearLeftPID:update(slipAngleRearCommanded + (steerNormalized * (self.crabAngleGainRear * (car.extraD and -0.5 or 1) * (math.abs(steerNormalized) ^ 0.6)) * helpers.mapRange(state.control.countersteer, 0, 1, 1, 0, true)), -game.car_cphys.wheels[2].slipAngle, dt)
+    local steerRearRight = self.rearRightPID:update(slipAngleRearCommanded + (steerNormalized * (self.crabAngleGainRear * (car.extraD and -0.5 or 1) * (math.abs(steerNormalized) ^ 0.6)) * helpers.mapRange(state.control.countersteer, 0, 1, 1, 0, true)), -game.car_cphys.wheels[3].slipAngle, dt)
 
     game.car_cphys.controllerInputs[0] = (-steerFrontLeft)
     game.car_cphys.controllerInputs[1] = (steerFrontRight)
-    game.car_cphys.controllerInputs[2] = (-steerRearLeft) * self.currentDirectionBlend
-    game.car_cphys.controllerInputs[3] = (steerRearRight) * self.currentDirectionBlend
+    game.car_cphys.controllerInputs[2] = (-steerRearLeft) * self.currentDirectionBlend * (car.extraC and 0 or 1)
+    game.car_cphys.controllerInputs[3] = (steerRearRight) * self.currentDirectionBlend * (car.extraC and 0 or 1)
 
     local thrusterForce = 0
     if not isReversing then

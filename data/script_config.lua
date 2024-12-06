@@ -1,4 +1,4 @@
--- Mach 5 CSP Physics Script - Config and Parameters Module
+-- T-180 CSP Physics Script - Config and Parameters Module
 -- Authored by ohyeah2389
 
 
@@ -12,6 +12,7 @@ local config = {
             speed = 10; -- Speed in kmh below which to auto-hold the brakes
         };
         debugFrequency = 0.1;
+        jumpJackSize = 1;
     },
     electrics = {
         batteries = {
