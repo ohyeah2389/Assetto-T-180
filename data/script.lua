@@ -19,6 +19,32 @@ local function showDebugValues(dt)
 end
 
 
+local jumpJackSystem = JumpJack({
+    jacks = {
+        frontLeft = {
+            length = 1.2,
+            baseForce = 60000,
+            position = vec3(-0.545, 0.18, 0.77)
+        },
+        frontRight = {
+            length = 1.2,
+            baseForce = 60000,
+            position = vec3(0.545, 0.18, 0.77)
+        },
+        rearLeft = {
+            length = 1.2,
+            baseForce = 60000,
+            position = vec3(-0.45, 0.18, -0.73)
+        },
+        rearRight = {
+            length = 1.2,
+            baseForce = 60000,
+            position = vec3(0.45, 0.18, -0.73)
+        }
+    }
+})
+
+
 local function brakeAutoHold()
     if game.car_cphys.speedKmh < config.misc.brakeAutoHold.speed and game.car_cphys.gas == 0 then
         ac.overrideBrakesTorque(2, config.misc.brakeAutoHold.torque, config.misc.brakeAutoHold.torque)
@@ -36,31 +62,11 @@ local afterburnerAmountMaxSeconds = 1000
 local afterburnerAmountSeconds = afterburnerAmountMaxSeconds
 local afterburnerSpool = 0
 
-local jumpJackLF = JumpJack({
-    jackLength = 1.2,
-    jackPosition = vec3(-0.2, 0.1, 0.3),
-})
-local jumpJackRF = JumpJack({
-    jackLength = 1.2,
-    jackPosition = vec3(0.2, 0.1, 0.3),
-})
-local jumpJackLR = JumpJack({
-    jackLength = 1.2,
-    jackPosition = vec3(-0.2, 0.1, -0.3),
-})
-local jumpJackRR = JumpJack({
-    jackLength = 1.2,
-    jackPosition = vec3(0.2, 0.1, -0.3),
-})
-
 
 function script.reset()
     wheelSteerCtrlr:reset()
     afterburnerAmountSeconds = afterburnerAmountMaxSeconds
-    jumpJackLF:reset()
-    jumpJackRF:reset()
-    jumpJackLR:reset()
-    jumpJackRR:reset()
+    jumpJackSystem:reset()
 end
 script.reset()
 ac.onCarJumped(0, script.reset)
@@ -81,41 +87,30 @@ function script.update(dt)
     else
         afterburnerSpool = math.max(afterburnerSpool - dt * 2, 0)
     end
+    
+    ac.addForce(vec3(0.0, 0.77, -2), true, vec3(0, 0, state.thrusterForce), true)
 
     ac.debug("afterburnerAmountSeconds", afterburnerAmountSeconds)
     ac.debug("afterburnerSpool", afterburnerSpool)
 
     game.car_cphys.controllerInputs[4] = math.smootherstep(afterburnerSpool ^ 0.5)
+    game.car_cphys.controllerInputs[5] = state.thrusterForce
 
     local newBoost = helpers.mapRange(math.abs(game.car_cphys.rpm), 0, 20000, 0, helpers.mapRange(afterburnerSpool, 0, 1, 1, 2), false)
     ac.overrideTurboBoost(0, newBoost, newBoost)
 
-    jumpJackLF:update(car.extraB, dt)
-    jumpJackRF:update(car.extraB, dt)
-    jumpJackLR:update(car.extraB, dt)
-    jumpJackRR:update(car.extraB, dt)
+    local jumpJackActivationPattern = {
+        frontLeft = car.extraE or car.extraB,
+        frontRight = car.extraF or car.extraB,
+        rearLeft = car.extraE or car.extraB,
+        rearRight = car.extraF or car.extraB
+    }
+    jumpJackSystem:update(jumpJackActivationPattern, dt)
 
-    ac.debug("jumpJackLF.jackRaycast", jumpJackLF.jackRaycast)
-    ac.debug("jumpJackRF.jackRaycast", jumpJackRF.jackRaycast)
-    ac.debug("jumpJackLR.jackRaycast", jumpJackLR.jackRaycast)
-    ac.debug("jumpJackRR.jackRaycast", jumpJackRR.jackRaycast)
-    ac.debug("jumpJackLF.physicsObject.position", jumpJackLF.physicsObject.position)
-    ac.debug("jumpJackRF.physicsObject.position", jumpJackRF.physicsObject.position)
-    ac.debug("jumpJackLR.physicsObject.position", jumpJackLR.physicsObject.position)
-    ac.debug("jumpJackRR.physicsObject.position", jumpJackRR.physicsObject.position)
-    ac.debug("jumpJackLF.isTouching", jumpJackLF.isTouching)
-    ac.debug("jumpJackRF.isTouching", jumpJackRF.isTouching)
-    ac.debug("jumpJackLR.isTouching", jumpJackLR.isTouching)
-    ac.debug("jumpJackRR.isTouching", jumpJackRR.isTouching)
-    ac.debug("jumpJackLF.penetrationDepth", jumpJackLF.penetrationDepth)
-    ac.debug("jumpJackRF.penetrationDepth", jumpJackRF.penetrationDepth)
-    ac.debug("jumpJackLR.penetrationDepth", jumpJackLR.penetrationDepth)
-    ac.debug("jumpJackRR.penetrationDepth", jumpJackRR.penetrationDepth)
-    ac.debug("jumpJackLF.penetrationForce", jumpJackLF.penetrationForce)
-    ac.debug("jumpJackRF.penetrationForce", jumpJackRF.penetrationForce)
-    ac.debug("jumpJackLR.penetrationForce", jumpJackLR.penetrationForce)
-    ac.debug("jumpJackRR.penetrationForce", jumpJackRR.penetrationForce)
-    ac.debug("car.position", car.position)
+    state.jumpJackSystem.jackFL.position = jumpJackSystem.jacks.frontLeft.physicsObject.position
+    state.jumpJackSystem.jackFR.position = jumpJackSystem.jacks.frontRight.physicsObject.position
+    state.jumpJackSystem.jackRL.position = jumpJackSystem.jacks.rearLeft.physicsObject.position
+    state.jumpJackSystem.jackRR.position = jumpJackSystem.jacks.rearRight.physicsObject.position
 
     ac.setSteeringFFB(wheelSteerCtrlr:calculateFFB(dt))
     showDebugValues(dt)

@@ -54,4 +54,9 @@ function script_helpers.logit(x)
     return math.log(x / (1 - x))
 end
 
+function script_helpers.clampChange(desired, current, maxDelta)
+    local delta = math.clamp(desired - current, -maxDelta, maxDelta)
+    return current + delta
+end
+
 return script_helpers

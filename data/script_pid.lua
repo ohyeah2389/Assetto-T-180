@@ -27,7 +27,7 @@ function PIDController:update(setpoint, measurement, dt)
     
     -- Derivative term
     local derivative = (error - self.previousError) / dt
-    local D = self.kD * derivative
+    local D = self.kD * derivative * dt
     
     -- Save error for next iteration
     self.previousError = error
