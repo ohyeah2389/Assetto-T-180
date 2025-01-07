@@ -72,7 +72,7 @@ function JumpJack:update(activationPattern, dt)
     local worldUp = vec3(0, 1, 0)
     local pitchCar = math.asin(math.dot(car.look, worldUp))
     local rightCar = math.cross(car.look, car.up):normalize()  -- Normalize the right vector
-    local rollCar = math.asin(math.dot(rightCar, worldUp))
+    local rollCar = -math.asin(math.dot(car.up, rightCar))  -- Changed roll calculation
 
     -- PID control for leveling
     -- Pitch control (front-back)
@@ -95,7 +95,7 @@ function JumpJack:update(activationPattern, dt)
 
     for name, jack in pairs(self.jacks) do
         -- Transform jack position from local to world space
-        local right = math.cross(car.look, car.up):normalize()  -- Normalize right vector
+        local right = math.cross(car.up, car.look):normalize()  -- Swapped order of cross product
         local jackLocalPos = vec3(
             jack.position.x,
             jack.position.y,
@@ -129,7 +129,7 @@ function JumpJack:update(activationPattern, dt)
             -- Roll correction
             if name:find("Left") then
                 correctionForce = correctionForce + rollCorrection
-            elseif name:find("right") then
+            elseif name:find("Right") then
                 correctionForce = correctionForce - rollCorrection
             end
 
@@ -174,7 +174,7 @@ function JumpJack:update(activationPattern, dt)
             ac.addForce(
                 jack.position,     -- Use local position
                 true,             -- Position is in local space
-                vec3(0, jack.penetrationForce, 0),  -- Force in local space
+                vec3(0, jack.penetrationForce, 0),  -- Back to positive
                 true              -- Force is in local space
             )
         else

@@ -30,10 +30,10 @@ end)
 
 
 function controls.update()
-    state.jumpJackSystem.jackFL.active = controls.jumpJack.left:down() or controls.jumpJack.all:down()
-    state.jumpJackSystem.jackFR.active = controls.jumpJack.right:down() or controls.jumpJack.all:down()
-    state.jumpJackSystem.jackRL.active = controls.jumpJack.left:down() or controls.jumpJack.all:down()
-    state.jumpJackSystem.jackRR.active = controls.jumpJack.right:down() or controls.jumpJack.all:down()
+    state.jumpJackSystem.jackFL.active = controls.jumpJack.right:down() or controls.jumpJack.all:down()
+    state.jumpJackSystem.jackFR.active = controls.jumpJack.left:down() or controls.jumpJack.all:down()
+    state.jumpJackSystem.jackRL.active = controls.jumpJack.right:down() or controls.jumpJack.all:down()
+    state.jumpJackSystem.jackRR.active = controls.jumpJack.left:down() or controls.jumpJack.all:down()
 end
 
 

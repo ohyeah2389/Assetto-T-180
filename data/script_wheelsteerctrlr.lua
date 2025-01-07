@@ -32,8 +32,8 @@ function WheelSteerCtrlr:initialize()
     self.rearLeftPID = PIDController(self.steerPower, 0, 0.0001, -1, 1, self.steerDamping)
     self.rearRightPID = PIDController(self.steerPower, 0, 0.0001, -1, 1, self.steerDamping)
 
-    self.crabAngleGainFront = 1
-    self.crabAngleGainRear = -2.0
+    self.crabAngleGainFront = 1.0
+    self.crabAngleGainRear = -3.0
 
     self.steerStateFL = 0
     self.steerStateFR = 0
