@@ -5,10 +5,12 @@
 local game = require('script_acConnection')
 local config = require('script_config')
 local state = require('script_state')
+local controls = require('script_controls')
 local helpers = require('script_helpers')
 local WheelSteerController = require('script_wheelsteerctrlr')
 local HubMotorController = require('script_hubmotorctrlr')
 local JumpJack = require('script_jumpjack')
+local Turbothruster = require('script_turbothruster')
 
 
 local lastDebugTime = os.clock()
@@ -34,19 +36,19 @@ local jumpJackSystem = JumpJack({
         rearLeft = {
             length = 1.2,
             baseForce = 60000,
-            position = vec3(-0.45, 0.18, -0.73)
+            position = vec3(-0.45, 0.18, -0.77)
         },
         rearRight = {
             length = 1.2,
             baseForce = 60000,
-            position = vec3(0.45, 0.18, -0.73)
+            position = vec3(0.45, 0.18, -0.77)
         }
     }
 })
 
 
 local function brakeAutoHold()
-    if game.car_cphys.speedKmh < config.misc.brakeAutoHold.speed and game.car_cphys.gas == 0 then
+    if game.car_cphys.speedKmh < config.misc.brakeAutoHold.speed and game.car_cphys.gas == 0 and game.car_cphys.brake == 0 then
         ac.overrideBrakesTorque(2, config.misc.brakeAutoHold.torque, config.misc.brakeAutoHold.torque)
         ac.overrideBrakesTorque(3, config.misc.brakeAutoHold.torque, config.misc.brakeAutoHold.torque)
     else
@@ -55,18 +57,16 @@ local function brakeAutoHold()
     end
 end
 
+
 local wheelSteerCtrlr = WheelSteerController()
 local hubMotorCtrlr = HubMotorController()
-
-local afterburnerAmountMaxSeconds = 1000
-local afterburnerAmountSeconds = afterburnerAmountMaxSeconds
-local afterburnerSpool = 0
+local turbothruster = Turbothruster()
 
 
 function script.reset()
     wheelSteerCtrlr:reset()
-    afterburnerAmountSeconds = afterburnerAmountMaxSeconds
     jumpJackSystem:reset()
+    turbothruster:reset()
 end
 script.reset()
 ac.onCarJumped(0, script.reset)
@@ -78,34 +78,21 @@ function script.update(dt)
     ac.awakeCarPhysics()
     brakeAutoHold()
 
+    controls.update()
+
     wheelSteerCtrlr:update(dt)
+    turbothruster:update(dt)
     --local wheelCommands = hubMotorCtrlr:update(dt)
 
-    if car.extraA and afterburnerAmountSeconds > 0 then
-        afterburnerAmountSeconds = math.max(afterburnerAmountSeconds - dt, 0)
-        afterburnerSpool = math.min(afterburnerSpool + dt * 0.5, 1)
-    else
-        afterburnerSpool = math.max(afterburnerSpool - dt * 2, 0)
-    end
-    
-    ac.addForce(vec3(0.0, 0.77, -2), true, vec3(0, 0, state.thrusterForce), true)
+    game.car_cphys.controllerInputs[4] = helpers.mapRange(state.turbine.throttle, config.turbine.minThrottle, 1, 0, 1, true)
+    game.car_cphys.controllerInputs[5] = helpers.mapRange(state.turbine.thrust, 1000, 8000, 0, 1, true)
 
-    ac.debug("afterburnerAmountSeconds", afterburnerAmountSeconds)
-    ac.debug("afterburnerSpool", afterburnerSpool)
-
-    game.car_cphys.controllerInputs[4] = math.smootherstep(afterburnerSpool ^ 0.5)
-    game.car_cphys.controllerInputs[5] = state.thrusterForce
-
-    local newBoost = helpers.mapRange(math.abs(game.car_cphys.rpm), 0, 20000, 0, helpers.mapRange(afterburnerSpool, 0, 1, 1, 2), false)
-    ac.overrideTurboBoost(0, newBoost, newBoost)
-
-    local jumpJackActivationPattern = {
-        frontLeft = car.extraE or car.extraB,
-        frontRight = car.extraF or car.extraB,
-        rearLeft = car.extraE or car.extraB,
-        rearRight = car.extraF or car.extraB
-    }
-    jumpJackSystem:update(jumpJackActivationPattern, dt)
+    jumpJackSystem:update({
+        frontLeft = state.jumpJackSystem.jackFL.active,
+        frontRight = state.jumpJackSystem.jackFR.active,
+        rearLeft = state.jumpJackSystem.jackRL.active,
+        rearRight = state.jumpJackSystem.jackRR.active
+    }, dt)
 
     state.jumpJackSystem.jackFL.position = jumpJackSystem.jacks.frontLeft.physicsObject.position
     state.jumpJackSystem.jackFR.position = jumpJackSystem.jacks.frontRight.physicsObject.position

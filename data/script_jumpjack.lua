@@ -10,7 +10,7 @@ local JumpJack = class("JumpJack")
 
 function JumpJack:initialize(params)
     self.params = params
-    
+
     -- Initialize all jacks
     self.jacks = {}
     for name, jackParams in pairs(params.jacks) do
@@ -42,7 +42,7 @@ function JumpJack:initialize(params)
     self.levelingP = -20000  -- Proportional gain
     self.levelingI = 0   -- Integral gain
     self.levelingD = 0   -- Derivative gain
-    
+
     -- Error accumulation for integral term
     self.pitchErrorSum = 0
     self.rollErrorSum = 0
@@ -59,7 +59,7 @@ function JumpJack:reset()
         jack.penetrationForce = 0
         jack.raycast = -1
     end
-    
+
     self.pitchErrorSum = 0
     self.rollErrorSum = 0
     self.lastPitchError = 0
@@ -68,59 +68,77 @@ end
 
 
 function JumpJack:update(activationPattern, dt)
-    -- Calculate current pitch and roll angles
-    local pitch = math.asin(math.dot(car.look, vec3(0, 1, 0)))  -- Pitch angle
-    local right = math.cross(car.look, car.up)  -- Calculate right vector
-    local roll = math.asin(math.dot(right, vec3(0, 1, 0)))  -- Roll angle using calculated right vector
-    
+    -- Calculate current pitch and roll angles using car's orientation
+    local worldUp = vec3(0, 1, 0)
+    local pitchCar = math.asin(math.dot(car.look, worldUp))
+    local rightCar = math.cross(car.look, car.up):normalize()  -- Normalize the right vector
+    local rollCar = math.asin(math.dot(rightCar, worldUp))
+
     -- PID control for leveling
     -- Pitch control (front-back)
-    local pitchError = -pitch
+    local pitchError = -pitchCar
     self.pitchErrorSum = self.pitchErrorSum + pitchError * dt
     local pitchDerivative = (pitchError - self.lastPitchError) / dt
-    local pitchCorrection = self.levelingP * pitchError + 
-                           self.levelingI * self.pitchErrorSum + 
+    local pitchCorrection = self.levelingP * pitchError +
+                           self.levelingI * self.pitchErrorSum +
                            self.levelingD * pitchDerivative
     self.lastPitchError = pitchError
-    
+
     -- Roll control (left-right)
-    local rollError = roll
+    local rollError = rollCar
     self.rollErrorSum = self.rollErrorSum + rollError * dt
     local rollDerivative = (rollError - self.lastRollError) / dt
-    local rollCorrection = self.levelingP * rollError + 
-                          self.levelingI * self.rollErrorSum + 
+    local rollCorrection = self.levelingP * rollError +
+                          self.levelingI * self.rollErrorSum +
                           self.levelingD * rollDerivative
     self.lastRollError = rollError
-    
+
     for name, jack in pairs(self.jacks) do
-        -- Transform jack position from local to world space using car's orientation vectors
-        local right = math.cross(car.look, car.up)
-        local worldJackPos = car.position + (right * jack.position.x) + (car.up * jack.position.y) + (car.look * jack.position.z)
+        -- Transform jack position from local to world space
+        local right = math.cross(car.look, car.up):normalize()  -- Normalize right vector
+        local jackLocalPos = vec3(
+            jack.position.x,
+            jack.position.y,
+            jack.position.z
+        )
+
+        -- Transform local position to world space using car's orientation matrix
+        local worldJackPos = car.position
+            + (right * jackLocalPos.x)
+            + (car.up * jackLocalPos.y)
+            + (car.look * jackLocalPos.z)
+
+        -- Use car's up vector for jack direction
         local jackDirection = -car.up
         jack.raycast = physics.raycastTrack(worldJackPos, jackDirection, jack.length + 2)
 
-        -- Apply corrections based on jack position
+        -- Calculate force based on car's orientation
         local jackInputForce = activationPattern[name] and self.jacks[name].baseForce or -1000
-        
+
         if activationPattern[name] then
-            -- Add pitch correction (front/rear)
+            -- Apply corrections in car's local space
+            local correctionForce = 0
+
+            -- Pitch correction
             if name:find("front") then
-                jackInputForce = jackInputForce + pitchCorrection
-            else  -- rear
-                jackInputForce = jackInputForce - pitchCorrection
+                correctionForce = correctionForce + pitchCorrection
+            elseif name:find("rear") then
+                correctionForce = correctionForce - pitchCorrection
             end
-            
-            -- Add roll correction (left/right)
+
+            -- Roll correction
             if name:find("Left") then
-                jackInputForce = jackInputForce + rollCorrection
-            else  -- right
-                jackInputForce = jackInputForce - rollCorrection
+                correctionForce = correctionForce + rollCorrection
+            elseif name:find("right") then
+                correctionForce = correctionForce - rollCorrection
             end
+
+            jackInputForce = jackInputForce + correctionForce
         end
 
         jack.isTouching = jack.raycast ~= -1 and (jack.raycast < jack.physicsObject.position + 0.01)
 
-        local forcePoint = worldJackPos + jackDirection * jack.raycast
+        local forcePoint = worldJackPos + (jackDirection * jack.raycast)
         if jack.isTouching then
             jack.penetrationDepth = jack.physicsObject.position - jack.raycast
             jack.penetrationForce = math.max(0, (math.max(0, jack.penetrationDepth) ^ 0.2)) * 20000
@@ -129,29 +147,35 @@ function JumpJack:update(activationPattern, dt)
             local carVelocity = car.velocity or vec3(0, 0, 0)
             local verticalComponent = math.dot(carVelocity, car.up) * car.up
             local groundVelocity = carVelocity - verticalComponent
-            
+
             -- Calculate forward component
             local forwardComponent = math.dot(groundVelocity, car.look) * car.look
             local lateralVelocity = groundVelocity - forwardComponent
-            
+
             -- Apply lateral friction force
             local lateralSpeed = #lateralVelocity
             if lateralSpeed > 0.1 then
-                local frictionMultiplier = 5
+                local frictionMultiplier = 2
                 local lateralFrictionForce = -lateralVelocity:normalize() * math.min(
                     frictionMultiplier * jack.penetrationForce,
                     lateralSpeed * 1000
                 )
-                
-                --ac.addForce(forcePoint - car.position, true, lateralFrictionForce, true)
+
+                -- Apply friction force in world space
+                ac.addForce(
+                    jack.position,  -- Use local position
+                    true,          -- Position is in local space
+                    lateralFrictionForce,
+                    false          -- Force is in world space
+                )
             end
 
-            -- Apply vertical force at the contact point
+            -- Apply vertical force in local space
             ac.addForce(
-                forcePoint - car.position,
-                true,
-                car.up * jack.penetrationForce,
-                true
+                jack.position,     -- Use local position
+                true,             -- Position is in local space
+                vec3(0, jack.penetrationForce, 0),  -- Force in local space
+                true              -- Force is in local space
             )
         else
             jack.penetrationDepth = 0

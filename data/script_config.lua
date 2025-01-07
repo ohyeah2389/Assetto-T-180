@@ -52,6 +52,13 @@ local config = {
             slipThreshold = 0.3, -- Slip ratio threshold
             cutStrength = 0.9, -- How aggressively TC cuts power
         }
+    },
+    turbine = {
+        minThrottle = 0.2,
+        throttleLag = 0.8, -- 0 to 1 where 1 represents unrealistically fast turbine throttle response and 0 represents no change in throttle
+        gearRatio = 1.5, -- 1.5:1 gear ratio turbine:engine
+        boostThrustFactor = 0.00001,
+        boostSpeedFactor = 0.001,
     }
 }
 

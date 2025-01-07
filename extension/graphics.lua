@@ -31,8 +31,8 @@ end
 function script.update(dt)
     ac.boostFrameRate()
 
-    flameBoost:emit(vec3(0.0 + car.localVelocity.x * 0.008, 0.77, -2.5 + car.localVelocity.z * 0.01), vec3(0, 0, -1.5) + (car.localVelocity * -0.35), 0.1 + car_phys.scriptControllerInputs[4] * mapRange(car.speedKmh, 0, 400, 5, 0.4, true))
-    flameTurbo:emit(vec3(0.0 + car.localVelocity.x * 0.008, 0.77, -2.5 + car.localVelocity.z * 0.01), vec3(0, 0, -1.5) + (car.localVelocity * -0.35), 0.1 + car_phys.scriptControllerInputs[5] * mapRange(car.speedKmh, 0, 400, 0.5, 0.1, true))
+    flameBoost:emit(vec3(0.0 + car.localVelocity.x * 0.008, 0.77, -2.5 + car.localVelocity.z * 0.01), vec3(0, 0, -1.5) + (car.localVelocity * -0.35), 0.1 + car_phys.scriptControllerInputs[4] * mapRange(car.speedKmh, 0, 400, 1, 0.01, true))
+    flameTurbo:emit(vec3(0.0 + car.localVelocity.x * 0.008, 0.77, -2.5 + car.localVelocity.z * 0.01), vec3(0, 0, -1.5) + (car.localVelocity * -0.35), 0.1 + car_phys.scriptControllerInputs[5] * mapRange(car.speedKmh, 0, 400, 20, 0.01, true))
     
     lightFadeout = math.lerp(lightFadeout, car.headlightsActive and 1 or 0, dt * 15)
 

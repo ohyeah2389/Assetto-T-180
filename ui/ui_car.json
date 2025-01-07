@@ -7,16 +7,15 @@
     "race",
     "japan",
     "WRL",
-    "manual",
-    "vintage"
+    "manual"
   ],
   "class": "race",
   "specs": {
     "bhp": "2123 whp",
     "torque": "840 Nm*",
     "weight": "775 kg",
-    "topspeed": ">600 km/h",
-    "acceleration": "-- s 0–100",
+    "topspeed": ">700 km/h",
+    "acceleration": "2.1 s 0–100",
     "pwratio": "0.37 kg/hp"
   },
   "torqueCurve": [
@@ -833,7 +832,7 @@
   ],
   "country": "USA",
   "author": "ohyeah2389 - Slip Angle Modding and Development",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "url": null,
-  "year": 2024
+  "year": 2025
 }

@@ -1,6 +1,7 @@
 -- CSP Physics Script - Helper Functions Module
 -- Authored by ohyeah2389
 
+local game = require('script_acConnection')
 
 local script_helpers = {}
 
@@ -57,6 +58,24 @@ end
 function script_helpers.clampChange(desired, current, maxDelta)
     local delta = math.clamp(desired - current, -maxDelta, maxDelta)
     return current + delta
+end
+
+function script_helpers.getWheelsOffGround()
+    local wheelsOnGround = {
+        game.car_cphys.wheels[0].load > 0,
+        game.car_cphys.wheels[1].load > 0,
+        game.car_cphys.wheels[2].load > 0,
+        game.car_cphys.wheels[3].load > 0
+    }
+    
+    local wheelsOffGround = 0
+    for _, onGround in ipairs(wheelsOnGround) do
+        if not onGround then
+            wheelsOffGround = wheelsOffGround + 1
+        end
+    end
+    
+    return wheelsOffGround
 end
 
 return script_helpers

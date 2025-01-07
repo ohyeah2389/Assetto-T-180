@@ -14,8 +14,8 @@ local WheelSteerCtrlr = class("WheelSteerCtrlr")
 function WheelSteerCtrlr:initialize()
     self.maxSteeringSlewRate = 20.0  -- Maximum change in steering per second
 
-    self.driftAnglePower = 0.07
-    self.driftAngleDamping = 0.015
+    self.driftAnglePower = 0.05
+    self.driftAngleDamping = 0.3
     self.driftAnglePID = PIDController(self.driftAnglePower, 0, 0, -4, 4, self.driftAngleDamping)
 
     self.frontSteeringPower = 0.5
@@ -32,8 +32,8 @@ function WheelSteerCtrlr:initialize()
     self.rearLeftPID = PIDController(self.steerPower, 0, 0.0001, -1, 1, self.steerDamping)
     self.rearRightPID = PIDController(self.steerPower, 0, 0.0001, -1, 1, self.steerDamping)
 
-    self.crabAngleGainFront = 0.5
-    self.crabAngleGainRear = -4.0
+    self.crabAngleGainFront = 1
+    self.crabAngleGainRear = -2.0
 
     self.steerStateFL = 0
     self.steerStateFR = 0
@@ -86,19 +86,7 @@ end
 
 
 function WheelSteerCtrlr:update(dt)
-    local wheelsOnGround = {
-        game.car_cphys.wheels[0].load > 0,
-        game.car_cphys.wheels[1].load > 0,
-        game.car_cphys.wheels[2].load > 0,
-        game.car_cphys.wheels[3].load > 0
-    }
-    -- Count wheels not on ground
-    local wheelsOffGround = 0
-    for _, onGround in ipairs(wheelsOnGround) do
-        if not onGround then
-            wheelsOffGround = wheelsOffGround + 1
-        end
-    end
+    local wheelsOffGround = helpers.getWheelsOffGround()
 
     -- If more than 3 wheels off ground, return early
     if wheelsOffGround > 3 then
@@ -109,22 +97,24 @@ function WheelSteerCtrlr:update(dt)
 
     local driftAngle = math.atan(game.car_cphys.localVelocity.x / math.abs(game.car_cphys.localVelocity.z))
 
-    local targetDriftAngle = car.steer * math.rad(30)
+    local targetDriftAngle = car.steer * math.rad(40)
 
     state.control.countersteer = math.sign(driftAngle) ~= math.sign(car.steer) and math.abs(car.steer) * math.min(math.abs(driftAngle / math.rad(30)), 1) or 0
     state.control.countersteer = helpers.mapRange(car.speedKmh, 20, 40, 0, 1, true) * math.clamp(state.control.countersteer, -90, 90)
 
-    self.frontSteeringPID.p = helpers.mapRange(game.car_cphys.speedKmh, 0, 20, 1.5, self.frontSteeringPower * ((car.extraC or car.extraD) and 2 or 1), true)
-    self.rearSteeringPID.p = helpers.mapRange(game.car_cphys.speedKmh, 0, 20, 0.5, self.rearSteeringPower * (car.extraD and 1.5 or 1), true) * helpers.mapRange(state.control.countersteer, 0, 1, 1, 0, true) * helpers.mapRange(car.brake, 0, 1, 1, 0, true)
+    self.frontSteeringPID.p = helpers.mapRange(game.car_cphys.speedKmh, 0, 40, 3.0, self.frontSteeringPower * ((car.extraC or car.extraD) and 2 or 1), true)
+    self.rearSteeringPID.p = helpers.mapRange(game.car_cphys.speedKmh, 0, 40, 0.1, self.rearSteeringPower * (car.extraD and 1.5 or 1), true) * helpers.mapRange(state.control.countersteer, 0, 1, 1, 0, true) * helpers.mapRange(car.brake, 0, 1, 1, 0, true)
+
+    local highSpeedDamping = helpers.mapRange(game.car_cphys.speedKmh, 100, 400, 0.01, 0.002, true)
+
     self.frontLeftPID.p = helpers.mapRange(game.car_cphys.speedKmh, 2, 5, 0.05, self.steerPower, true)
-    local highSpeedDamping = helpers.mapRange(game.car_cphys.speedKmh, 100, 400, 0.04, 0.01, true)
-    self.frontLeftPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 5, 0.01, highSpeedDamping, true)
+    self.frontLeftPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 10, 0.001, highSpeedDamping, true)
     self.frontRightPID.p = helpers.mapRange(game.car_cphys.speedKmh, 2, 5, 0.05, self.steerPower, true)
-    self.frontRightPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 5, 0.01, highSpeedDamping, true)
+    self.frontRightPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 10, 0.001, highSpeedDamping, true)
     self.rearLeftPID.p = helpers.mapRange(game.car_cphys.speedKmh, 2, 5, 0.05, self.steerPower, true)
-    self.rearLeftPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 5, 0.01, highSpeedDamping, true)
+    self.rearLeftPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 10, 0.001, highSpeedDamping, true)
     self.rearRightPID.p = helpers.mapRange(game.car_cphys.speedKmh, 2, 5, 0.05, self.steerPower, true)
-    self.rearRightPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 5, 0.01, highSpeedDamping, true)
+    self.rearRightPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 10, 0.001, highSpeedDamping, true)
 
     local driftAngleSetpoint = self.driftAnglePID:update(targetDriftAngle, driftAngle, dt)
 
@@ -144,8 +134,8 @@ function WheelSteerCtrlr:update(dt)
     self.steerStateRL = helpers.clampChange(desiredSteerRL, self.steerStateRL_prev, maxDelta)
     self.steerStateRR = helpers.clampChange(desiredSteerRR, self.steerStateRR_prev, maxDelta)
     
-    game.car_cphys.controllerInputs[0] = (-self.steerStateFL)
-    game.car_cphys.controllerInputs[1] = (self.steerStateFR)
+    game.car_cphys.controllerInputs[0] = (self.steerStateFL)
+    game.car_cphys.controllerInputs[1] = (-self.steerStateFR)
     game.car_cphys.controllerInputs[2] = (-self.steerStateRL) * (car.extraC and 0 or 1)
     game.car_cphys.controllerInputs[3] = (self.steerStateRR) * (car.extraC and 0 or 1)
 
@@ -153,11 +143,6 @@ function WheelSteerCtrlr:update(dt)
     self.steerStateFR_prev = self.steerStateFR
     self.steerStateRL_prev = self.steerStateRL
     self.steerStateRR_prev = self.steerStateRR
-
-    local thrusterForce = 0
-    if not self.isReversing then
-        state.thrusterForce = game.car_cphys.gas * 10000 * helpers.mapRange(math.abs(driftAngle), math.rad(30), math.rad(90), 0, 1, true)
-    end
 
     ac.debug("steerctrl.slipAngleFrontCommanded", slipAngleFrontCommanded)
     ac.debug("steerctrl.slipAngleRearCommanded", slipAngleRearCommanded)
@@ -171,7 +156,6 @@ function WheelSteerCtrlr:update(dt)
     ac.debug("steerctrl.steer", car.steer)
     ac.debug("steerctrl.driftAngle", driftAngle)
     ac.debug("steerctrl.state.control.countersteer", state.control.countersteer)
-    ac.debug("steerctrl.thrusterForce", thrusterForce)
 end
 
 

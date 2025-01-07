@@ -16,7 +16,6 @@ function physics:initialize(params)
     self.frictionCoef = params.frictionCoef or 0.1
     self.staticFrictionCoef = params.staticFrictionCoef or 1.5
     self.expFrictionCoef = params.expFrictionCoef or 1.0
-    self.friction = (self.speed ^ self.expFrictionCoef) * self.frictionCoef
     self.mass = params.mass or 1 -- kilograms (kg)
     self.springCoef = params.springCoef or 0 -- Newtons per meter (N/m)
     self.forceMax = params.forceMax or 10000
@@ -45,8 +44,10 @@ function physics:step(force, dt)
         if math.abs(self.torque) < staticFrictionTorque and self.angularSpeed == 0 then
             self.angularAccel = 0
         else
-            -- Kinetic friction
-            local frictionTorque = self.frictionCoef * self.inertia * math.sign(self.angularSpeed)
+            -- Kinetic friction with speed-dependent component
+            local frictionTorque = self.frictionCoef * self.inertia * 
+                                 (math.abs(self.angularSpeed) ^ self.expFrictionCoef) * 
+                                 math.sign(self.angularSpeed)
             self.angularAccel = (self.torque - frictionTorque) / self.inertia
         end
 
