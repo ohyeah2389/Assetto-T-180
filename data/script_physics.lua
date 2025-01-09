@@ -12,6 +12,7 @@ function physics:initialize(params)
     self.position = params.position or self.center
     self.speed = 0 -- meters per second (m/s)
     self.force = 0 -- Newtons (N)
+    self.feltForce = 0 -- Newtons (N)
     self.accel = 0 -- meters per second squared (m/s^2)
     self.frictionCoef = params.frictionCoef or 0.1
     self.staticFrictionCoef = params.staticFrictionCoef or 1.5
@@ -71,11 +72,12 @@ function physics:step(force, dt)
 
         -- Static friction
         local staticFrictionForce = self.frictionCoef * self.staticFrictionCoef * self.mass
+        local frictionForce = 0
         if math.abs(self.force) < staticFrictionForce and self.speed == 0 then
             self.accel = 0
         else
             -- Kinetic friction
-            local frictionForce = self.frictionCoef * self.mass * math.sign(self.speed)
+            frictionForce = self.frictionCoef * self.mass * math.sign(self.speed)
             self.accel = (self.force - frictionForce) / self.mass
         end
 
@@ -86,6 +88,8 @@ function physics:step(force, dt)
         else
             self.speed = 0
         end
+
+        self.feltForce = self.force - frictionForce
 
         -- Update position after all forces are calculated
         self.position = self.position + (self.speed * dt)

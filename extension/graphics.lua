@@ -3,8 +3,8 @@
 
 local car_phys = ac.getCarPhysics(0)
 
-local flameBoost = ac.Particles.Flame({color = rgbm(0.2, 0.6, 1, 1), size = 3.5, temperatureMultiplier = 2, flameIntensity = 0.8})
-local flameTurbo = ac.Particles.Flame({color = rgbm(1, 0.4, 0.2, 1), size = 3.5, temperatureMultiplier = 2, flameIntensity = 0.8})
+local flameBoost = ac.Particles.Flame({color = rgbm(1, 1, 1, 1), size = 3.2, temperatureMultiplier = 1, flameIntensity = 1})
+local flameTurbo = ac.Particles.Flame({color = rgbm(1, 0.8, 0.8, 1), size = 3.2, temperatureMultiplier = 2, flameIntensity = 0.9})
 
 local light_headlight_left = ac.accessCarLight("LIGHT_HEADLIGHT_1")
 local light_headlight_right = ac.accessCarLight("LIGHT_HEADLIGHT_2")
@@ -31,8 +31,8 @@ end
 function script.update(dt)
     ac.boostFrameRate()
 
-    flameBoost:emit(vec3(0.0 + car.localVelocity.x * 0.008, 0.77, -2.5 + car.localVelocity.z * 0.01), vec3(0, 0, -1.5) + (car.localVelocity * -0.35), 0.1 + car_phys.scriptControllerInputs[4] * mapRange(car.speedKmh, 0, 400, 1, 0.01, true))
-    flameTurbo:emit(vec3(0.0 + car.localVelocity.x * 0.008, 0.77, -2.5 + car.localVelocity.z * 0.01), vec3(0, 0, -1.5) + (car.localVelocity * -0.35), 0.1 + car_phys.scriptControllerInputs[5] * mapRange(car.speedKmh, 0, 400, 20, 0.01, true))
+    flameBoost:emit(vec3(0.0 + car.localVelocity.x * 0.008, 0.77, -2.5 + car.localVelocity.z * 0.01), vec3(0, 0, -1.5) + (car.localVelocity * -0.35), car_phys.scriptControllerInputs[4] * mapRange(car.speedKmh, 0, 400, 0.5, 0.1, true))
+    flameTurbo:emit(vec3(0.0 + car.localVelocity.x * 0.008, 0.77, -2.5 + car.localVelocity.z * 0.01), vec3(0, 0, -3) + (car.localVelocity * -0.35), car_phys.scriptControllerInputs[5] * mapRange(car.speedKmh, 0, 400, 1, 0.1, true))
     
     lightFadeout = math.lerp(lightFadeout, car.headlightsActive and 1 or 0, dt * 15)
 

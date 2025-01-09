@@ -19,7 +19,8 @@ local controls = {
     },
     steeringModes = {
         lockRears = ac.ControlButton("__EXT_LIGHT_STEERMODE_LOCKREARS"),
-        rearAntiCrab = ac.ControlButton("__EXT_LIGHT_STEERMODE_ANTICRAB")
+        rearAntiCrab = ac.ControlButton("__EXT_LIGHT_STEERMODE_ANTICRAB"),
+        spinMode = ac.ControlButton("__EXT_LIGHT_STEERMODE_SPINMODE")
     }
 }
 
@@ -36,6 +37,10 @@ controls.steeringModes.lockRears:onPressed(function()
     state.control.lockedRears = not state.control.lockedRears
 end)
 
+controls.steeringModes.lockFronts:onPressed(function()
+    state.control.lockedFronts = not state.control.lockedFronts
+end)
+
 controls.steeringModes.rearAntiCrab:onPressed(function()
     state.control.rearAntiCrab = not state.control.rearAntiCrab
 end)
@@ -46,6 +51,7 @@ function controls.update()
     state.jumpJackSystem.jackFR.active = controls.jumpJack.left:down() or controls.jumpJack.all:down()
     state.jumpJackSystem.jackRL.active = controls.jumpJack.right:down() or controls.jumpJack.all:down()
     state.jumpJackSystem.jackRR.active = controls.jumpJack.left:down() or controls.jumpJack.all:down()
+    state.control.spinMode = controls.steeringModes.spinMode:down()
 end
 
 

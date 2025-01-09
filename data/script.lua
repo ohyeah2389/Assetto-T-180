@@ -99,6 +99,10 @@ function script.update(dt)
     state.jumpJackSystem.jackRL.position = jumpJackSystem.jacks.rearLeft.physicsObject.position
     state.jumpJackSystem.jackRR.position = jumpJackSystem.jacks.rearRight.physicsObject.position
 
-    ac.setSteeringFFB(wheelSteerCtrlr:calculateFFB(dt))
+    local ffb = wheelSteerCtrlr:calculateFFB(dt)
+    if ffb and ffb == ffb then  -- Check if value exists and is not NaN
+        ac.setSteeringFFB(ffb)
+    end
+    
     showDebugValues(dt)
 end

@@ -46,7 +46,7 @@ end
 
 
 function Turbothruster:update(dt)
-    local rpmDelta = (game.car_cphys.rpm - (self.turbine.angularSpeed * 60 / (2 * math.pi))) / config.turbine.gearRatio
+    local rpmDelta = (math.max(game.car_cphys.rpm, 0) - (self.turbine.angularSpeed * 60 / (2 * math.pi))) / config.turbine.gearRatio
 
     local wheelsOffGround = helpers.getWheelsOffGround()
 
@@ -61,8 +61,11 @@ function Turbothruster:update(dt)
     -- Calculate base throttle request from drift
     local baseThrottle = helpers.mapRange(game.car_cphys.gas * helpers.mapRange(math.abs(driftAngle), math.rad(30), math.rad(90), 0, 1, true), 0, 1, config.turbine.minThrottle, 1, true)
 
-    if controls.turbine.throttle:down() then
+    if controls.turbine.throttle:down() then -- Full throttle override
         state.turbine.throttle = math.applyLag(state.turbine.throttle, 1, config.turbine.throttleLag, dt)
+        self.throttlePID:reset()  -- Reset PID when override is active
+    elseif state.control.spinMode then -- Zero throttle override for spin mode
+        state.turbine.throttle = math.applyLag(state.turbine.throttle, 0, config.turbine.throttleLag, dt)
         self.throttlePID:reset()  -- Reset PID when override is active
     elseif not self.carReversing then
         local targetRPMDiff = 0
@@ -84,6 +87,10 @@ function Turbothruster:update(dt)
     local engineTorqueFromTurbine = rpmDelta * config.turbine.gearRatio * 0.0001
     ac.setExtraTorque(state.turbine.clutchDisconnected and 0 or engineTorqueFromTurbine) -- Engine torque from turbine
     self.turbine:step((state.turbine.clutchDisconnected and 0 or turbineTorqueFromEngine) + (state.turbine.fuelPumpEnabled and 10 * state.turbine.thrust * (helpers.mapRange(self.turbine.angularSpeed, 0, 2000, 0.1, 0, true) ^ 0.8) or 0), dt) -- Turbine torque from engine
+    
+    if self.turbine.angularSpeed < 0 then
+        self.turbine.angularSpeed = 0
+    end
 
     -- Calculate fuel consumption based on throttle, RPM and thrust
     state.turbine.fuelConsumption = state.turbine.throttle 
