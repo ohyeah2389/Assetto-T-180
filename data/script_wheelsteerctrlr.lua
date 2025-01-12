@@ -6,8 +6,15 @@ local game = require('script_acConnection')
 local helpers = require('script_helpers')
 local physics = require('script_physics')
 local PIDController = require('script_pid')
+local threesixtyctrlr = require('script_threesixtyctrlr')
 
 local WheelSteerCtrlr = class("WheelSteerCtrlr")
+
+
+local threesixtyctrlr_FL = threesixtyctrlr()
+local threesixtyctrlr_FR = threesixtyctrlr()
+local threesixtyctrlr_RL = threesixtyctrlr()
+local threesixtyctrlr_RR = threesixtyctrlr()
 
 
 function WheelSteerCtrlr:initialize()
@@ -210,10 +217,10 @@ function WheelSteerCtrlr:update(dt)
     self.steerStateRL = helpers.clampChange(self.desiredSteerRL * (state.control.lockedRears and 0 or 1), self.steerStateRL_prev, maxDelta)
     self.steerStateRR = helpers.clampChange(self.desiredSteerRR * (state.control.lockedRears and 0 or 1), self.steerStateRR_prev, maxDelta)
     
-    game.car_cphys.controllerInputs[0] = (self.steerStateFL)
-    game.car_cphys.controllerInputs[1] = (-self.steerStateFR)
-    game.car_cphys.controllerInputs[2] = (-self.steerStateRL)
-    game.car_cphys.controllerInputs[3] = (self.steerStateRR)
+    game.car_cphys.controllerInputs[0], game.car_cphys.controllerInputs[1] = threesixtyctrlr_FL:update(self.steerStateFL, dt)
+    game.car_cphys.controllerInputs[2], game.car_cphys.controllerInputs[3] = threesixtyctrlr_FR:update(-self.steerStateFR, dt)
+    game.car_cphys.controllerInputs[4], game.car_cphys.controllerInputs[5] = threesixtyctrlr_RL:update(self.steerStateRL, dt)
+    game.car_cphys.controllerInputs[6], game.car_cphys.controllerInputs[7] = threesixtyctrlr_RR:update(-self.steerStateRR, dt)
 
     self.steerStateFL_prev = self.steerStateFL
     self.steerStateFR_prev = self.steerStateFR

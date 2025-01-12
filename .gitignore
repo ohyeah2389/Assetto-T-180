@@ -7,3 +7,4 @@
 *.vao-patch
 *.bank
 extension/lib.lua
+*.kn5

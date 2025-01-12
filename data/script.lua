@@ -84,8 +84,8 @@ function script.update(dt)
     turbothruster:update(dt)
     --local wheelCommands = hubMotorCtrlr:update(dt)
 
-    game.car_cphys.controllerInputs[4] = helpers.mapRange(state.turbine.throttle, config.turbine.minThrottle, 1, 0, 1, true)
-    game.car_cphys.controllerInputs[5] = helpers.mapRange(state.turbine.thrust, 1000, 8000, 0, 1, true)
+    --game.car_cphys.controllerInputs[4] = helpers.mapRange(state.turbine.throttle, config.turbine.minThrottle, 1, 0, 1, true)
+    --game.car_cphys.controllerInputs[5] = helpers.mapRange(state.turbine.thrust, 1000, 8000, 0, 1, true)
 
     jumpJackSystem:update({
         frontLeft = state.jumpJackSystem.jackFL.active,
