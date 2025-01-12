@@ -19,8 +19,10 @@ local controls = {
     },
     steeringModes = {
         lockRears = ac.ControlButton("__EXT_LIGHT_STEERMODE_LOCKREARS"),
+        lockFronts = ac.ControlButton("__EXT_LIGHT_STEERMODE_LOCKFRONTS"),
         rearAntiCrab = ac.ControlButton("__EXT_LIGHT_STEERMODE_ANTICRAB"),
         spinMode = ac.ControlButton("__EXT_LIGHT_STEERMODE_SPINMODE")
+
     }
 }
 
