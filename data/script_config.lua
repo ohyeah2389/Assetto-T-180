@@ -55,7 +55,8 @@ local config = {
     },
     turbine = {
         minThrottle = 0.2,
-        throttleLag = 0.8, -- 0 to 1 where 1 represents unrealistically fast turbine throttle response and 0 represents no change in throttle
+        throttleLag = 0.9, -- 0 to 1 where 0 represents unrealistically fast turbine throttle response and 1 represents no change in throttle
+        throttleLagAfterburner = 0.8, -- 0 to 1 as above, but for afterburner fuel delivery
         gearRatio = 1.5, -- 1.5:1 gear ratio turbine:engine
         boostThrustFactor = 0.00001,
         boostSpeedFactor = 0.001,

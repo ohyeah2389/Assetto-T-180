@@ -11,6 +11,7 @@ local WheelSteerController = require('script_wheelsteerctrlr')
 local HubMotorController = require('script_hubmotorctrlr')
 local JumpJack = require('script_jumpjack')
 local Turbothruster = require('script_turbothruster')
+local sharedData = require('script_sharedData')
 
 
 local lastDebugTime = os.clock()
@@ -19,6 +20,10 @@ local function showDebugValues(dt)
         lastDebugTime = os.clock()
     end
 end
+
+
+local torqueCurveV8 = ac.DataLUT11.carData(car.index, "power_v8.lut")
+local torqueCurveV12 = ac.DataLUT11.carData(car.index, "power.lut")
 
 
 local jumpJackSystem = JumpJack({
@@ -80,12 +85,17 @@ function script.update(dt)
 
     controls.update()
 
+    sharedData.update()
+
     wheelSteerCtrlr:update(dt)
     turbothruster:update(dt)
     --local wheelCommands = hubMotorCtrlr:update(dt)
 
-    --game.car_cphys.controllerInputs[4] = helpers.mapRange(state.turbine.throttle, config.turbine.minThrottle, 1, 0, 1, true)
-    --game.car_cphys.controllerInputs[5] = helpers.mapRange(state.turbine.thrust, 1000, 8000, 0, 1, true)
+    game.car_cphys.controllerInputs[8] = helpers.mapRange(state.turbine.throttle, config.turbine.minThrottle, 1, 0, 1, true)
+    game.car_cphys.controllerInputs[9] = helpers.mapRange(state.turbine.thrust, 1000, 8000, 0, 1, true)
+    game.car_cphys.controllerInputs[10] = state.turbine.rpm
+    game.car_cphys.controllerInputs[11] = state.turbine.fuelPumpEnabled
+    game.car_cphys.controllerInputs[12] = state.turbine.throttleAfterburner
 
     jumpJackSystem:update({
         frontLeft = state.jumpJackSystem.jackFL.active,
@@ -102,6 +112,17 @@ function script.update(dt)
     local ffb = wheelSteerCtrlr:calculateFFB(dt)
     if ffb and ffb == ffb then  -- Check if value exists and is not NaN
         ac.setSteeringFFB(ffb)
+    end
+
+    if sharedData.engineDesign == 1 then
+        ac.overrideEngineTorque(torqueCurveV8:get(car.rpm))
+        if car.rpm > 10000 then
+            ac.overrideGasInput(0)
+        else
+            ac.overrideGasInput(math.huge)
+        end
+    else
+        ac.overrideEngineTorque(torqueCurveV12:get(car.rpm))
     end
     
     showDebugValues(dt)

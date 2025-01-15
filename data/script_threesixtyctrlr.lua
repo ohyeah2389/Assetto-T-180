@@ -3,26 +3,26 @@
 
 local game = require('script_acConnection')
 
-local WheelSteerCtrlr = class("WheelSteerCtrlr")
+local ThreeSixtyCtrlr = class("ThreeSixtyCtrlr")
 
 
-function WheelSteerCtrlr:initialize()
+function ThreeSixtyCtrlr:initialize()
     -- Calculate initial piston lengths at 0 degrees rotation
-    self.initial_p1_length = 0.5  -- Distance from (0,0.5) to (0,1)
-    self.initial_p2_length = math.sqrt(1.25)  -- Distance from (0,0.5) to (1,0)
+    self.initial_p1_length = 0.5  -- Distance from (0, 0.5) to (0,1)
+    self.initial_p2_length = math.sqrt(1.25)  -- Distance from (0, 0.5) to (1,0)
     
-    -- Store current offsets and angle
+    -- Current offsets and angle
     self.current_p1_offset = 0
     self.current_p2_offset = 0
     self.current_angle = 0
     
-    -- Define angle limits
+    -- Angle limits
     self.max_angle = 180
     self.min_angle = -180
 end
 
 
-function WheelSteerCtrlr:calculatePistonLengths(target_angle)
+function ThreeSixtyCtrlr:calculatePistonLengths(target_angle)
     -- Normalize angle to -180 to 180 range
     while target_angle > 180 do target_angle = target_angle - 360 end
     while target_angle < -180 do target_angle = target_angle + 360 end
@@ -46,12 +46,9 @@ function WheelSteerCtrlr:calculatePistonLengths(target_angle)
 end
 
 
-function WheelSteerCtrlr:update(steerNormalized, dt)
-    -- Get current steering input (-1 to 1)
-    local steering_input = steerNormalized
-    
-    -- Convert to angle (-180 to 180)
-    local target_angle = steering_input * 180
+function ThreeSixtyCtrlr:update(steerNormalized, dt)
+    -- Get current steering input (-1 to 1) and convert to angle (-180 to 180)
+    local target_angle = steerNormalized * 180
     
     -- Calculate shortest path to target angle
     local angle_diff = target_angle - self.current_angle
@@ -64,12 +61,10 @@ function WheelSteerCtrlr:update(steerNormalized, dt)
         end
     end
     
-    -- Smooth the angle transition
-    local rotation_speed = 360  -- degrees per second
+    -- Angle transition (rate limited)
+    local rotation_speed = 360  -- degrees per second allowed
     local max_angle_change = rotation_speed * dt
     angle_diff = math.min(math.max(angle_diff, -max_angle_change), max_angle_change)
-    
-    -- Update current angle with smoothing
     self.current_angle = self.current_angle + angle_diff
     
     -- Calculate required piston offsets
@@ -83,16 +78,11 @@ function WheelSteerCtrlr:update(steerNormalized, dt)
 end
 
 
-function WheelSteerCtrlr:reset()
+function ThreeSixtyCtrlr:reset()
     self.current_p1_offset = 0
     self.current_p2_offset = 0
     self.current_angle = 0
-    -- Reset all four controller inputs
-    game.car_cphys.controllerInputs[0] = 0
-    game.car_cphys.controllerInputs[1] = 0
-    game.car_cphys.controllerInputs[2] = 0
-    game.car_cphys.controllerInputs[3] = 0
 end
 
 
-return WheelSteerCtrlr
+return ThreeSixtyCtrlr

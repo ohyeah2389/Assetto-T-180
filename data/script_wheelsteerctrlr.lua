@@ -154,13 +154,13 @@ function WheelSteerCtrlr:update(dt)
 
     local highSpeedDamping = helpers.mapRange(game.car_cphys.speedKmh, 100, 400, 0.01, 0.002, true)
 
-    self.frontLeftPID.p = helpers.mapRange(game.car_cphys.speedKmh, 2, 5, 0.05, self.steerPower, true)
+    self.frontLeftPID.p = helpers.mapRange(game.car_cphys.speedKmh, 2, 5, 0.02, self.steerPower, true)
     self.frontLeftPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 10, 0.001, highSpeedDamping, true)
-    self.frontRightPID.p = helpers.mapRange(game.car_cphys.speedKmh, 2, 5, 0.05, self.steerPower, true)
+    self.frontRightPID.p = helpers.mapRange(game.car_cphys.speedKmh, 2, 5, 0.02, self.steerPower, true)
     self.frontRightPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 10, 0.001, highSpeedDamping, true)
-    self.rearLeftPID.p = helpers.mapRange(game.car_cphys.speedKmh, 2, 5, 0.05, self.steerPower, true)
+    self.rearLeftPID.p = helpers.mapRange(game.car_cphys.speedKmh, 2, 5, 0.01, self.steerPower, true)
     self.rearLeftPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 10, 0.001, highSpeedDamping, true)
-    self.rearRightPID.p = helpers.mapRange(game.car_cphys.speedKmh, 2, 5, 0.05, self.steerPower, true)
+    self.rearRightPID.p = helpers.mapRange(game.car_cphys.speedKmh, 2, 5, 0.01, self.steerPower, true)
     self.rearRightPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 10, 0.001, highSpeedDamping, true)
 
     local driftAngleSetpoint = self.driftAnglePID:update(targetDriftAngle, driftAngle, dt)
@@ -217,15 +217,20 @@ function WheelSteerCtrlr:update(dt)
     self.steerStateRL = helpers.clampChange(self.desiredSteerRL * (state.control.lockedRears and 0 or 1), self.steerStateRL_prev, maxDelta)
     self.steerStateRR = helpers.clampChange(self.desiredSteerRR * (state.control.lockedRears and 0 or 1), self.steerStateRR_prev, maxDelta)
     
-    game.car_cphys.controllerInputs[0], game.car_cphys.controllerInputs[1] = threesixtyctrlr_FL:update(self.steerStateFL, dt)
-    game.car_cphys.controllerInputs[2], game.car_cphys.controllerInputs[3] = threesixtyctrlr_FR:update(-self.steerStateFR, dt)
-    game.car_cphys.controllerInputs[4], game.car_cphys.controllerInputs[5] = threesixtyctrlr_RL:update(self.steerStateRL, dt)
-    game.car_cphys.controllerInputs[6], game.car_cphys.controllerInputs[7] = threesixtyctrlr_RR:update(-self.steerStateRR, dt)
+    game.car_cphys.controllerInputs[0], game.car_cphys.controllerInputs[1] = threesixtyctrlr_FL:update(self.steerStateFL / 2, dt)
+    game.car_cphys.controllerInputs[2], game.car_cphys.controllerInputs[3] = threesixtyctrlr_FR:update(-self.steerStateFR / 2, dt)
+    game.car_cphys.controllerInputs[4], game.car_cphys.controllerInputs[5] = threesixtyctrlr_RL:update(self.steerStateRL / 2, dt)
+    game.car_cphys.controllerInputs[6], game.car_cphys.controllerInputs[7] = threesixtyctrlr_RR:update(-self.steerStateRR / 2, dt)
 
     self.steerStateFL_prev = self.steerStateFL
     self.steerStateFR_prev = self.steerStateFR
     self.steerStateRL_prev = self.steerStateRL
     self.steerStateRR_prev = self.steerStateRR
+
+    --if any steer state is infinite, reset the steering states
+    if not (self.steerStateFL == self.steerStateFL) or not (self.steerStateFR == self.steerStateFR) or not (self.steerStateRL == self.steerStateRL) or not (self.steerStateRR == self.steerStateRR) then
+        self:reset()
+    end
 
     ac.debug("steerctrl.slipAngleFrontCommanded", slipAngleFrontCommanded)
     ac.debug("steerctrl.slipAngleRearCommanded", slipAngleRearCommanded)

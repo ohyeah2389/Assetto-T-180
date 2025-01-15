@@ -34,14 +34,17 @@ local state = {
     };
     turbine = {
         throttle = 0.0;
+        throttleAfterburner = 0.0;
         thrust = 0.0;
         fuelPumpEnabled = true;
         clutchDisconnected = false;
         fuelConsumption = 0.0; -- Fuel consumption in liters per second
         fuelLevel = 100.0; -- Fuel level in liters
         bleedBoost = 0.0;
+        rpm = 0.0;
     };
 }
+
 
 
 return state
