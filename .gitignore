@@ -8,3 +8,5 @@
 *.bank
 extension/lib.lua
 *.kn5
+/Art
+/Renders
