@@ -11,7 +11,6 @@ local WheelSteerController = require('script_wheelsteerctrlr')
 local HubMotorController = require('script_hubmotorctrlr')
 local JumpJack = require('script_jumpjack')
 local Turbine = require('script_turbine')
-local sharedData = require('script_sharedData')
 
 
 local lastDebugTime = os.clock()
@@ -82,7 +81,7 @@ function script.update(dt)
 
     controls.update()
 
-    sharedData.update()
+    --sharedData.update()
 
     wheelSteerCtrlr:update(dt)
     turbothruster:update(dt)

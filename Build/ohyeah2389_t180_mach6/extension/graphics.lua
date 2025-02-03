@@ -10,19 +10,18 @@ local light_headlight_left = ac.accessCarLight("LIGHT_HEADLIGHT_1")
 local light_headlight_right = ac.accessCarLight("LIGHT_HEADLIGHT_2")
 local lightFadeout = 0
 
-local audio_engine = ac.AudioEvent("/cars/ohyeah2389_t180/engine_custom", true, true)
+local audio_engine = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/engine_custom", true, true)
 audio_engine.cameraInteriorMultiplier = 0.5
-audio_engine.volume = 0.5
 audio_engine:setPosition(vec3(0, 0.5, -1.5), vec3(0, 0, 1), vec3(0, 1, 0))
 audio_engine:start()
 
-local audio_turbine = ac.AudioEvent("/cars/ohyeah2389_t180/turbine", true, true)
+local audio_turbine = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/turbine", true, true)
 audio_turbine.cameraInteriorMultiplier = 0.5
 
 audio_turbine:setPosition(vec3(0, 0.772, -2.05), vec3(0, 0, 1), vec3(0, 1, 0))
 audio_turbine:start()
 
-local audio_turbine_fuelpump = ac.AudioEvent("/cars/ohyeah2389_t180/turbine_fuelpump", true, true)
+local audio_turbine_fuelpump = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/turbine_fuelpump", true, true)
 audio_turbine_fuelpump.cameraInteriorMultiplier = 0.5
 audio_turbine_fuelpump.volume = 0.5
 audio_turbine_fuelpump:setPosition(vec3(0, 0.7, -0.75), vec3(0, 0, 1), vec3(0, 1, 0))
@@ -34,20 +33,20 @@ fuelPumpRPMLUT:add(6000, 5000)
 fuelPumpRPMLUT:add(18000, 4500)
 local fuelPumpFadeout = 0
 
-local jumpJackSound_left = ac.AudioEvent("/cars/ohyeah2389_t180/jumpjack", true, true)
+local jumpJackSound_left = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/jumpjack", true, true)
 jumpJackSound_left.cameraInteriorMultiplier = 0.5
 jumpJackSound_left.volume = 2.5
-local jumpJackSound_right = ac.AudioEvent("/cars/ohyeah2389_t180/jumpjack", true, true)
+local jumpJackSound_right = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/jumpjack", true, true)
 jumpJackSound_right.cameraInteriorMultiplier = 0.5
 jumpJackSound_right.volume = 2.5
-local jumpJackSound_all = ac.AudioEvent("/cars/ohyeah2389_t180/jumpjack", true, true)
+local jumpJackSound_all = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/jumpjack", true, true)
 jumpJackSound_all.cameraInteriorMultiplier = 0.5
 jumpJackSound_all.volume = 2.5
 
-local jumpJackSound_chargeL = ac.AudioEvent("/cars/ohyeah2389_t180/jumpjack_charge", true, true)
+local jumpJackSound_chargeL = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/jumpjack_charge", true, true)
 jumpJackSound_chargeL.volume = 0.5
 jumpJackSound_chargeL.cameraInteriorMultiplier = 0.5
-local jumpJackSound_chargeR = ac.AudioEvent("/cars/ohyeah2389_t180/jumpjack_charge", true, true)
+local jumpJackSound_chargeR = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/jumpjack_charge", true, true)
 jumpJackSound_chargeR.volume = 0.5
 jumpJackSound_chargeR.cameraInteriorMultiplier = 0.5
 
@@ -91,10 +90,11 @@ function script.update(dt)
 
     if not audio_turbine:isPlaying() then audio_turbine:start() end
     if not audio_turbine_fuelpump:isPlaying() then audio_turbine_fuelpump:start() end
+    if not audio_engine:isPlaying() then audio_engine:start() end
 
     fuelPumpFadeout = math.lerp(fuelPumpFadeout, car_phys.scriptControllerInputs[11], dt * 5)
 
-    audio_engine:setParam("rpm", car.rpm)
+    audio_engine:setParam("rpms", car.rpm)
     audio_engine:setParam("throttle", car.gas)
 
     audio_turbine:setParam("rpm", car_phys.scriptControllerInputs[10])
