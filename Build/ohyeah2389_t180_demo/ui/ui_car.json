@@ -1,7 +1,7 @@
 {
     "name": "T-180 Demo Chassis",
     "brand": "SAMD",
-    "description": "This is the demo chassis for the Slip Angle Modding and Development T-180 modular platform. It represents a typical configuration for a T-180 racing vehicle, with a large, extremely high revving V12 hotblock with a manual drivetrain and a pneumatically and mechanically interlinked afterburning turbine engine for cornering thrust. Car compiled on 2025-02-02 18:48:35.",
+    "description": "This is the demo chassis for the Slip Angle Modding and Development T-180 modular platform. It represents a typical configuration for a T-180 racing vehicle, with a large, extremely high revving V12 hotblock with a manual drivetrain and a pneumatically and mechanically interlinked afterburning turbine engine for cornering thrust. Car compiled on 2025-02-05 18:47:48.",
     "tags": [
         "awd",
         "4ws",

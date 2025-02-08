@@ -90,7 +90,7 @@ function script.update(dt)
     game.car_cphys.controllerInputs[8] = helpers.mapRange(state.turbine.throttle, config.turbine.minThrottle, 1, 0, 1, true)
     game.car_cphys.controllerInputs[9] = helpers.mapRange(state.turbine.thrust, 1000, 8000, 0, 1, true)
     game.car_cphys.controllerInputs[10] = state.turbine.rpm
-    game.car_cphys.controllerInputs[11] = state.turbine.fuelPumpEnabled
+    game.car_cphys.controllerInputs[11] = state.turbine.fuelPumpEnabled and 1 or 0
     game.car_cphys.controllerInputs[12] = state.turbine.throttleAfterburner
 
     jumpJackSystem:update({

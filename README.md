@@ -95,5 +95,6 @@ The repository is organized so that the included "builder.py" script can assembl
 17. SteerCtrl Front Countersteer Limit
 18. SteerCtrl Rear Countersteer Gain
 19. SteerCtrl Rear Countersteer Limit
-
+20. SteerCtrl Input Rotation Range
+21. SteerCtrl Steering Bumpstop Power
 
