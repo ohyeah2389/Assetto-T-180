@@ -8,7 +8,7 @@ local car_phys = ac.getCarPhysics(0)
 local flameBoost = ac.Particles.Flame({color = rgbm(1, 0.8, 0.8, 1), size = 3.2, temperatureMultiplier = 2, flameIntensity = 0.9})
 local flameTurbo = ac.Particles.Flame({color = rgbm(1, 1, 1, 1), size = 3.2, temperatureMultiplier = 1, flameIntensity = 1})
 
-local exhaustSmoke = ac.Particles.Smoke({color = rgbm(0.3, 0.32, 0.35, 0.1), life = 10, size = 0.1, spreadK = 1, growK = 1, targetYVelocity = 1, flags = ac.Particles.SmokeFlags.FadeIn})
+local exhaustSmoke = ac.Particles.Smoke({color = rgbm(0.3, 0.32, 0.35, 0.8), life = 10, size = 0.5, spreadK = 3, growK = 3, targetYVelocity = 1, flags = ac.Particles.SmokeFlags.FadeIn})
 
 local light_headlight_left = ac.accessCarLight("LIGHT_HEADLIGHT_1")
 local light_headlight_right = ac.accessCarLight("LIGHT_HEADLIGHT_2")

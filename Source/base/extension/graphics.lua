@@ -1,10 +1,14 @@
 -- T-180 CSP Graphics Script
 -- Authored by ohyeah2389
 
+local coordinates = require("car_coordinates")
+
 local car_phys = ac.getCarPhysics(0)
 
 local flameBoost = ac.Particles.Flame({color = rgbm(1, 0.8, 0.8, 1), size = 3.2, temperatureMultiplier = 2, flameIntensity = 0.9})
 local flameTurbo = ac.Particles.Flame({color = rgbm(1, 1, 1, 1), size = 3.2, temperatureMultiplier = 1, flameIntensity = 1})
+
+local exhaustSmoke = ac.Particles.Smoke({color = rgbm(0.3, 0.32, 0.35, 0.1), life = 10, size = 0.1, spreadK = 1, growK = 1, targetYVelocity = 1, flags = ac.Particles.SmokeFlags.FadeIn})
 
 local light_headlight_left = ac.accessCarLight("LIGHT_HEADLIGHT_1")
 local light_headlight_right = ac.accessCarLight("LIGHT_HEADLIGHT_2")
@@ -103,10 +107,19 @@ function script.update(dt)
 
     audio_turbine_fuelpump:setParam("rpm", fuelPumpRPMLUT:get(car_phys.scriptControllerInputs[10]) * fuelPumpFadeout)
 
-    flameBoost:emit(vec3(0.0 + car.localVelocity.x * 0.012, 0.77, -2.5 + car.localVelocity.z * 0.01), vec3(0 + car.localVelocity.x * 0.01, 0, -3) + (car.localVelocity * -0.35), mapRange(car_phys.scriptControllerInputs[8], 0.9, 1, 0, 1, true) * mapRange(car.speedKmh, 0, 400, 0.5, 0.1, true) * (1 - car_phys.scriptControllerInputs[12]))
-    flameTurbo:emit(vec3(0.0 + car.localVelocity.x * 0.012, 0.77, -2.5 + car.localVelocity.z * 0.01), vec3(0 + car.localVelocity.x * 0.01, 0, -1.5) + (car.localVelocity * -0.35), car_phys.scriptControllerInputs[9] * mapRange(car.speedKmh, 0, 400, 1, 0.1, true) * 0.5 * (1 - car_phys.scriptControllerInputs[12]))
+    flameBoost:emit(vec3(coordinates.turbine_exhaust.x + car.localVelocity.x * 0.012, coordinates.turbine_exhaust.y, coordinates.turbine_exhaust.z + car.localVelocity.z * 0.01),
+        vec3(0 + car.localVelocity.x * 0.01, 0, -3) + (car.localVelocity * -0.35),
+        mapRange(car_phys.scriptControllerInputs[8], 0.9, 1, 0, 1, true) * mapRange(car.speedKmh, 0, 400, 0.5, 0.1, true))
 
-    
+    flameTurbo:emit(vec3(coordinates.turbine_exhaust.x + car.localVelocity.x * 0.012, coordinates.turbine_exhaust.y, coordinates.turbine_exhaust.z + car.localVelocity.z * 0.01),
+        vec3(0 + car.localVelocity.x * 0.01, 0, -1.5) + (car.localVelocity * -0.35),
+        car_phys.scriptControllerInputs[9] * mapRange(car.speedKmh, 0, 400, 1, 0.1, true) * 0.5)
+
+    exhaustSmoke:emit(vec3(coordinates.turbine_exhaust.x + car.localVelocity.x * 0.012, coordinates.turbine_exhaust.y, coordinates.turbine_exhaust.z + car.localVelocity.z * 0.01),
+        vec3(0 + car.localVelocity.x * 0.01, 0, -30 * mapRange(car.gas, 0, 1, 0.5, 1, true)) + (car.localVelocity * -0.35),
+        mapRange(car_phys.scriptControllerInputs[9], 0, 1, 0.2, 0.4, true))
+
+
     lightFadeout = math.lerp(lightFadeout, car.headlightsActive and 1 or 0, dt * 15)
 
     light_headlight_left.color = rgb(27, 25, 22)
@@ -118,7 +131,7 @@ function script.update(dt)
     light_headlight_left.spot = 40
     light_headlight_left.spotSharpness = 0.2
     light_headlight_left.direction = vec3(0.1, 0, 1)
-    
+
     light_headlight_right.color = rgb(27, 25, 22)
     light_headlight_right.singleFrequency = 0
     light_headlight_right.intensity = 0.5 * lightFadeout

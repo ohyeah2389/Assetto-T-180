@@ -129,6 +129,16 @@ ACTIVE_FOR_NEAREST=256
 ACTIVE_FOR_UNFOCUSED=1
 
 ; ----- ----- -----
+; Afterburner emissive
+
+[EMISSIVE_...]
+NAME=Turbine
+COLOR=10, 2, 1
+INPUT=CPHYS_SCRIPT_8
+USE_SMOOTH_TRANSITION=1
+CAST_LIGHT=1
+
+; ----- ----- -----
 ; Headlights
 
 [EMISSIVE_LIGHT_...]

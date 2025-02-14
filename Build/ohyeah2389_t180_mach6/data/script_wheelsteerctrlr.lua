@@ -186,7 +186,7 @@ function WheelSteerCtrlr:update(dt)
 
     local driftAngle = math.atan(game.car_cphys.localVelocity.x / math.abs(game.car_cphys.localVelocity.z))
 
-    local steerNormalizedInput = math.clamp(game.car_cphys.steer * ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_20").value, -1, 1)
+    local steerNormalizedInput = math.clamp(game.car_cphys.steer / ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_20").value, -1, 1)
 
     local targetDriftAngle = (steerNormalizedInput * 90) * math.rad(40)
 
@@ -306,16 +306,16 @@ function WheelSteerCtrlr:reset()
     self.rearRightPID:reset()
     self.currentDirectionBlend = 1.0
     
-    -- Reset the previous steering states
-    self.steerStateFL_prev = 0
-    self.steerStateFR_prev = 0
-    self.steerStateRL_prev = 0
-    self.steerStateRR_prev = 0
+    -- Reset the previous steering states if needed
+    self.steerStateFL_prev = (self.steerStateFL_prev ~= self.steerStateFL_prev or math.abs(self.steerStateFL_prev) == math.huge) and 0 or self.steerStateFL_prev
+    self.steerStateFR_prev = (self.steerStateFR_prev ~= self.steerStateFR_prev or math.abs(self.steerStateFR_prev) == math.huge) and 0 or self.steerStateFR_prev
+    self.steerStateRL_prev = (self.steerStateRL_prev ~= self.steerStateRL_prev or math.abs(self.steerStateRL_prev) == math.huge) and 0 or self.steerStateRL_prev
+    self.steerStateRR_prev = (self.steerStateRR_prev ~= self.steerStateRR_prev or math.abs(self.steerStateRR_prev) == math.huge) and 0 or self.steerStateRR_prev
 
-    self.steerStateFL = 0
-    self.steerStateFR = 0
-    self.steerStateRL = 0
-    self.steerStateRR = 0
+    self.steerStateFL = (self.steerStateFL ~= self.steerStateFL or math.abs(self.steerStateFL) == math.huge) and 0 or self.steerStateFL
+    self.steerStateFR = (self.steerStateFR ~= self.steerStateFR or math.abs(self.steerStateFR) == math.huge) and 0 or self.steerStateFR
+    self.steerStateRL = (self.steerStateRL ~= self.steerStateRL or math.abs(self.steerStateRL) == math.huge) and 0 or self.steerStateRL
+    self.steerStateRR = (self.steerStateRR ~= self.steerStateRR or math.abs(self.steerStateRR) == math.huge) and 0 or self.steerStateRR
 
     self.currentMode = self.steeringModes.normal
     self.targetMode = self.steeringModes.normal

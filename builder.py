@@ -115,6 +115,55 @@ def update_ui_json(ui_json_path, version, year):
     except Exception as e:
         print(f"Failed to write {ui_json_path}: {e}")
 
+def update_guids_txt(guids_path, old_name, new_name):
+    """
+    Updates the GUIDs.txt file, replacing all occurrences of the old bank name
+    with the new bank name in both bank:/ references and event:/cars/ paths.
+    """
+    try:
+        with open(guids_path, 'r') as f:
+            content = f.read()
+        
+        # Replace both the bank reference and event paths
+        updated_content = content.replace(f"bank:/{old_name}", f"bank:/{new_name}")
+        updated_content = updated_content.replace(f"event:/cars/{old_name}/", f"event:/cars/{new_name}/")
+        
+        with open(guids_path, 'w') as f:
+            f.write(updated_content)
+        print(f"Updated bank and event references in GUIDs.txt from '{old_name}' to '{new_name}'")
+    except Exception as e:
+        print(f"Error updating GUIDs.txt: {e}")
+
+def handle_sfx_files(car_build_dir, car_name):
+    """
+    Special handling for sfx files:
+    1. Rename the .bank file to match the car name
+    2. Update references in GUIDs.txt
+    """
+    sfx_dir = os.path.join(car_build_dir, "sfx")
+    if not os.path.exists(sfx_dir):
+        return
+    
+    # Find and rename the .bank file
+    for file in os.listdir(sfx_dir):
+        if file.endswith(".bank"):
+            old_bank_path = os.path.join(sfx_dir, file)
+            new_bank_name = f"{car_name}.bank"
+            new_bank_path = os.path.join(sfx_dir, new_bank_name)
+            
+            try:
+                os.rename(old_bank_path, new_bank_path)
+                print(f"Renamed sfx bank file from '{file}' to '{new_bank_name}'")
+                
+                # Update GUIDs.txt
+                guids_path = os.path.join(sfx_dir, "GUIDs.txt")
+                if os.path.exists(guids_path):
+                    old_name = os.path.splitext(file)[0]
+                    update_guids_txt(guids_path, old_name, car_name)
+            except Exception as e:
+                print(f"Error handling sfx files: {e}")
+            break
+
 def merge_directories(src, dst):
     """
     Recursively merge contents of src directory into dst directory.
@@ -149,6 +198,22 @@ def main():
         print(f"Source directory not found: {source_dir}")
         sys.exit(1)
     
+    # Parse info.toml from the Source folder for version and year
+    info_toml_path = os.path.join(source_dir, "info.toml")
+    if not os.path.exists(info_toml_path):
+        print(f"info.toml not found in {source_dir}")
+        sys.exit(1)
+    info_version, info_year = parse_info_toml(info_toml_path)
+    if not info_version or not info_year:
+        print("Could not parse version and year from info.toml")
+        sys.exit(1)
+    
+    # Get the global base folder from Source/base
+    global_base_dir = os.path.join(source_dir, "base")
+    if not os.path.exists(global_base_dir):
+        print(f"Global base folder not found: {global_base_dir}")
+        sys.exit(1)
+    
     # Handle an existing Build directory (delete with prompt if non-empty)
     if os.path.exists(build_dir):
         if not confirm_deletion(build_dir):
@@ -164,22 +229,6 @@ def main():
     # Create a fresh Build directory
     os.makedirs(build_dir)
     print(f"Created Build folder at '{build_dir}'")
-    
-    # Get the global base folder from Source/base
-    global_base_dir = os.path.join(source_dir, "base")
-    if not os.path.exists(global_base_dir):
-        print(f"Global base folder not found: {global_base_dir}")
-        sys.exit(1)
-    
-    # Parse info.toml from the global base folder for version and year
-    info_toml_path = os.path.join(global_base_dir, "info.toml")
-    if not os.path.exists(info_toml_path):
-        print(f"info.toml not found in {global_base_dir}")
-        sys.exit(1)
-    info_version, info_year = parse_info_toml(info_toml_path)
-    if not info_version or not info_year:
-        print("Could not parse version and year from info.toml")
-        sys.exit(1)
     
     # Process each car folder in Source (skip the "base" folder)
     for item in os.listdir(source_dir):
@@ -209,8 +258,6 @@ def main():
             # Copy all other files and folders from the car's source folder,
             # merging them over the base so that car-specific files override the base.
             for sub_item in os.listdir(item_path):
-                if sub_item.lower() == "data":
-                    continue
                 src_item = os.path.join(item_path, sub_item)
                 dst_item = os.path.join(car_build_dir, sub_item)
                 try:
@@ -235,6 +282,9 @@ def main():
                     print(f"Error renaming model.kn5 for {car_name}: {e}")
             else:
                 print(f"Warning: 'model.kn5' not found for {car_name}")
+            
+            # After copying all files but before updating lods.ini, handle sfx files
+            handle_sfx_files(car_build_dir, car_name)
             
             # Update lods.ini in the built car folder.
             lods_ini_path = os.path.join(car_build_dir, "data", "lods.ini")

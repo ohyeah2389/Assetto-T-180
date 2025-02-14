@@ -77,6 +77,7 @@ ac.onCarJumped(0, script.reset)
 ---@diagnostic disable-next-line: duplicate-set-field
 function script.update(dt)
     ac.awakeCarPhysics()
+    
     brakeAutoHold()
 
     controls.update()

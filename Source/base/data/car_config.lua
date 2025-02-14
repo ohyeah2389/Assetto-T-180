@@ -5,7 +5,7 @@
 local config = {
     misc = {
         brakeAutoHold = {
-            torque = 100; -- Brake torque in Nm to apply when auto-holding the brakes
+            torque = 200; -- Brake torque in Nm to apply when auto-holding the brakes
             speed = 10; -- Speed in kmh below which to auto-hold the brakes
         };
         debugFrequency = 0.1;
@@ -18,7 +18,7 @@ local config = {
         minThrottle = 0.2, -- Idle throttle of the turbine
         throttleLag = 0.9, -- 0 to 1 where 0 represents instant turbine throttle response (unrealistic) and 1 represents no change in throttle
         throttleLagAfterburner = 0.8, -- 0 to 1 as above, but for afterburner fuel delivery
-        gearRatio = 1.5, -- value:1 turbine:engine
+        gearRatio = 1.5, -- value:1, turbine:engine
         boostThrustFactor = 0.00001, -- Multiplier on turbine output thrust to form bleed air boost thrust component (speed component is added to this for total bleed air boost value)
         boostSpeedFactor = 0.001, -- Multiplier on turbine angular speed to form bleed air boost speed component (thrust component is added to this for total bleed air boost value)
         maximumEffectiveIntakeSpeed = 2000, -- kmh - Maximum effective intake speed of the turbine (used to calculate effective intake speed for thrust fadeout)

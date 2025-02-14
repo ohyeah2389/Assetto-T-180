@@ -186,26 +186,26 @@ function WheelSteerCtrlr:update(dt)
 
     local driftAngle = math.atan(game.car_cphys.localVelocity.x / math.abs(game.car_cphys.localVelocity.z))
 
-    local steerNormalizedInput = math.clamp(game.car_cphys.steer * ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_20").value, -1, 1)
+    local steerNormalizedInput = math.clamp(game.car_cphys.steer / ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_20").value, -1, 1)
 
     local targetDriftAngle = (steerNormalizedInput * 90) * math.rad(40)
 
     state.control.countersteer = math.sign(driftAngle) ~= math.sign(steerNormalizedInput) and math.abs(steerNormalizedInput * 90) * math.min(math.abs(driftAngle / math.rad(30)), 1) or 0
     state.control.countersteer = helpers.mapRange(car.speedKmh, 20, 40, 0, 1, true) * math.clamp(state.control.countersteer, -90, 90)
 
-    self.frontSteeringPID.kP = helpers.mapRange(game.car_cphys.speedKmh, 0, 40, 3.0, self.frontSteeringPower * ((state.control.lockedRears or state.control.rearAntiCrab) and 2 or 1), true)
+    self.frontSteeringPID.kP = helpers.mapRange(game.car_cphys.speedKmh, 0, 40, 0.5, self.frontSteeringPower * ((state.control.lockedRears or state.control.rearAntiCrab) and 2 or 1), true)
     self.rearSteeringPID.kP = helpers.mapRange(game.car_cphys.speedKmh, 0, 40, 0.1, self.rearSteeringPower * (state.control.rearAntiCrab and 1.5 or 1), true) * helpers.mapRange(state.control.countersteer, 0, 1, 1, 0, true) * helpers.mapRange(car.brake, 0, 1, 1, 0, true)
 
     local highSpeedDamping = helpers.mapRange(game.car_cphys.speedKmh, 100, 400, 0.01, 0.002, true)
 
-    self.frontLeftPID.kP = helpers.mapRange(game.car_cphys.speedKmh, 2, 20, 0.008, self.steerPower, true)
-    self.frontLeftPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 10, 0.001, highSpeedDamping, true)
-    self.frontRightPID.kP = helpers.mapRange(game.car_cphys.speedKmh, 2, 20, 0.008, self.steerPower, true)
-    self.frontRightPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 10, 0.001, highSpeedDamping, true)
-    self.rearLeftPID.kP = helpers.mapRange(game.car_cphys.speedKmh, 2, 20, 0.004, self.steerPower, true)
-    self.rearLeftPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 10, 0.001, highSpeedDamping, true)
-    self.rearRightPID.kP = helpers.mapRange(game.car_cphys.speedKmh, 2, 20, 0.004, self.steerPower, true)
-    self.rearRightPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 10, 0.001, highSpeedDamping, true)
+    self.frontLeftPID.kP = helpers.mapRange(game.car_cphys.speedKmh, 2, 20, 0.01, self.steerPower, true)
+    self.frontLeftPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 10, 0.01, highSpeedDamping, true)
+    self.frontRightPID.kP = helpers.mapRange(game.car_cphys.speedKmh, 2, 20, 0.01, self.steerPower, true)
+    self.frontRightPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 10, 0.01, highSpeedDamping, true)
+    self.rearLeftPID.kP = helpers.mapRange(game.car_cphys.speedKmh, 2, 20, 0.005, self.steerPower, true)
+    self.rearLeftPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 10, 0.01, highSpeedDamping, true)
+    self.rearRightPID.kP = helpers.mapRange(game.car_cphys.speedKmh, 2, 20, 0.005, self.steerPower, true)
+    self.rearRightPID.dampingFactor = helpers.mapRange(game.car_cphys.speedKmh, 1, 10, 0.01, highSpeedDamping, true)
 
     local driftAngleSetpoint = self.driftAnglePID:update(targetDriftAngle, driftAngle, dt)
 
@@ -306,16 +306,16 @@ function WheelSteerCtrlr:reset()
     self.rearRightPID:reset()
     self.currentDirectionBlend = 1.0
     
-    -- Reset the previous steering states
-    self.steerStateFL_prev = 0
-    self.steerStateFR_prev = 0
-    self.steerStateRL_prev = 0
-    self.steerStateRR_prev = 0
+    -- Reset the previous steering states if needed
+    self.steerStateFL_prev = (self.steerStateFL_prev ~= self.steerStateFL_prev or math.abs(self.steerStateFL_prev) == math.huge) and 0 or self.steerStateFL_prev
+    self.steerStateFR_prev = (self.steerStateFR_prev ~= self.steerStateFR_prev or math.abs(self.steerStateFR_prev) == math.huge) and 0 or self.steerStateFR_prev
+    self.steerStateRL_prev = (self.steerStateRL_prev ~= self.steerStateRL_prev or math.abs(self.steerStateRL_prev) == math.huge) and 0 or self.steerStateRL_prev
+    self.steerStateRR_prev = (self.steerStateRR_prev ~= self.steerStateRR_prev or math.abs(self.steerStateRR_prev) == math.huge) and 0 or self.steerStateRR_prev
 
-    self.steerStateFL = 0
-    self.steerStateFR = 0
-    self.steerStateRL = 0
-    self.steerStateRR = 0
+    self.steerStateFL = (self.steerStateFL ~= self.steerStateFL or math.abs(self.steerStateFL) == math.huge) and 0 or self.steerStateFL
+    self.steerStateFR = (self.steerStateFR ~= self.steerStateFR or math.abs(self.steerStateFR) == math.huge) and 0 or self.steerStateFR
+    self.steerStateRL = (self.steerStateRL ~= self.steerStateRL or math.abs(self.steerStateRL) == math.huge) and 0 or self.steerStateRL
+    self.steerStateRR = (self.steerStateRR ~= self.steerStateRR or math.abs(self.steerStateRR) == math.huge) and 0 or self.steerStateRR
 
     self.currentMode = self.steeringModes.normal
     self.targetMode = self.steeringModes.normal
