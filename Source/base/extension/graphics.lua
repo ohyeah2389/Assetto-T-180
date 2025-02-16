@@ -16,12 +16,11 @@ local lightFadeout = 0
 
 local audio_engine = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/engine_custom", true, true)
 audio_engine.cameraInteriorMultiplier = 0.5
-audio_engine:setPosition(vec3(0, 0.5, -1.5), vec3(0, 0, 1), vec3(0, 1, 0))
+audio_engine:setPosition(vec3(0.0, 1.2, 0.225), vec3(0, 0, 1), vec3(0, 1, 0))
 audio_engine:start()
 
 local audio_turbine = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/turbine", true, true)
 audio_turbine.cameraInteriorMultiplier = 0.5
-
 audio_turbine:setPosition(vec3(0, 0.772, -2.05), vec3(0, 0, 1), vec3(0, 1, 0))
 audio_turbine:start()
 
