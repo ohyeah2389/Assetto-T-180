@@ -1,6 +1,9 @@
 ## Introduction
 The Assetto T-180 is a modular vehicle platform designed to replicate, and to the furthest extent reasonable, simulate the T-180 racing vehicles from the 2008 Speed Racer movie. The cars using this platform are intended for use in the vehicle simulation game Assetto Corsa with Custom Shaders Patch's physics extensions, which they rely on to a high level.
 
+## Credits
+- [Mectreno](https://sketchfab.com/Mectren0) for the Mach 6 3D model base
+
 ## What is a T-180?
 T-180s are specialized racing vehicles that use four wheel independent steering, thrusters, active aero, and other technologies to drive and race on the purpose-built banked and looped circuits homologated by the World Racing League. While not a spec series, there is a common rule set, likely specifying things such as tire dimensions and materials, maximum power outputs, allowed and banned materials, required safety equipment, and banned offensive devices. Each team constructs their own car within the bounds of the regulations.
 
