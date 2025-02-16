@@ -70,6 +70,6 @@
 {45401f11-f5bd-429f-afb6-710deda49e32} vca:/vca_surfaces
 {a61eba16-8f14-4a39-8ffd-c573cfdc0dbd} vca:/vca_transmission
 {185673e8-d3ed-434c-acd4-61c819bb209c} vca:/vca_wind
-{aac47658-002b-4c7b-98ce-6ed1b7ef4a96} bank:/ohyeah2389_t180_corsair
 {4f6969ac-b7e1-45e5-84f1-31bc6f135357} bank:/showroom
 {47dcf37a-6a8d-4ef6-9f82-2e0398fa69f9} bank:/common
+{df20410a-559f-4861-bd1b-59681f885dd3} bank:/ohyeah2389_t180_corsair

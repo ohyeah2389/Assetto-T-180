@@ -6,6 +6,7 @@
 *.knh
 *.vao-patch
 *.bank
+*.zip
 extension/lib.lua
 *.kn5
 /Art/
