@@ -51,7 +51,7 @@ function WheelSteerCtrlr:initialize()
 
     self.isReversing = false
 
-    self.inversionBlendSpeed = 1.0
+    self.inversionBlendSpeed = 2.0
 
     self.lastDriftAngle = 0
     self.driftInversion = false
@@ -160,12 +160,12 @@ function WheelSteerCtrlr:update(dt)
 
     local steerNormalizedInput = math.clamp(game.car_cphys.steer / ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_20").value, -1, 1)
 
-    local targetYawRate = steerNormalizedInput * -10
+    local targetYawRate = steerNormalizedInput * -15
     local actualYawRate = car.localAngularVelocity.y
 
     local yawRateOutput = self.yawRatePID:update(targetYawRate, actualYawRate, dt)
 
-    local driftAngleMultiplier = helpers.mapRange(math.abs(driftAngle) * math.sign(steerNormalizedInput), math.rad(90), math.rad(180), 1, 4, true)
+    local driftAngleMultiplier = helpers.mapRange(math.abs(driftAngle) * math.sign(steerNormalizedInput), math.rad(90), math.rad(180), 1, 5, true)
 
     local slipAngleFL = (game.car_cphys.wheels[0].slipAngle ~= 0 and game.car_cphys.wheels[0].slipAngle or self.slipAngleFL_prev)
     local slipAngleFR = (game.car_cphys.wheels[1].slipAngle ~= 0 and game.car_cphys.wheels[1].slipAngle or self.slipAngleFR_prev)
@@ -177,10 +177,10 @@ function WheelSteerCtrlr:update(dt)
     self.slipAngleRL_prev = slipAngleRL
     self.slipAngleRR_prev = slipAngleRR
 
-    local slipOffsetFL = yawRateOutput * -0.5 * driftAngleMultiplier
-    local slipOffsetFR = yawRateOutput * -0.5 * driftAngleMultiplier
-    local slipOffsetRL = yawRateOutput * 0.5 * driftAngleMultiplier
-    local slipOffsetRR = yawRateOutput * 0.5 * driftAngleMultiplier
+    local slipOffsetFL = yawRateOutput * -0.5 * driftAngleMultiplier * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)
+    local slipOffsetFR = yawRateOutput * -0.5 * driftAngleMultiplier * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)
+    local slipOffsetRL = yawRateOutput * 0.5 * driftAngleMultiplier * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)
+    local slipOffsetRR = yawRateOutput * 0.5 * driftAngleMultiplier * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)
 
     -- Calculate base PID-controlled steering targets
     local pidSteerFL = self.FL_slipTargetPID:update(slipOffsetFL, -math.clamp(slipAngleFL, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.2, 1, true)
@@ -259,6 +259,7 @@ function WheelSteerCtrlr:update(dt)
     ac.debug("steerctrl.slipAngleRL", game.car_cphys.wheels[2].slipAngle)
     ac.debug("steerctrl.slipAngleRR", game.car_cphys.wheels[3].slipAngle)
     ac.debug("steerctrl.driftInversion", self.driftInversion)
+    ac.debug("steerctrl.acceleration.y", car.acceleration.y)
 end
 
 
