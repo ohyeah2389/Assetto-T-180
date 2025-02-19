@@ -14,10 +14,14 @@ function ThreeSixtyCtrlr:initialize()
     self.current_p1_offset = 0
     self.current_p2_offset = 0
     self.current_angle = 0
+    self.last_steer_input = 0  -- Track previous steering input
     
     -- Angle limits
     self.max_angle = 180
     self.min_angle = -180
+    
+    -- Control parameters
+    self.maxServoSlewRate = 400.0  -- Maximum steering servo angle change in degrees per second
 end
 
 
@@ -49,6 +53,14 @@ function ThreeSixtyCtrlr:update(steerNormalized, dt)
     -- Get current steering input (-1 to 1) and convert to angle (-180 to 180)
     local target_angle = steerNormalized * 180
     
+    -- Normalize current angle to -180 to 180 range
+    while self.current_angle > 180 do self.current_angle = self.current_angle - 360 end
+    while self.current_angle < -180 do self.current_angle = self.current_angle + 360 end
+    
+    -- Normalize target angle to -180 to 180 range
+    while target_angle > 180 do target_angle = target_angle - 360 end
+    while target_angle < -180 do target_angle = target_angle + 360 end
+    
     -- Calculate shortest path to target angle
     local angle_diff = target_angle - self.current_angle
     if math.abs(angle_diff) > 180 then
@@ -60,10 +72,11 @@ function ThreeSixtyCtrlr:update(steerNormalized, dt)
         end
     end
     
-    -- Angle transition (rate limited)
-    local rotation_speed = 360  -- degrees per second allowed
-    local max_angle_change = rotation_speed * dt
-    angle_diff = math.min(math.max(angle_diff, -max_angle_change), max_angle_change)
+    -- Apply slew rate limiting to angle change
+    local maxDelta = self.maxServoSlewRate * dt
+    angle_diff = math.clamp(angle_diff, -maxDelta, maxDelta)
+    
+    -- Update current angle
     self.current_angle = self.current_angle + angle_diff
     
     -- Calculate required piston offsets
@@ -72,6 +85,7 @@ function ThreeSixtyCtrlr:update(steerNormalized, dt)
     -- Store current offsets
     self.current_p1_offset = p1_offset
     self.current_p2_offset = p2_offset
+    self.last_steer_input = steerNormalized
 
     return p1_offset, p2_offset
 end
@@ -81,6 +95,7 @@ function ThreeSixtyCtrlr:reset()
     self.current_p1_offset = 0
     self.current_p2_offset = 0
     self.current_angle = 0
+    self.last_steer_input = 0
 end
 
 

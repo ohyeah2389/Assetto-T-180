@@ -7,7 +7,8 @@ local config = require('car_config')
 local state = require('script_state')
 local controls = require('script_controls')
 local helpers = require('script_helpers')
-local WheelSteerController = require('script_wheelsteerctrlr')
+local WheelSteerControllerA = require('script_wheelsteerctrlr')
+local WheelSteerControllerB = require('script_wheelsteerctrlr_B')
 local HubMotorController = require('script_hubmotorctrlr')
 local JumpJack = require('script_jumpjack')
 local Turbine = require('script_turbine')
@@ -58,14 +59,16 @@ local function brakeAutoHold()
 end
 
 
-local wheelSteerCtrlr = WheelSteerController()
+local wheelSteerCtrlrA = WheelSteerControllerA()
+local wheelSteerCtrlrB = WheelSteerControllerB()
 local hubMotorCtrlr = HubMotorController()
 local turbothruster = Turbine()
 
 
 ---@diagnostic disable-next-line: duplicate-set-field
 function script.reset()
-    wheelSteerCtrlr:reset()
+    wheelSteerCtrlrA:reset()
+    wheelSteerCtrlrB:reset()
     jumpJackSystem:reset()
     turbothruster:reset()
 end
@@ -84,7 +87,8 @@ function script.update(dt)
 
     --sharedData.update()
 
-    wheelSteerCtrlr:update(dt)
+    --wheelSteerCtrlrA:update(dt)
+    wheelSteerCtrlrB:update(dt)
     turbothruster:update(dt)
     --local wheelCommands = hubMotorCtrlr:update(dt)
 
@@ -106,7 +110,7 @@ function script.update(dt)
     state.jumpJackSystem.jackRL.position = jumpJackSystem.jacks.rearLeft.physicsObject.position
     state.jumpJackSystem.jackRR.position = jumpJackSystem.jacks.rearRight.physicsObject.position
 
-    local ffb = wheelSteerCtrlr:calculateFFB(dt)
+    local ffb = wheelSteerCtrlrA:calculateFFB(dt)
     if ffb and ffb == ffb then  -- Check if value exists and is not NaN
         ac.setSteeringFFB(ffb)
     end

@@ -17,8 +17,6 @@ local threesixtyctrlr_RR = threesixtyctrlr()
 
 
 function WheelSteerCtrlr:initialize()
-    self.maxSteeringSlewRate = 20.0  -- Maximum change in steering per second
-
     -- Initialize controllers with default values
     self.steerPower = 1.5 -- gets overridden by :updateSetupValues
     self.steerDamping = 0.02 -- gets overridden by highSpeedDamping in :update
@@ -255,11 +253,10 @@ function WheelSteerCtrlr:update(dt)
     self.desiredSteerRL = blendSteer(normalModeSteer.rl, spinModeSteer.rl)
     self.desiredSteerRR = blendSteer(normalModeSteer.rr, spinModeSteer.rr)
 
-    local maxDelta = self.maxSteeringSlewRate * dt
-    self.steerStateFL = helpers.clampChange(self.desiredSteerFL * (state.control.lockedFronts and 0 or 1), self.steerStateFL_prev, maxDelta)
-    self.steerStateFR = helpers.clampChange(self.desiredSteerFR * (state.control.lockedFronts and 0 or 1), self.steerStateFR_prev, maxDelta)
-    self.steerStateRL = helpers.clampChange(self.desiredSteerRL * (state.control.lockedRears and 0 or 1), self.steerStateRL_prev, maxDelta)
-    self.steerStateRR = helpers.clampChange(self.desiredSteerRR * (state.control.lockedRears and 0 or 1), self.steerStateRR_prev, maxDelta)
+    self.steerStateFL = self.desiredSteerFL * (state.control.lockedFronts and 0 or 1)
+    self.steerStateFR = self.desiredSteerFR * (state.control.lockedFronts and 0 or 1)
+    self.steerStateRL = self.desiredSteerRL * (state.control.lockedRears and 0 or 1)
+    self.steerStateRR = self.desiredSteerRR * (state.control.lockedRears and 0 or 1)
     
     game.car_cphys.controllerInputs[0], game.car_cphys.controllerInputs[1] = threesixtyctrlr_FL:update(self.steerStateFL / 2, dt)
     game.car_cphys.controllerInputs[2], game.car_cphys.controllerInputs[3] = threesixtyctrlr_FR:update(-self.steerStateFR / 2, dt)
