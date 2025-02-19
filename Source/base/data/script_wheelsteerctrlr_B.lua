@@ -22,7 +22,7 @@ function WheelSteerCtrlr:initialize()
     self.steerChangeHistory = {0, 0, 0, 0, 0}  -- Circular buffer for averaging
     self.historyIndex = 1
 
-    self.yawRatePID = PIDController(2, 0, 0, -1, 1, 0.2)
+    self.yawRatePID = PIDController(0.4, 0, 0, -1, 1, 0.2)
 
     self.FL_slipTargetPID = PIDController(1, 0, 0, -2, 2, 0.2)
     self.FR_slipTargetPID = PIDController(1, 0, 0, -2, 2, 0.2)
@@ -163,7 +163,6 @@ function WheelSteerCtrlr:update(dt)
     local targetYawRate = steerNormalizedInput * -10
     local actualYawRate = car.angularVelocity.y
 
-    self.yawRatePID.kP = helpers.mapRange(car.gas, 0, 1, 0.6, 0.3, true)
     local yawRateOutput = self.yawRatePID:update(targetYawRate, actualYawRate, dt)
 
     local driftAngleMultiplier = helpers.mapRange(math.abs(driftAngle) * math.sign(steerNormalizedInput), math.rad(90), math.rad(180), 1, 4, true)
