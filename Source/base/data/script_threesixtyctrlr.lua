@@ -21,7 +21,7 @@ function ThreeSixtyCtrlr:initialize()
     self.min_angle = -180
     
     -- Control parameters
-    self.maxServoSlewRate = 400.0  -- Maximum steering servo angle change in degrees per second
+    self.maxServoSlewRate = 200.0  -- Maximum steering servo angle change in degrees per second
 end
 
 

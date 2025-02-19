@@ -22,12 +22,12 @@ function WheelSteerCtrlr:initialize()
     self.steerChangeHistory = {0, 0, 0, 0, 0}  -- Circular buffer for averaging
     self.historyIndex = 1
 
-    self.yawRatePID = PIDController(0.4, 0, 0, -1, 1, 0.2)
+    self.yawRatePID = PIDController(0.2, 0, 0, -1, 1, 1)
 
-    self.FL_slipTargetPID = PIDController(1, 0, 0, -2, 2, 0.2)
-    self.FR_slipTargetPID = PIDController(1, 0, 0, -2, 2, 0.2)
-    self.RL_slipTargetPID = PIDController(1, 0, 0, -2, 2, 0.2)
-    self.RR_slipTargetPID = PIDController(1, 0, 0, -2, 2, 0.2)
+    self.FL_slipTargetPID = PIDController(1, 0, 0, -2, 2, 1)
+    self.FR_slipTargetPID = PIDController(1, 0, 0, -2, 2, 1)
+    self.RL_slipTargetPID = PIDController(1, 0, 0, -2, 2, 1)
+    self.RR_slipTargetPID = PIDController(1, 0, 0, -2, 2, 1)
 
     self.desiredSteerFL = 0
     self.desiredSteerFR = 0
@@ -161,7 +161,7 @@ function WheelSteerCtrlr:update(dt)
     local steerNormalizedInput = math.clamp(game.car_cphys.steer / ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_20").value, -1, 1)
 
     local targetYawRate = steerNormalizedInput * -10
-    local actualYawRate = car.angularVelocity.y
+    local actualYawRate = car.localAngularVelocity.y
 
     local yawRateOutput = self.yawRatePID:update(targetYawRate, actualYawRate, dt)
 
@@ -263,20 +263,49 @@ end
 
 
 function WheelSteerCtrlr:reset()
+    -- Reset direction and blend states
     self.currentDirectionBlend = 1.0
-    
-    -- Reset the previous steering states if needed
-    self.steerStateFL_prev = (self.steerStateFL_prev ~= self.steerStateFL_prev or math.abs(self.steerStateFL_prev) == math.huge) and 0 or self.steerStateFL_prev
-    self.steerStateFR_prev = (self.steerStateFR_prev ~= self.steerStateFR_prev or math.abs(self.steerStateFR_prev) == math.huge) and 0 or self.steerStateFR_prev
-    self.steerStateRL_prev = (self.steerStateRL_prev ~= self.steerStateRL_prev or math.abs(self.steerStateRL_prev) == math.huge) and 0 or self.steerStateRL_prev
-    self.steerStateRR_prev = (self.steerStateRR_prev ~= self.steerStateRR_prev or math.abs(self.steerStateRR_prev) == math.huge) and 0 or self.steerStateRR_prev
-
-    self.steerStateFL = (self.steerStateFL ~= self.steerStateFL or math.abs(self.steerStateFL) == math.huge) and 0 or self.steerStateFL
-    self.steerStateFR = (self.steerStateFR ~= self.steerStateFR or math.abs(self.steerStateFR) == math.huge) and 0 or self.steerStateFR
-    self.steerStateRL = (self.steerStateRL ~= self.steerStateRL or math.abs(self.steerStateRL) == math.huge) and 0 or self.steerStateRL
-    self.steerStateRR = (self.steerStateRR ~= self.steerStateRR or math.abs(self.steerStateRR) == math.huge) and 0 or self.steerStateRR
-
     self.inversionBlendState = 0
+    self.driftInversion = false
+    self.lastDriftAngle = 0
+    
+    -- Reset steering states and their previous values
+    self.steerStateFL_prev = 0
+    self.steerStateFR_prev = 0
+    self.steerStateRL_prev = 0
+    self.steerStateRR_prev = 0
+
+    self.steerStateFL = 0
+    self.steerStateFR = 0
+    self.steerStateRL = 0
+    self.steerStateRR = 0
+
+    -- Reset desired steering values
+    self.desiredSteerFL = 0
+    self.desiredSteerFR = 0
+    self.desiredSteerRL = 0
+    self.desiredSteerRR = 0
+
+    -- Reset slip angle history
+    self.slipAngleFL_prev = 0
+    self.slipAngleFR_prev = 0
+    self.slipAngleRL_prev = 0
+    self.slipAngleRR_prev = 0
+
+    -- Reset PID controllers
+    self.yawRatePID:reset()
+    self.FL_slipTargetPID:reset()
+    self.FR_slipTargetPID:reset()
+    self.RL_slipTargetPID:reset()
+    self.RR_slipTargetPID:reset()
+
+    -- Reset FFB-related values
+    self.steerInputLast = 0
+    self.lastFFB = 0
+    for i = 1, #self.steerChangeHistory do
+        self.steerChangeHistory[i] = 0
+    end
+    self.historyIndex = 1
 end
 
 
