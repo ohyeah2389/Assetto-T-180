@@ -1,7 +1,7 @@
 {
   "name": "T-180 Corsair",
   "brand": "SAMD",
-  "description": "The Corsair is a WRL-homologated T-180 racing vehicle designed by Slip Angle Modding and Development. It takes styling cues from the WWII warplane with the same nickname. It is powered by a large, aircraft-derived four-row radial hotblock that trades off RPM for raw torque output, and a moderately sized turbine engine with pneumatic and mechanical interlink to the fully manual drivetrain.",
+  "description": "The Corsair is a WRL-homologated T-180 racing vehicle designed by Slip Angle Modding and Development. It takes styling cues from the WWII warplane with the same nickname. It is powered by a large, aircraft-derived four-row radial hotblock that trades off RPM for raw torque output, and a moderately sized turbine engine with pneumatic and mechanical interlink to the fully manual drivetrain. Car compiled on 2025-02-20 20:54:25.",
   "tags": [
     "awd",
     "4ws",
@@ -11,12 +11,12 @@
   ],
   "class": "race",
   "specs": {
-    "bhp": "2123 whp",
-    "torque": "840 Nm*",
+    "bhp": "1298 bhp",
+    "torque": "1702 Nm",
     "weight": "775 kg",
     "topspeed": ">700 km/h",
     "acceleration": "2.1 s 0–100",
-    "pwratio": "0.37 kg/hp"
+    "pwratio": "0.6 kg/hp"
   },
   "torqueCurve": [
     [
@@ -832,7 +832,7 @@
   ],
   "country": "USA",
   "author": "ohyeah2389 - Slip Angle Modding and Development",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "url": null,
   "year": 2025
 }

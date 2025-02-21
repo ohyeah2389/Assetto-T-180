@@ -1,7 +1,7 @@
 {
   "name": "T-180 Demo Chassis",
   "brand": "SAMD",
-  "description": "This is the demo chassis for the Slip Angle Modding and Development T-180 modular platform. It represents a typical configuration for a T-180 racing vehicle, with a large, extremely high revving V12 hotblock with a manual drivetrain and a pneumatically and mechanically interlinked afterburning turbine engine for cornering thrust.",
+  "description": "This is the demo chassis for the Slip Angle Modding and Development T-180 modular platform. It represents a typical configuration for a T-180 racing vehicle, with a large, extremely high revving V12 hotblock with a manual drivetrain and a pneumatically and mechanically interlinked afterburning turbine engine for cornering thrust. Car compiled on 2025-02-20 20:54:25.",
   "tags": [
     "awd",
     "4ws",
@@ -11,12 +11,12 @@
   ],
   "class": "race",
   "specs": {
-    "bhp": "2123 whp",
-    "torque": "840 Nm*",
+    "bhp": "2441 bhp",
+    "torque": "966 Nm",
     "weight": "775 kg",
     "topspeed": ">700 km/h",
     "acceleration": "2.1 s 0–100",
-    "pwratio": "0.37 kg/hp"
+    "pwratio": "0.32 kg/hp"
   },
   "torqueCurve": [
     [
@@ -832,7 +832,7 @@
   ],
   "country": "USA",
   "author": "ohyeah2389 - Slip Angle Modding and Development",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "url": null,
   "year": 2025
 }

@@ -1,7 +1,7 @@
 {
   "name": "T-180 Mach 6",
   "brand": "Racer Motors",
-  "description": "The Mach 6 is a WRL-homologated T-180 racing vehicle designed by Pops Racer and built by the Racer family to compete in the WRL championship racing series. It is outfitted with a Bernoulli convergenator routed through a manually shifted mechanical drivetrain for combined, easy-to-operate thrust and torque instead of the state-of-the-art generator-transponder-thruster setup.",
+  "description": "The Mach 6 is a WRL-homologated T-180 racing vehicle designed by Pops Racer and built by the Racer family to compete in the WRL championship racing series. It is outfitted with a Bernoulli convergenator routed through a manually shifted mechanical drivetrain for combined, easy-to-operate thrust and torque instead of the state-of-the-art generator-transponder-thruster setup. Car compiled on 2025-02-20 21:39:59.",
   "tags": [
     "awd",
     "4ws",
@@ -11,11 +11,11 @@
   ],
   "class": "race",
   "specs": {
-    "bhp": "2123 whp",
-    "torque": "840 Nm*",
+    "bhp": "2109 bhp",
+    "torque": "1354 Nm",
     "weight": "775 kg",
     "topspeed": ">700 km/h",
-    "acceleration": "2.1 s 0–100",
+    "acceleration": "2.1 s 0-100",
     "pwratio": "0.37 kg/hp"
   },
   "torqueCurve": [
@@ -832,7 +832,7 @@
   ],
   "country": "USA",
   "author": "ohyeah2389 - Slip Angle Modding and Development",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "url": null,
   "year": 2025
 }
