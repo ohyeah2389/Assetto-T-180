@@ -88,6 +88,8 @@ function script.update(dt)
     turbothruster:update(dt)
     --local wheelCommands = hubMotorCtrlr:update(dt)
 
+    if state.control.driftInversion then game.car_cphys.clutch = 0 end
+
     game.car_cphys.controllerInputs[8] = helpers.mapRange(state.turbine.throttle, config.turbine.minThrottle, 1, 0, 1, true)
     game.car_cphys.controllerInputs[9] = helpers.mapRange(state.turbine.thrust, 1000, 8000, 0, 1, true)
     game.car_cphys.controllerInputs[10] = state.turbine.rpm

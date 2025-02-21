@@ -54,7 +54,6 @@ function WheelSteerCtrlr:initialize()
     self.inversionBlendSpeed = 2.0
 
     self.lastDriftAngle = 0
-    self.driftInversion = false
     self.inversionBlendState = 0
 
     self.setupUpdateCounter = 333
@@ -180,15 +179,15 @@ function WheelSteerCtrlr:update(dt)
     local angleDiff = driftAngle - self.lastDriftAngle
     if angleDiff > math.pi then
         -- Crossed from +π to -π
-        self.driftInversion = true
+        state.control.driftInversion = true
     elseif angleDiff < -math.pi then
         -- Crossed from -π to +π
-        self.driftInversion = true
+        state.control.driftInversion = true
     end
 
     -- Reset inversion flag once car is drifting less than 120 deg
     if math.abs(driftAngle) < math.rad(120) then
-        self.driftInversion = false
+        state.control.driftInversion = false
     end
     
     self.lastDriftAngle = driftAngle
@@ -200,7 +199,7 @@ function WheelSteerCtrlr:update(dt)
 
     local yawRateOutput = self.yawRatePID:update(targetYawRate, actualYawRate, dt)
 
-    local driftAngleMultiplier = helpers.mapRange(math.abs(driftAngle) * math.sign(steerNormalizedInput), math.rad(90), math.rad(180), 1, 5, true)
+    local driftAngleMultiplier = helpers.mapRange(math.abs(driftAngle) * math.sign(steerNormalizedInput), math.rad(90), math.rad(180), 1, 8, true)
 
     local slipAngleFL = (game.car_cphys.wheels[0].slipAngle ~= 0 and game.car_cphys.wheels[0].slipAngle or self.slipAngleFL_prev)
     local slipAngleFR = (game.car_cphys.wheels[1].slipAngle ~= 0 and game.car_cphys.wheels[1].slipAngle or self.slipAngleFR_prev)
@@ -224,17 +223,17 @@ function WheelSteerCtrlr:update(dt)
     local pidSteerRR = self.RR_slipTargetPID:update(slipOffsetRR, -math.clamp(slipAngleRR, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.2, 1, true) * helpers.mapRange(car.gas, 0, 1, 1, 0.8, true)
 
     -- Update inversion blend factor
-    if self.driftInversion then
+    if state.control.driftInversion then
         self.inversionBlendState = math.min(self.inversionBlendState + dt * self.inversionBlendSpeed, 1)
     else
         self.inversionBlendState = math.max(self.inversionBlendState - dt * self.inversionBlendSpeed, 0)
     end
 
     -- Calculate inversion steering targets
-    local inversionSteerFL = steerNormalizedInput * 0.5
-    local inversionSteerFR = steerNormalizedInput * 0.5
-    local inversionSteerRL = steerNormalizedInput * 0
-    local inversionSteerRR = steerNormalizedInput * 0
+    local inversionSteerFL = steerNormalizedInput * 4
+    local inversionSteerFR = steerNormalizedInput * 4
+    local inversionSteerRL = steerNormalizedInput * -2
+    local inversionSteerRR = steerNormalizedInput * -2
 
     -- Blend between normal and inversion steering
     self.desiredSteerFL = math.lerp(pidSteerFL, inversionSteerFL, self.inversionBlendState)
@@ -243,8 +242,9 @@ function WheelSteerCtrlr:update(dt)
     self.desiredSteerRR = math.lerp(pidSteerRR, inversionSteerRR, self.inversionBlendState)
 
     if car.gear == -1 then
-        self.desiredSteerFL = steerNormalizedInput * 0.2
-        self.desiredSteerFR = steerNormalizedInput * 0.2
+        state.control.driftInversion = false
+        self.desiredSteerFL = steerNormalizedInput * 0.5
+        self.desiredSteerFR = steerNormalizedInput * 0.5
         self.desiredSteerRL = steerNormalizedInput * -0.2
         self.desiredSteerRR = steerNormalizedInput * -0.2
     end
@@ -292,7 +292,7 @@ function WheelSteerCtrlr:update(dt)
     ac.debug("steerctrl.slipAngleFR", game.car_cphys.wheels[1].slipAngle)
     ac.debug("steerctrl.slipAngleRL", game.car_cphys.wheels[2].slipAngle)
     ac.debug("steerctrl.slipAngleRR", game.car_cphys.wheels[3].slipAngle)
-    ac.debug("steerctrl.driftInversion", self.driftInversion)
+    ac.debug("steerctrl.driftInversion", state.control.driftInversion)
     ac.debug("steerctrl.acceleration.y", car.acceleration.y)
 end
 
@@ -301,7 +301,7 @@ function WheelSteerCtrlr:reset()
     -- Reset direction and blend states
     self.currentDirectionBlend = 1.0
     self.inversionBlendState = 0
-    self.driftInversion = false
+    state.control.driftInversion = false
     self.lastDriftAngle = 0
     
     -- Reset steering states and their previous values

@@ -9,6 +9,7 @@ local state = {
         lockedFronts = false; -- Whether the fronts are locked forwards
         rearAntiCrab = false; -- Whether the rear anti-crab is engaged
         spinMode = false; -- Whether spin mode is engaged
+        driftInversion = false; -- True when the car is sliding backwards in a 360 spin
     },
     electricSystem = nil,
     jumpJackSystem = {
