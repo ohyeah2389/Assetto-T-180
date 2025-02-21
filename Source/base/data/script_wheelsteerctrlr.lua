@@ -22,12 +22,12 @@ function WheelSteerCtrlr:initialize()
     self.steerChangeHistory = {0, 0, 0, 0, 0}  -- Circular buffer for averaging
     self.historyIndex = 1
 
-    self.yawRatePID = PIDController(0.2, 0, 0, -1, 1, 1)
+    self.yawRatePID = PIDController(0.2, 0, 0, -1, 1, 1) -- power overridden by setup
 
-    self.FL_slipTargetPID = PIDController(0.9, 0, 0, -2, 2, 0.3)
-    self.FR_slipTargetPID = PIDController(0.9, 0, 0, -2, 2, 0.3)
-    self.RL_slipTargetPID = PIDController(0.9, 0, 0, -2, 2, 0.3)
-    self.RR_slipTargetPID = PIDController(0.9, 0, 0, -2, 2, 0.3)
+    self.steerFL_PID = PIDController(0.9, 0, 0, -2, 2, 0.3) -- power overridden by setup
+    self.steerFR_PID = PIDController(0.9, 0, 0, -2, 2, 0.3) -- power overridden by setup
+    self.steerRL_PID = PIDController(0.9, 0, 0, -2, 2, 0.3) -- power overridden by setup
+    self.steerRR_PID = PIDController(0.9, 0, 0, -2, 2, 0.3) -- power overridden by setup
 
     self.desiredSteerFL = 0
     self.desiredSteerFR = 0
@@ -145,27 +145,23 @@ function WheelSteerCtrlr:updateSetupValues()
     if self.setupUpdateCounter < 333 then return end  -- Update every ~1 second at 333fps
     self.setupUpdateCounter = 0
 
-    -- Set new values
-    -- self.driftAnglePID.kP = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_7").value or 5) / 100
-    -- self.driftAnglePID.dampingFactor = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_8").value or 30) / 100
+    -- Update values
+    self.yawRatePID.kP = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_7").value or 8) / 40
 
-    -- self.frontSteeringPower = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_9").value or 5) / 10
-    -- self.frontSteeringDamping = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_10").value or 8) / 10
+    self.steerPower = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_13").value or 9) / 10
+    self.steerDamping = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_14").value or 12) / 40
 
-    -- self.rearSteeringPower = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_11").value or 7) / 10
-    -- self.rearSteeringDamping = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_12").value or 8) / 10
-
-    -- self.steerPower = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_13").value or 15) / 10
+    self.steerFL_PID.kP = self.steerPower
+    self.steerFR_PID.kP = self.steerPower
+    self.steerRL_PID.kP = self.steerPower
+    self.steerRR_PID.kP = self.steerPower
+    self.steerFL_PID.dampingFactor = self.steerDamping
+    self.steerFR_PID.dampingFactor = self.steerDamping
+    self.steerRL_PID.dampingFactor = self.steerDamping
+    self.steerRR_PID.dampingFactor = self.steerDamping
 
     self.ffbSmoothing = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_1").value or 10) / 100
     self.ffbMultiplier = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_0").value or 10) / 10
-    -- self.crabAngleGainFront = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_14").value or 10) / 10
-    -- self.crabAngleGainRear = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_15").value or -30) / 10
-
-    -- self.countersteerGainFront = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_16").value or 10) / 10
-    -- self.countersteerLimitFront = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_17").value or 0) / 20
-    -- self.countersteerGainRear = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_18").value or 10) / 10
-    -- self.countersteerLimitRear = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_19").value or 0) / 20
 end
 
 
@@ -217,10 +213,10 @@ function WheelSteerCtrlr:update(dt)
     local slipOffsetRR = yawRateOutput * 0.5 * driftAngleMultiplier * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)
 
     -- Calculate base PID-controlled steering targets
-    local pidSteerFL = self.FL_slipTargetPID:update(slipOffsetFL, -math.clamp(slipAngleFL, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.2, 1, true)
-    local pidSteerFR = self.FR_slipTargetPID:update(slipOffsetFR, -math.clamp(slipAngleFR, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.2, 1, true)
-    local pidSteerRL = self.RL_slipTargetPID:update(slipOffsetRL, -math.clamp(slipAngleRL, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.2, 1, true) * helpers.mapRange(car.gas, 0, 1, 1, 0.8, true)
-    local pidSteerRR = self.RR_slipTargetPID:update(slipOffsetRR, -math.clamp(slipAngleRR, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.2, 1, true) * helpers.mapRange(car.gas, 0, 1, 1, 0.8, true)
+    local pidSteerFL = self.steerFL_PID:update(slipOffsetFL, -math.clamp(slipAngleFL, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.2, 1, true)
+    local pidSteerFR = self.steerFR_PID:update(slipOffsetFR, -math.clamp(slipAngleFR, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.2, 1, true)
+    local pidSteerRL = self.steerRL_PID:update(slipOffsetRL, -math.clamp(slipAngleRL, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.2, 1, true) * helpers.mapRange(car.gas, 0, 1, 1, 0.8, true)
+    local pidSteerRR = self.steerRR_PID:update(slipOffsetRR, -math.clamp(slipAngleRR, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.2, 1, true) * helpers.mapRange(car.gas, 0, 1, 1, 0.8, true)
 
     -- Update inversion blend factor
     if state.control.driftInversion then
@@ -284,10 +280,10 @@ function WheelSteerCtrlr:update(dt)
     ac.debug("steerctrl.state.control.lockedRears", state.control.lockedRears)
     ac.debug("steerctrl.state.control.rearAntiCrab", state.control.rearAntiCrab)
     ac.debug("steerctrl.state.control.spinMode", state.control.spinMode)
-    ac.debug("steerctrl.FL_slipTargetPID.previousError", self.FL_slipTargetPID.previousError)
-    ac.debug("steerctrl.FR_slipTargetPID.previousError", self.FR_slipTargetPID.previousError)
-    ac.debug("steerctrl.RL_slipTargetPID.previousError", self.RL_slipTargetPID.previousError)
-    ac.debug("steerctrl.RR_slipTargetPID.previousError", self.RR_slipTargetPID.previousError)
+    ac.debug("steerctrl.FL_slipTargetPID.previousError", self.steerFL_PID.previousError)
+    ac.debug("steerctrl.FR_slipTargetPID.previousError", self.steerFR_PID.previousError)
+    ac.debug("steerctrl.RL_slipTargetPID.previousError", self.steerRL_PID.previousError)
+    ac.debug("steerctrl.RR_slipTargetPID.previousError", self.steerRR_PID.previousError)
     ac.debug("steerctrl.slipAngleFL", game.car_cphys.wheels[0].slipAngle)
     ac.debug("steerctrl.slipAngleFR", game.car_cphys.wheels[1].slipAngle)
     ac.debug("steerctrl.slipAngleRL", game.car_cphys.wheels[2].slipAngle)
@@ -329,10 +325,10 @@ function WheelSteerCtrlr:reset()
 
     -- Reset PID controllers
     self.yawRatePID:reset()
-    self.FL_slipTargetPID:reset()
-    self.FR_slipTargetPID:reset()
-    self.RL_slipTargetPID:reset()
-    self.RR_slipTargetPID:reset()
+    self.steerFL_PID:reset()
+    self.steerFR_PID:reset()
+    self.steerRL_PID:reset()
+    self.steerRR_PID:reset()
 
     -- Reset FFB-related values
     self.steerInputLast = 0

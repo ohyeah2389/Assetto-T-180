@@ -85,19 +85,19 @@ The repository is organized so that the included "builder.py" script can assembl
 4. FFB Rear Angle Gain
 5. FFB Rear Slip Gain
 6. FFB Lateral G Effect
-7. SteerCtrl Drift Angle Power
-8. SteerCtrl Drift Angle Damping
-9. SteerCtrl Front Steering Power
-10. SteerCtrl Front Steering Damping
-11. SteerCtrl Rear Steering Power
-12. SteerCtrl Rear Steering Damping
-13. SteerCtrl Wheel Steer Power
-14. SteerCtrl Front Crab Gain
-15. SteerCtrl Rear Crab Gain
-16. SteerCtrl Front Countersteer Gain
-17. SteerCtrl Front Countersteer Limit
-18. SteerCtrl Rear Countersteer Gain
-19. SteerCtrl Rear Countersteer Limit
-20. SteerCtrl Input Rotation Range
-21. SteerCtrl Steering Bumpstop Power
+7. SteerCtrl Yaw Rate Power
+8. SteerCtrl Yaw Rate Damping
+9. Not Used
+10. Not Used
+11. Not Used
+12. Not Used
+13. SteerCtrl Wheel Servo Power
+14. Not Used
+15. Not Used
+16. Not Used
+17. Not Used
+18. Not Used
+19. Not Used
+20. Steering Wheel Rotation Range
+21. Steering Wheel Bumpstop Power
 
