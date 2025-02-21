@@ -1,12 +1,23 @@
 -- T-180 CSP Graphics Script
 -- Authored by ohyeah2389
 
-local coordinates = require("car_coordinates")
+local config = require("car_coordinates")
 
 local car_phys = ac.getCarPhysics(0)
 
-local flameBoost = ac.Particles.Flame({color = rgbm(1, 0.8, 0.8, 1), size = 3.2, temperatureMultiplier = 2, flameIntensity = 0.9})
-local flameTurbo = ac.Particles.Flame({color = rgbm(1, 1, 1, 1), size = 3.2, temperatureMultiplier = 1, flameIntensity = 1})
+local flameBoost = ac.Particles.Flame({
+    color = config.flame.color, 
+    size = config.flame.size, 
+    temperatureMultiplier = config.flame.temperatureMultiplier, 
+    flameIntensity = config.flame.intensity
+})
+
+local flameTurbo = ac.Particles.Flame({
+    color = config.flame.afterburnerColor, 
+    size = config.flame.size, 
+    temperatureMultiplier = config.flame.afterburnerTemperatureMultiplier, 
+    flameIntensity = config.flame.afterburnerIntensity
+})
 
 local exhaustSmoke = ac.Particles.Smoke({color = rgbm(0.3, 0.32, 0.35, 0.1), life = 10, size = 0.1, spreadK = 1, growK = 1, targetYVelocity = 1, flags = ac.Particles.SmokeFlags.FadeIn})
 
@@ -58,16 +69,13 @@ local jumpJack_left_last = false
 local jumpJack_right_last = false
 local extraA_last = false
 
-local afterburnerMeshExpand = ac.findMeshes("AftbExpand")
-local afterburnerMeshOutside = ac.findMeshes("AftbOutside?")
-local afterburnerMeshCone = ac.findMeshes("AftbCone?")
-local afterburnerMeshExpand_originalLocation = afterburnerMeshExpand:getPosition()
-local afterburnerMeshOutside_originalLocation = afterburnerMeshOutside:getPosition()
-local afterburnerMeshCone_originalLocation = afterburnerMeshCone:getPosition()
-local shockConeMesh = ac.findMeshes("ShockCone")
-local shockConeNode = ac.findNodes("ShockConeParent")
-local shockConeNode_originalLocation = shockConeNode:getPosition()
-
+-- Add these variables at the top level, with the other local variables
+local replayFadeouts = {
+    throttle = 0,
+    thrust = 0,
+    rpm = 4000,
+    afterburner = 0
+}
 
 -- math helper function, like Map Range in Blender
 local function mapRange(n, start, stop, newStart, newStop, withinBounds)
@@ -91,32 +99,61 @@ end
 function script.update(dt)
     ac.boostFrameRate()
 
+    local ctrlrData = {
+        turbineThrottle = car_phys.scriptControllerInputs[8] or 0,
+        turbineThrust = car_phys.scriptControllerInputs[9] or 0,
+        turbineRPM = car_phys.scriptControllerInputs[10] or 0,
+        fuelPumpEnabled = car_phys.scriptControllerInputs[11] or 0,
+        turbineAfterburner = car_phys.scriptControllerInputs[12] or 0,
+    }
+
+    if ac.isInReplayMode() then
+        -- Calculate target values
+        local targetThrottle = math.min(car.gas + (car.extraB and 1 or 0), 1)
+        local targetThrust = math.min(((car.rpm / 2) / car.rpmLimiter) + (car.extraB and 1 or 0), 1)
+        local targetRPM = (math.min(((car.rpm / 2) / car.rpmLimiter) + (car.extraB and 1 or 0), 1) * 10000) + 4000
+        local targetAfterburner = car.extraB and 1 or 0
+
+        -- Apply fadeouts with lerp
+        replayFadeouts.throttle = math.lerp(replayFadeouts.throttle, targetThrottle, dt * 5)
+        replayFadeouts.thrust = math.lerp(replayFadeouts.thrust, targetThrust, dt * 5)
+        replayFadeouts.rpm = math.lerp(replayFadeouts.rpm, targetRPM, dt * 5)
+        replayFadeouts.afterburner = math.lerp(replayFadeouts.afterburner, targetAfterburner, dt * 8)
+
+        -- Apply faded values
+        ctrlrData.turbineThrottle = replayFadeouts.throttle
+        ctrlrData.turbineThrust = replayFadeouts.thrust
+        ctrlrData.turbineRPM = replayFadeouts.rpm
+        ctrlrData.fuelPumpEnabled = 1
+        ctrlrData.turbineAfterburner = replayFadeouts.afterburner
+    end
+
     if not audio_turbine:isPlaying() then audio_turbine:start() end
     if not audio_turbine_fuelpump:isPlaying() then audio_turbine_fuelpump:start() end
     if not audio_engine:isPlaying() then audio_engine:start() end
 
-    fuelPumpFadeout = math.lerp(fuelPumpFadeout, car_phys.scriptControllerInputs[11], dt * 5)
+    fuelPumpFadeout = math.lerp(fuelPumpFadeout, ctrlrData.fuelPumpEnabled, dt * 5)
 
     audio_engine:setParam("rpms", car.rpm)
     audio_engine:setParam("throttle", car.gas)
 
-    audio_turbine:setParam("rpm", car_phys.scriptControllerInputs[10])
-    audio_turbine:setParam("throttle", car_phys.scriptControllerInputs[8])
-    audio_turbine:setParam("afterburner", car_phys.scriptControllerInputs[12])
+    audio_turbine:setParam("rpm", ctrlrData.turbineRPM)
+    audio_turbine:setParam("throttle", ctrlrData.turbineThrottle)
+    audio_turbine:setParam("afterburner", ctrlrData.turbineAfterburner)
 
-    audio_turbine_fuelpump:setParam("rpm", fuelPumpRPMLUT:get(car_phys.scriptControllerInputs[10]) * fuelPumpFadeout)
+    audio_turbine_fuelpump:setParam("rpm", fuelPumpRPMLUT:get(ctrlrData.turbineRPM) * fuelPumpFadeout)
 
-    flameBoost:emit(vec3(coordinates.turbine_exhaust.x + car.localVelocity.x * 0.012, coordinates.turbine_exhaust.y, coordinates.turbine_exhaust.z + car.localVelocity.z * 0.01),
+    flameBoost:emit(vec3(config.coordinates.turbineExhaust.x + car.localVelocity.x * 0.012, config.coordinates.turbineExhaust.y, config.coordinates.turbineExhaust.z + car.localVelocity.z * 0.01),
         vec3(0 + car.localVelocity.x * 0.01, 0, -3) + (car.localVelocity * -0.35),
-        mapRange(car_phys.scriptControllerInputs[8], 0.9, 1, 0, 1, true) * mapRange(car.speedKmh, 0, 400, 0.5, 0.1, true))
+        mapRange(ctrlrData.turbineThrottle, 0.9, 1, 0, 1, true) * mapRange(car.speedKmh, 0, 400, 0.5, 0.1, true))
 
-    flameTurbo:emit(vec3(coordinates.turbine_exhaust.x + car.localVelocity.x * 0.012, coordinates.turbine_exhaust.y, coordinates.turbine_exhaust.z + car.localVelocity.z * 0.01),
+    flameTurbo:emit(vec3(config.coordinates.turbineExhaust.x + car.localVelocity.x * 0.012, config.coordinates.turbineExhaust.y, config.coordinates.turbineExhaust.z + car.localVelocity.z * 0.01),
         vec3(0 + car.localVelocity.x * 0.01, 0, -1.5) + (car.localVelocity * -0.35),
-        car_phys.scriptControllerInputs[9] * mapRange(car.speedKmh, 0, 400, 1, 0.1, true) * 0.5)
+        ctrlrData.turbineThrust * mapRange(car.speedKmh, 0, 400, 1, 0.1, true) * 0.5)
 
-    exhaustSmoke:emit(vec3(coordinates.turbine_exhaust.x + car.localVelocity.x * 0.012, coordinates.turbine_exhaust.y, coordinates.turbine_exhaust.z + car.localVelocity.z * 0.01),
+    exhaustSmoke:emit(vec3(config.coordinates.turbineExhaust.x + car.localVelocity.x * 0.012, config.coordinates.turbineExhaust.y, config.coordinates.turbineExhaust.z + car.localVelocity.z * 0.01),
         vec3(0 + car.localVelocity.x * 0.01, 0, -30 * mapRange(car.gas, 0, 1, 0.5, 1, true)) + (car.localVelocity * -0.35),
-        mapRange(car_phys.scriptControllerInputs[9], 0, 1, 0.2, 0.4, true))
+        mapRange(ctrlrData.turbineThrust, 0, 1, 0.2, 0.4, true))
 
 
     lightFadeout = math.lerp(lightFadeout, car.headlightsActive and 1 or 0, dt * 15)
@@ -140,36 +177,6 @@ function script.update(dt)
     light_headlight_right.spot = 40
     light_headlight_right.spotSharpness = 0.2
     light_headlight_right.direction = vec3(-0.1, 0, 1)
-
-    afterburnerMeshExpand:setShadows(false)
-    afterburnerMeshExpand:setMaterialTexture('txDiffuse', rgbm(0.1, 0.1, 0.1, car_phys.scriptControllerInputs[12]))
-    afterburnerMeshExpand:setMaterialProperty("alpha", car_phys.scriptControllerInputs[12] * 0.2 * mapRange(math.perlin(sim.time * 0.1, 1, 0.5), 0, 1, 0.2, 1, true))
-    afterburnerMeshExpand:setMaterialProperty("ksAmbient", car_phys.scriptControllerInputs[12])
-    afterburnerMeshExpand:setMaterialProperty("ksEmissive", rgb(4, 8, 24) * car_phys.scriptControllerInputs[12] * 20)
-
-    afterburnerMeshOutside:setShadows(false)
-    afterburnerMeshOutside:setMaterialTexture('txDiffuse', rgbm(0.1, 0.1, 0.1, car_phys.scriptControllerInputs[12]))
-    afterburnerMeshOutside:setMaterialProperty("alpha", car_phys.scriptControllerInputs[12] * 0.2 * mapRange(math.perlin(sim.time * 0.1, 1, 0.5), 0, 1, 0.2, 1, true))
-    afterburnerMeshOutside:setMaterialProperty("ksAmbient", car_phys.scriptControllerInputs[12])
-    afterburnerMeshOutside:setMaterialProperty("ksEmissive", rgb(24, 8, 4) * car_phys.scriptControllerInputs[12] * 20)
-
-    afterburnerMeshCone:setShadows(false)
-    afterburnerMeshCone:setMaterialTexture('txDiffuse', rgbm(0.1, 0.1, 0.1, car_phys.scriptControllerInputs[12]))
-    afterburnerMeshCone:setMaterialProperty("alpha", car_phys.scriptControllerInputs[12] * 0.2 * mapRange(math.perlin(sim.time * 0.1, 1, 0.5), 0, 1, 0.2, 1, true))
-    afterburnerMeshCone:setMaterialProperty("ksAmbient", car_phys.scriptControllerInputs[12])
-    afterburnerMeshCone:setMaterialProperty("ksEmissive", rgb(20, 12, 4) * car_phys.scriptControllerInputs[12] * 20)
-
-    afterburnerMeshExpand:setPosition(afterburnerMeshExpand_originalLocation + vec3(0.02 * math.sin(sim.time * 0.1), 0.02 * math.sin(sim.time * 0.4), 0.02 * math.sin(sim.time * 0.7)))
-    afterburnerMeshOutside:setPosition(afterburnerMeshOutside_originalLocation + vec3(0.02 * math.sin(sim.time * 0.2), 0.02 * math.sin(sim.time * 0.5), 0.02 * math.sin(sim.time * 0.8)))
-    afterburnerMeshCone:setPosition(afterburnerMeshCone_originalLocation + vec3(0.02 * math.sin(sim.time * 0.3), 0.02 * math.sin(sim.time * 0.6), 0.02 * math.sin(sim.time * 0.9)))
-
-    if car.speedKmh > 950 then
-        local shockEffect = mapRange(car.speedKmh, 950, 1050, 0, 1, true) * mapRange(car.speedKmh, 1200, 1300, 1, 0, true)
-        shockConeMesh:setMaterialProperty("alpha", mapRange(math.perlin(sim.time * 0.01, 3, 0.5) * shockEffect, 0, 1, 0.2, 3, true))
-        shockConeNode:setPosition(shockConeNode_originalLocation + vec3(0.02 * math.sin(sim.time * 0.2), 0.02 * math.sin(sim.time * 0.3), 0.02 * math.sin(sim.time * 0.1)))
-    else
-        shockConeMesh:setMaterialProperty("alpha", 0)
-    end
 
     if car.extraA and not extraA_last then
         jumpJackSound_chargeL:start()
