@@ -250,6 +250,24 @@ function script.update(dt)
     extraA_last = car.extraA
     jumpJack_left_last = ac.ControlButton("__EXT_LIGHT_JUMPJACK_LEFT"):down()
     jumpJack_right_last = ac.ControlButton("__EXT_LIGHT_JUMPJACK_RIGHT"):down()
+
+    -- Debug section
+    ac.debug("audio_engine.isPlaying", audio_engine:isPlaying())
+    ac.debug("audio_turbine.isPlaying", audio_turbine:isPlaying())
+    ac.debug("audio_turbine_fuelpump.isPlaying", audio_turbine_fuelpump:isPlaying())
+    ac.debug("audio_turbine_front.isPlaying", audio_turbine_front:isPlaying())
+    ac.debug("audio_turbine_fuelpump_front.isPlaying", audio_turbine_fuelpump_front:isPlaying())
+    ac.debug("ctrlrData.turbineThrottle", ctrlrData.turbineThrottle)
+    ac.debug("ctrlrData.turbineThrust", ctrlrData.turbineThrust)
+    ac.debug("ctrlrData.turbineRPM", ctrlrData.turbineRPM)
+    ac.debug("ctrlrData.fuelPumpEnabled", ctrlrData.fuelPumpEnabled)
+    ac.debug("ctrlrData.turbineAfterburner", ctrlrData.turbineAfterburner)
+    ac.debug("ctrlrData.frontTurbineThrottle", ctrlrData.frontTurbineThrottle)
+    ac.debug("ctrlrData.frontTurbineThrust", ctrlrData.frontTurbineThrust)
+    ac.debug("ctrlrData.frontTurbineRPM", ctrlrData.frontTurbineRPM)
+    ac.debug("ctrlrData.frontFuelPumpEnabled", ctrlrData.frontFuelPumpEnabled)
+    ac.debug("ctrlrData.frontTurbineAfterburner", ctrlrData.frontTurbineAfterburner)
+    
 end
 
 
