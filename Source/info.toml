@@ -1,3 +1,15 @@
 [info]
 version = "0.7.0"
 year = 2025
+
+[build]
+# Ignore patterns support:
+# - Exact filenames: "thumbs.db"
+# - Wildcards: "*.tmp"
+# - Path wildcards: "**/*.bak"
+ignore = [
+    "~*",           # Files starting with tilde
+    "*.tmp",        # Temporary files
+    "*.bak",        # Backup files
+    "thumbs.db",    # Windows thumbnail cache
+]

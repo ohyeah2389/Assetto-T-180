@@ -23,6 +23,8 @@ import shutil
 import sys
 import json
 from datetime import datetime
+import fnmatch
+from typing import List, Optional
 
 try:
     import tomllib
@@ -72,9 +74,43 @@ def update_lods_ini(lods_ini_path, kn5_filename):
     except Exception as e:
         print(f"Failed to write {lods_ini_path}: {e}")
 
+def should_ignore_file(path: str, ignore_patterns: List[str]) -> bool:
+    """
+    Check if a file should be ignored based on the ignore patterns.
+    Supports exact matches, wildcards (*), and path-aware patterns (**).
+    
+    Args:
+        path: The file/folder path to check
+        ignore_patterns: List of ignore patterns from info.toml
+    
+    Returns:
+        bool: True if the file should be ignored
+    """
+    # Convert Windows paths to forward slashes for consistent matching
+    path = path.replace('\\', '/')
+    
+    # Get just the filename for simple pattern matching
+    filename = os.path.basename(path)
+    
+    for pattern in ignore_patterns:
+        # Convert Windows patterns to forward slashes
+        pattern = pattern.replace('\\', '/')
+        
+        # Handle path-aware patterns (with **)
+        if '**' in pattern:
+            # Convert ** to handle any number of directories
+            regex_pattern = pattern.replace('**', '.*').replace('*', '[^/]*')
+            if fnmatch.fnmatch(path, regex_pattern):
+                return True
+        # Handle simple patterns (exact matches and wildcards)
+        elif fnmatch.fnmatch(filename, pattern):
+            return True
+    
+    return False
+
 def parse_info_toml(toml_path):
     """
-    A simple parser to extract 'version' and 'year' from the [info] section in the toml file.
+    Parse info.toml for version, year, and ignore patterns.
     """
     try:
         with open(toml_path, "rb") as f:
@@ -82,10 +118,15 @@ def parse_info_toml(toml_path):
         info = data.get("info", {})
         version = info.get("version")
         year = info.get("year")
-        return version, year
+        
+        # Get ignore patterns, defaulting to just ~* if not specified
+        build_config = data.get("build", {})
+        ignore_patterns = build_config.get("ignore", ["~*"])
+        
+        return version, year, ignore_patterns
     except Exception as e:
         print(f"Error parsing {toml_path}: {e}")
-        return None, None
+        return None, None, ["~*"]
 
 def update_ui_json(ui_json_path, version, year):
     """
@@ -164,15 +205,20 @@ def handle_sfx_files(car_build_dir, car_name):
                 print(f"Error handling sfx files: {e}")
             break
 
-def merge_directories(src, dst):
+def merge_directories(src, dst, ignore_patterns):
     """
     Recursively merge contents of src directory into dst directory.
     Files from src will overwrite those in dst.
+    Skips files matching ignore patterns.
     """
     if not os.path.exists(dst):
         os.makedirs(dst)
     for item in os.listdir(src):
         s_item = os.path.join(src, item)
+        if should_ignore_file(s_item, ignore_patterns):
+            print(f"Skipping ignored file/folder '{item}'")
+            continue
+            
         d_item = os.path.join(dst, item)
         try:
             if os.path.isdir(s_item):
@@ -180,7 +226,7 @@ def merge_directories(src, dst):
                     shutil.copytree(s_item, d_item)
                     print(f"Copied new folder '{item}' from source merge.")
                 else:
-                    merge_directories(s_item, d_item)
+                    merge_directories(s_item, d_item, ignore_patterns)
             else:
                 shutil.copy2(s_item, d_item)
                 print(f"Overwritten file '{item}' from source merge.")
@@ -198,12 +244,12 @@ def main():
         print(f"Source directory not found: {source_dir}")
         sys.exit(1)
     
-    # Parse info.toml from the Source folder for version and year
+    # Parse info.toml from the Source folder
     info_toml_path = os.path.join(source_dir, "info.toml")
     if not os.path.exists(info_toml_path):
         print(f"info.toml not found in {source_dir}")
         sys.exit(1)
-    info_version, info_year = parse_info_toml(info_toml_path)
+    info_version, info_year, ignore_patterns = parse_info_toml(info_toml_path)
     if not info_version or not info_year:
         print("Could not parse version and year from info.toml")
         sys.exit(1)
@@ -244,6 +290,10 @@ def main():
             try:
                 for base_item in os.listdir(global_base_dir):
                     src_item = os.path.join(global_base_dir, base_item)
+                    if should_ignore_file(src_item, ignore_patterns):
+                        print(f"Skipping ignored file/folder '{base_item}'")
+                        continue
+                        
                     dst_item = os.path.join(car_build_dir, base_item)
                     if os.path.isdir(src_item):
                         shutil.copytree(src_item, dst_item, dirs_exist_ok=True)
@@ -255,14 +305,17 @@ def main():
                 print(f"Error copying base folder contents for {car_name}: {e}")
                 continue
             
-            # Copy all other files and folders from the car's source folder,
-            # merging them over the base so that car-specific files override the base.
+            # Copy all other files and folders from the car's source folder
             for sub_item in os.listdir(item_path):
                 src_item = os.path.join(item_path, sub_item)
+                if should_ignore_file(src_item, ignore_patterns):
+                    print(f"Skipping ignored file/folder '{sub_item}'")
+                    continue
+                    
                 dst_item = os.path.join(car_build_dir, sub_item)
                 try:
                     if os.path.isdir(src_item):
-                        merge_directories(src_item, dst_item)
+                        merge_directories(src_item, dst_item, ignore_patterns)
                         print(f"Merged folder '{sub_item}' for {car_name}")
                     else:
                         shutil.copy2(src_item, dst_item)
