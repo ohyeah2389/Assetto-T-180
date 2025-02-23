@@ -161,12 +161,12 @@ function JumpJack:update(activationPattern, dt)
             end
 
         end
-        ac.debug(name .. " chargeState", self.jacks[name].chargeState)
-        ac.debug(name .. " jackCharging", self.jacks[name].jackCharging)
-        ac.debug(name .. " jackActive", self.jacks[name].jackActive)
-        ac.debug(name .. " penetrationDepth", self.jacks[name].penetrationDepth)
-        ac.debug(name .. " penetrationForce", self.jacks[name].penetrationForce)
-        ac.debug(name .. " position", self.jacks[name].physicsObject.position)
+        --ac.debug(name .. " chargeState", self.jacks[name].chargeState)
+        --ac.debug(name .. " jackCharging", self.jacks[name].jackCharging)
+        --ac.debug(name .. " jackActive", self.jacks[name].jackActive)
+        --ac.debug(name .. " penetrationDepth", self.jacks[name].penetrationDepth)
+        --ac.debug(name .. " penetrationForce", self.jacks[name].penetrationForce)
+        --ac.debug(name .. " position", self.jacks[name].physicsObject.position)
     end
 end
 

@@ -11,8 +11,8 @@ local config = {
         debugFrequency = 0.1;
         jumpJackSize = 1;
     },
-    turbine = {
-        present = true, -- Whether the car has a turbine or not
+    turbothruster = {
+        present = false, -- Whether the car has a turbine or not
         frictionCoef = 1.35, -- Friction coefficient of the turbine shaft
         inertia = 0.002, -- Inertia of the turbine shaft
         minThrottle = 0.2, -- Idle throttle of the turbine
@@ -27,6 +27,30 @@ local config = {
         fuelConsThrottleFactor = 1.0, -- Throttle position fuel consumption multiplier
         fuelConsSpeedFactor = 0.0001, -- Angular speed fuel consumption multiplier
         fuelConsThrustFactor = 0.000125, -- Developed thrust fuel consumption multiplier
+    },
+    torqueTurbine = {
+        present = true,
+        type = "dual", -- "single" or "dual"
+        
+        -- Common parameters for both turbines
+        designRPM = 38000,
+        pressureRatio = 7.8,
+        compressorEfficiency = 0.82,
+        turbineEfficiency = 0.85,
+        fuelLHV = 43.2e6,  -- J/kg (Jet-A)
+        combustionEfficiency = 0.98,
+        
+        -- Individual turbine parameters
+        front = {
+            inertia = 0.018,
+            maxTorque = 2000,
+            finalDriveRatio = 1/10
+        },
+        rear = {
+            inertia = 0.018, 
+            maxTorque = 2000,
+            finalDriveRatio = 1/10
+        }
     }
 }
 

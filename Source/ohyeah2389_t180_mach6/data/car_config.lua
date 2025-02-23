@@ -11,7 +11,7 @@ local config = {
         debugFrequency = 0.1;
         jumpJackSize = 1;
     },
-    turbine = {
+    turbothruster = {
         present = true, -- Whether the car has a turbine or not
         frictionCoef = 1.35, -- Friction coefficient of the turbine shaft
         inertia = 0.002, -- Inertia of the turbine shaft
@@ -27,6 +27,8 @@ local config = {
         fuelConsThrottleFactor = 1.0, -- Throttle position fuel consumption multiplier
         fuelConsSpeedFactor = 0.0001, -- Angular speed fuel consumption multiplier
         fuelConsThrustFactor = 0.000125, -- Developed thrust fuel consumption multiplier
+    },
+    torqueTurbine = {
     }
 }
 

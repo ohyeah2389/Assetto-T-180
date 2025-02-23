@@ -30,9 +30,10 @@ audio_engine.cameraInteriorMultiplier = 0.5
 audio_engine:setPosition(vec3(0.0, 1.2, 0.225), vec3(0, 0, 1), vec3(0, 1, 0))
 audio_engine:start()
 
+-- Rear turbine audio
 local audio_turbine = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/turbine", true, true)
 audio_turbine.cameraInteriorMultiplier = 0.5
-audio_turbine:setPosition(vec3(0, 0.772, -2.05), vec3(0, 0, 1), vec3(0, 1, 0))
+audio_turbine:setPosition(vec3(0, 0.772, -2.05), vec3(0, 1, 0), vec3(0, 0, -1))
 audio_turbine:start()
 
 local audio_turbine_fuelpump = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/turbine_fuelpump", true, true)
@@ -40,6 +41,18 @@ audio_turbine_fuelpump.cameraInteriorMultiplier = 0.5
 audio_turbine_fuelpump.volume = 0.5
 audio_turbine_fuelpump:setPosition(vec3(0, 0.7, -0.75), vec3(0, 0, 1), vec3(0, 1, 0))
 audio_turbine_fuelpump:start()
+
+-- Front turbine audio
+local audio_turbine_front = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/turbine", true, true)
+audio_turbine_front.cameraInteriorMultiplier = 0.5
+audio_turbine_front:setPosition(vec3(0, 0.772, 1.05), vec3(0, 0, 1), vec3(0, 1, 0))
+audio_turbine_front:start()
+
+local audio_turbine_fuelpump_front = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/turbine_fuelpump", true, true)
+audio_turbine_fuelpump_front.cameraInteriorMultiplier = 0.5
+audio_turbine_fuelpump_front.volume = 0.5
+audio_turbine_fuelpump_front:setPosition(vec3(0, 0.7, 0.75), vec3(0, 0, 1), vec3(0, 1, 0))
+audio_turbine_fuelpump_front:start()
 
 local fuelPumpRPMLUT = ac.DataLUT11()
 fuelPumpRPMLUT:add(0, 4000)
@@ -74,7 +87,11 @@ local replayFadeouts = {
     throttle = 0,
     thrust = 0,
     rpm = 4000,
-    afterburner = 0
+    afterburner = 0,
+    frontThrottle = 0,
+    frontThrust = 0,
+    frontRpm = 4000,
+    frontAfterburner = 0
 }
 
 -- math helper function, like Map Range in Blender
@@ -100,11 +117,18 @@ function script.update(dt)
     ac.boostFrameRate()
 
     local ctrlrData = {
+        -- Rear turbine data
         turbineThrottle = car_phys.scriptControllerInputs[8] or 0,
         turbineThrust = car_phys.scriptControllerInputs[9] or 0,
         turbineRPM = car_phys.scriptControllerInputs[10] or 0,
         fuelPumpEnabled = car_phys.scriptControllerInputs[11] or 0,
         turbineAfterburner = car_phys.scriptControllerInputs[12] or 0,
+        -- Front turbine data
+        frontTurbineThrottle = car_phys.scriptControllerInputs[13] or 0,
+        frontTurbineThrust = car_phys.scriptControllerInputs[14] or 0,
+        frontTurbineRPM = car_phys.scriptControllerInputs[15] or 0,
+        frontFuelPumpEnabled = car_phys.scriptControllerInputs[16] or 0,
+        frontTurbineAfterburner = car_phys.scriptControllerInputs[17] or 0
     }
 
     if ac.isInReplayMode() then
@@ -120,28 +144,50 @@ function script.update(dt)
         replayFadeouts.rpm = math.lerp(replayFadeouts.rpm, targetRPM, dt * 5)
         replayFadeouts.afterburner = math.lerp(replayFadeouts.afterburner, targetAfterburner, dt * 8)
 
+        -- Front turbine replay handling
+        replayFadeouts.frontThrottle = math.lerp(replayFadeouts.frontThrottle, targetThrottle, dt * 5)
+        replayFadeouts.frontThrust = math.lerp(replayFadeouts.frontThrust, targetThrust, dt * 5)
+        replayFadeouts.frontRpm = math.lerp(replayFadeouts.frontRpm, targetRPM, dt * 5)
+        replayFadeouts.frontAfterburner = math.lerp(replayFadeouts.frontAfterburner, targetAfterburner, dt * 8)
+
         -- Apply faded values
         ctrlrData.turbineThrottle = replayFadeouts.throttle
         ctrlrData.turbineThrust = replayFadeouts.thrust
         ctrlrData.turbineRPM = replayFadeouts.rpm
         ctrlrData.fuelPumpEnabled = 1
         ctrlrData.turbineAfterburner = replayFadeouts.afterburner
+
+        -- Front turbine faded values
+        ctrlrData.frontTurbineThrottle = replayFadeouts.frontThrottle
+        ctrlrData.frontTurbineThrust = replayFadeouts.frontThrust
+        ctrlrData.frontTurbineRPM = replayFadeouts.frontRpm
+        ctrlrData.frontFuelPumpEnabled = 1
+        ctrlrData.frontTurbineAfterburner = replayFadeouts.frontAfterburner
     end
 
     if not audio_turbine:isPlaying() then audio_turbine:start() end
     if not audio_turbine_fuelpump:isPlaying() then audio_turbine_fuelpump:start() end
+    if not audio_turbine_front:isPlaying() then audio_turbine_front:start() end
+    if not audio_turbine_fuelpump_front:isPlaying() then audio_turbine_fuelpump_front:start() end
     if not audio_engine:isPlaying() then audio_engine:start() end
 
     fuelPumpFadeout = math.lerp(fuelPumpFadeout, ctrlrData.fuelPumpEnabled, dt * 5)
+    local frontFuelPumpFadeout = math.lerp(fuelPumpFadeout, ctrlrData.frontFuelPumpEnabled, dt * 5)
 
     audio_engine:setParam("rpms", car.rpm)
     audio_engine:setParam("throttle", car.gas)
 
+    -- Rear turbine audio
     audio_turbine:setParam("rpm", ctrlrData.turbineRPM)
     audio_turbine:setParam("throttle", ctrlrData.turbineThrottle)
     audio_turbine:setParam("afterburner", ctrlrData.turbineAfterburner)
-
     audio_turbine_fuelpump:setParam("rpm", fuelPumpRPMLUT:get(ctrlrData.turbineRPM) * fuelPumpFadeout)
+
+    -- Front turbine audio
+    audio_turbine_front:setParam("rpm", ctrlrData.frontTurbineRPM)
+    audio_turbine_front:setParam("throttle", ctrlrData.frontTurbineThrottle)
+    audio_turbine_front:setParam("afterburner", ctrlrData.frontTurbineAfterburner)
+    audio_turbine_fuelpump_front:setParam("rpm", fuelPumpRPMLUT:get(ctrlrData.frontTurbineRPM) * frontFuelPumpFadeout)
 
     flameBoost:emit(vec3(config.coordinates.turbineExhaust.x + car.localVelocity.x * 0.012, config.coordinates.turbineExhaust.y, config.coordinates.turbineExhaust.z + car.localVelocity.z * 0.01),
         vec3(0 + car.localVelocity.x * 0.01, 0, -3) + (car.localVelocity * -0.35),

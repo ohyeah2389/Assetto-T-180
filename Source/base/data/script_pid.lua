@@ -28,26 +28,39 @@ function PIDController:update(setpoint, measurement, dt)
     -- Proportional term
     local P = self.kP * error
 
-    -- Integral term
+    -- Integral term with anti-windup
     self.integral = self.integral + error * dt
     local I = self.kI * self.integral
 
     -- Derivative term
     local derivative = (error - self.previousError) / dt
-    local D = self.kD * derivative * dt
+    local D = self.kD * derivative
+
+    -- Calculate output before clamping (for anti-windup)
+    local output = P + I + D
+
+    -- If output would saturate, prevent integral from growing further
+    if output > self.maxOutput then
+        self.integral = self.integral - error * dt  -- Unwind the last integration
+    elseif output < self.minOutput then
+        self.integral = self.integral - error * dt  -- Unwind the last integration
+    end
+
+    -- Recalculate I term with possibly adjusted integral
+    I = self.kI * self.integral
 
     -- Save error for next iteration
     self.previousError = error
 
     -- Calculate total output
-    local output = P + I + D
+    local totalOutput = P + I + D
 
     -- Apply damping
-    output = (output * self.dampingFactor) + (self.previousOutput * (1 - self.dampingFactor))
-    self.previousOutput = output
+    totalOutput = (totalOutput * self.dampingFactor) + (self.previousOutput * (1 - self.dampingFactor))
+    self.previousOutput = totalOutput
 
     -- Clamp output to limits
-    return math.clamp(output, self.minOutput, self.maxOutput)
+    return math.clamp(totalOutput, self.minOutput, self.maxOutput)
 end
 
 

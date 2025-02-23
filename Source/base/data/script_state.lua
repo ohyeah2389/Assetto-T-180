@@ -31,16 +31,37 @@ local state = {
         };
     };
     turbine = {
-        throttle = 0.0;
-        throttleAfterburner = 0.0;
-        thrust = 0.0;
-        fuelPumpEnabled = true;
-        clutchDisconnected = false;
-        fuelConsumption = 0.0; -- Fuel consumption in liters per second
-        fuelLevel = 100.0; -- Fuel level in liters
-        bleedBoost = 0.0;
-        rpm = 0.0;
-    };
+        -- Legacy/shared fields for compatibility
+        throttle = 0.0,
+        throttleAfterburner = 0.0,
+        thrust = 0.0,
+        torque = 0.0,
+        fuelPumpEnabled = true,
+        clutchDisconnected = false,
+        rpm = 0.0,
+        feedbackTorque = 0.0,
+        fuelConsumption = 0.0,
+        fuelLevel = 100.0,
+        bleedBoost = 0.0,
+
+        -- Dual turbine specific fields
+        front = {
+            throttle = 0.0,
+            throttleAfterburner = 0.0,
+            torque = 0.0,
+            fuelPumpEnabled = true,
+            rpm = 0.0,
+            feedbackTorque = 0.0
+        },
+        rear = {
+            throttle = 0.0,
+            throttleAfterburner = 0.0, 
+            torque = 0.0,
+            fuelPumpEnabled = true,
+            rpm = 0.0,
+            feedbackTorque = 0.0
+        }
+    },
 }
 
 
