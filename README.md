@@ -39,7 +39,11 @@ The vehicles are installed to Assetto Corsa by extracting their folders containe
 
 ## Controls
 The car makes use of special bindings for its different features. To bind these controls, load the car in-game and open the Extended Controls app. To bind a control, navigate to it in Extended Controls, click on the binding button, and press the keyboard, wheel, or gamepad button you want to bind to it. 
-For cars that are equipped with a turbine engine, it is recommended to bind at least the "Turbine Throttle Override" control. This control is used often both during turns (for extra cornering force under high drift angles) and on straights (for extra acceleration). Other controls are explained in the Systems section below.
+For cars that are equipped with a turbothruster engine, it is recommended to bind at least the "Turbine Throttle Override" control. This control is used often both during turns (for extra cornering force under high drift angles) and on straights (for extra acceleration). Other controls are explained in the Systems section below.
+This car is designed for use with a wheel, but you can use it with a gamepad/controller or a keyboard:
+- Set the Rotation Range option in the FFB Tuning section of the car's setup menu in-game to **180** if using a controller.
+- If using a keyboard, you might find that turning this same setting to **45** makes the car turn more.
+- You shouldn't use an assisted gamepad script (like Advanced Gamepad Assist) with this car, as it will not know how to steer the wheels of the car very well, if at all.
 
 ## Systems
 T-180s can be equipped with a variety of systems. Below is a short explanation of the systems configured for the "T-180 Demo" car included with each release.
@@ -76,6 +80,11 @@ The repository is organized so that the included "builder.py" script can assembl
 10. Turbine RPM
 11. Turbine Fuel Pump On/Off
 12. Turbine Afterburner Throttle
+13. Secondary Turbine Throttle (remapped so that minThrottle input = 0 output)
+14. Secondary Turbine Thrust (1000N = 0, 8000N = 1, lerp between and clamp at bounds)
+15. Secondary Turbine RPM
+16. Secondary Turbine Fuel Pump On/Off
+17. Secondary Turbine Afterburner Throttle
 
 ## Custom Setup Items Index
 0. FFB Gain
