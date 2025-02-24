@@ -39,7 +39,7 @@ The vehicles are installed to Assetto Corsa by extracting their folders containe
 
 ## Controls
 The car makes use of special bindings for its different features. To bind these controls, load the car in-game and open the Extended Controls app. To bind a control, navigate to it in Extended Controls, click on the binding button, and press the keyboard, wheel, or gamepad button you want to bind to it. 
-For cars that are equipped with a turbothruster engine, it is recommended to bind at least the "Turbine Throttle Override" control. This control is used often both during turns (for extra cornering force under high drift angles) and on straights (for extra acceleration). Other controls are explained in the Systems section below.
+For cars that are equipped with a turbojet engine, it is recommended to bind at least the "Turbine Throttle Override" control. This control is used often both during turns (for extra cornering force under high drift angles) and on straights (for extra acceleration). Other controls are explained in the Systems section below.
 This car is designed for use with a wheel, but you can use it with a gamepad/controller or a keyboard:
 - Set the Rotation Range option in the FFB Tuning section of the car's setup menu in-game to **180** if using a controller.
 - If using a keyboard, you might find that turning this same setting to **45** makes the car turn more.
@@ -58,8 +58,7 @@ The car uses a V-12 piston engine for its mechanical energy generation. The engi
 A low-inertia turbojet engine is integrated with the piston engine to provide direct thrust output at the rear of the car for enhanced cornering and extra acceleration. The spool of the turbojet is geared to a torque converter attached to the main engine to allow high turbine RPMs to "drag up" the piston engine RPM if it is lower. The turbine also contains a bleed-air system which, much like a turbo- or supercharger, can deliver pressurized air to the piston engine for extra power, though the turbine must be spun up for this boost pressure to be developed. The torque converter can be disengaged to allow the turbine to spin freely from the piston engine, and the turbine can be cut off entirely during times when rearward blast thrust may be dangerous to the pit crew.
 
 ### Wheel Steering Controller
-The wheels are controlled independently of each other via servo motors commanded by the car's central computer. The computer can detect each wheel's slip angle, or "angle of attack", and can steer each wheel to a specified offset of that angle. Angle offsets are calculated through an algorithm that takes the car's trajectory and the driver's steering angle as inputs. On entry to a corner and upon steering input, the wheels are steered both to change the car's trajectory and to change the chassis attack angle, or drift angle. Holding the wheel at zero steering angle will maintain a drift angle if the car is in a corner and will maintain a straight trajectory if the car is traveling straight. Countersteering will reduce the drift angle and straighten the car's trajectory.
-The computer's control algorithm can also be temporarily modified via use of the "Rear Anti-Crab" and "Lock Rears" commands. "Lock Rears" will force the rear wheels to face forward like a traditional car and forbid the computer to use them to steer the car. "Rear Anti-Crab" will change the gains in the control algorithm to greatly reduce the car's chassis attack angle during a corner, which can be preferable on traditional flat tracks.
+The wheels are controlled independently of each other via servo motors commanded by the car's central computer. The computer can detect each wheel's slip angle, or "angle of attack", and can steer each wheel to a specified offset of that angle. Angle offsets are calculated through an algorithm that takes the car's yaw rate and the driver's steering angle as inputs. On entry to a corner and upon steering input, the wheels are steered to change the car's yaw rate. Holding the wheel at zero steering angle will maintain a drift angle if the car is in a corner and will maintain a straight trajectory if the car is traveling straight. Countersteering will reduce the drift angle and straighten the car's trajectory.
 
 # Development
 
@@ -75,16 +74,18 @@ The repository is organized so that the included "builder.py" script can assembl
 5. LR Steer Rod 2
 6. RR Steer Rod 1
 7. RR Steer Rod 2
-8. Turbine Throttle (remapped so that minThrottle input = 0 output)
-9. Turbine Thrust (1000N = 0, 8000N = 1, lerp between and clamp at bounds)
-10. Turbine RPM
+8. Turbine Throttle (remap so that minThrottle input = 0 output)
+9. Turbine Thrust (inputs: 0 to 1)
+10. Turbine RPM (inputs: 0 to 18000)
 11. Turbine Fuel Pump On/Off
 12. Turbine Afterburner Throttle
-13. Secondary Turbine Throttle (remapped so that minThrottle input = 0 output)
-14. Secondary Turbine Thrust (1000N = 0, 8000N = 1, lerp between and clamp at bounds)
-15. Secondary Turbine RPM
+13. Secondary Turbine Throttle (remap so that minThrottle input = 0 output)
+14. Secondary Turbine Thrust (inputs: 0 to 1)
+15. Secondary Turbine RPM (inputs: 0 to 20000)
 16. Secondary Turbine Fuel Pump On/Off
 17. Secondary Turbine Afterburner Throttle
+18. Turbine Damage (inputs: 0 to 1)
+19. Secondary Turbine Damage (inputs: 0 to 1)
 
 ## Custom Setup Items Index
 0. FFB Gain
