@@ -11,7 +11,7 @@ local config = {
         debugFrequency = 0.1;
         jumpJackSize = 1;
     },
-    turbothruster = {
+    turbojet = {
         present = false, -- Whether the car has a turbine or not
         frictionCoef = 1.35, -- Friction coefficient of the turbine shaft
         inertia = 0.002, -- Inertia of the turbine shaft
@@ -28,29 +28,28 @@ local config = {
         fuelConsSpeedFactor = 0.0001, -- Angular speed fuel consumption multiplier
         fuelConsThrustFactor = 0.000125, -- Developed thrust fuel consumption multiplier
     },
-    torqueTurbine = {
+    turboshaft = {
         present = true,
         type = "dual", -- "single" or "dual"
-        
+
         -- Common parameters for both turbines
-        designRPM = 38000,
+        designMaxNGRPM = 30000,
+        designMaxTIT = 1200,
+        boostNGMultiplier = 1.5,
+        boostTITMultiplier = 1.5,
+        inertiaNG = 0.02,
         pressureRatio = 7.8,
         compressorEfficiency = 0.82,
-        turbineEfficiency = 0.85,
+        freeTurbineEfficiency = 0.85,
         fuelLHV = 43.2e6,  -- J/kg (Jet-A)
         combustionEfficiency = 0.98,
-        
-        -- Individual turbine parameters
-        front = {
-            inertia = 0.018,
-            maxTorque = 2000,
-            finalDriveRatio = 1/10
-        },
-        rear = {
-            inertia = 0.018, 
-            maxTorque = 2000,
-            finalDriveRatio = 1/10
-        }
+
+        -- Power turbine specific parameters
+        designPowerRPM = 40000,      -- Design RPM for power turbine
+        inertiaNP = 0.03,            -- Power turbine rotor inertia
+        powerTurbineEfficiency = 0.85,    -- Efficiency of power extraction from remaining energy
+        totalTurbineEfficiency = 0.92,    -- Total efficiency of both turbines combined
+        ngTurbineEfficiency = 0.75,       -- Portion of total power extracted by gas generator
     }
 }
 

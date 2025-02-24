@@ -51,7 +51,7 @@ function WheelSteerCtrlr:initialize()
 
     self.isReversing = false
 
-    self.inversionBlendSpeed = 2.0
+    self.inversionBlendSpeed = 3.0 -- The time it takes for the wheels to move to their drift inversion position
 
     self.lastDriftAngle = 0
     self.inversionBlendState = 0

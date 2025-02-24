@@ -123,12 +123,14 @@ function script.update(dt)
         turbineRPM = car_phys.scriptControllerInputs[10] or 0,
         fuelPumpEnabled = car_phys.scriptControllerInputs[11] or 0,
         turbineAfterburner = car_phys.scriptControllerInputs[12] or 0,
+        turbineDamage = car_phys.scriptControllerInputs[18] or 0,
         -- Front turbine data
         frontTurbineThrottle = car_phys.scriptControllerInputs[13] or 0,
         frontTurbineThrust = car_phys.scriptControllerInputs[14] or 0,
         frontTurbineRPM = car_phys.scriptControllerInputs[15] or 0,
         frontFuelPumpEnabled = car_phys.scriptControllerInputs[16] or 0,
-        frontTurbineAfterburner = car_phys.scriptControllerInputs[17] or 0
+        frontTurbineAfterburner = car_phys.scriptControllerInputs[17] or 0,
+        frontTurbineDamage = car_phys.scriptControllerInputs[19] or 0
     }
 
     if ac.isInReplayMode() then
@@ -156,6 +158,7 @@ function script.update(dt)
         ctrlrData.turbineRPM = replayFadeouts.rpm
         ctrlrData.fuelPumpEnabled = 1
         ctrlrData.turbineAfterburner = replayFadeouts.afterburner
+        ctrlrData.turbineDamage = 0
 
         -- Front turbine faded values
         ctrlrData.frontTurbineThrottle = replayFadeouts.frontThrottle
@@ -163,6 +166,7 @@ function script.update(dt)
         ctrlrData.frontTurbineRPM = replayFadeouts.frontRpm
         ctrlrData.frontFuelPumpEnabled = 1
         ctrlrData.frontTurbineAfterburner = replayFadeouts.frontAfterburner
+        ctrlrData.frontTurbineDamage = 0
     end
 
     if not audio_turbine:isPlaying() then audio_turbine:start() end
@@ -182,12 +186,14 @@ function script.update(dt)
     audio_turbine:setParam("throttle", ctrlrData.turbineThrottle)
     audio_turbine:setParam("afterburner", ctrlrData.turbineAfterburner)
     audio_turbine_fuelpump:setParam("rpm", fuelPumpRPMLUT:get(ctrlrData.turbineRPM) * fuelPumpFadeout)
+    audio_turbine:setParam("damage", ctrlrData.turbineDamage)
 
     -- Front turbine audio
     audio_turbine_front:setParam("rpm", ctrlrData.frontTurbineRPM)
     audio_turbine_front:setParam("throttle", ctrlrData.frontTurbineThrottle)
     audio_turbine_front:setParam("afterburner", ctrlrData.frontTurbineAfterburner)
     audio_turbine_fuelpump_front:setParam("rpm", fuelPumpRPMLUT:get(ctrlrData.frontTurbineRPM) * frontFuelPumpFadeout)
+    audio_turbine_front:setParam("damage", ctrlrData.frontTurbineDamage)
 
     flameBoost:emit(vec3(config.coordinates.turbineExhaust.x + car.localVelocity.x * 0.012, config.coordinates.turbineExhaust.y, config.coordinates.turbineExhaust.z + car.localVelocity.z * 0.01),
         vec3(0 + car.localVelocity.x * 0.01, 0, -3) + (car.localVelocity * -0.35),

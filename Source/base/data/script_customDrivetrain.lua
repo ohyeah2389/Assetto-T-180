@@ -10,11 +10,11 @@ local drivetrain = class("drivetrain")
 
 function drivetrain:initialize(params)
     self.drivenWheels = params.drivenWheels or {ac.Wheel.RearLeft, ac.Wheel.RearRight}
-    self.finalDriveRatio = params.finalDriveRatio or (1/25)
+    self.finalDriveRatio = params.finalDriveRatio or 8
 
     -- Open differential parameters with speed-dependent coupling
-    self.couplingStiffness = params.couplingStiffness or 400
-    self.couplingDamping = params.couplingDamping or 200
+    self.couplingStiffness = params.couplingStiffness or 1000
+    self.couplingDamping = params.couplingDamping or 500
 
     -- Clutch parameters
     self.clutchEngageRate = params.clutchEngageRate or 2  -- Exponent for clutch engagement
@@ -34,7 +34,7 @@ function drivetrain:update(inputShaftSpeed, inputTorque, clutchPosition, dt)
     local clutchEngagement = (clutchPosition ^ self.clutchEngageRate)
 
     -- Final drive output speed is the input shaft speed (which is in RPM, so we convert it back to rad/s) multiplied (?) by the final drive ratio
-    local finalDriveOutputSpeed = (inputShaftSpeed * math.pi / 30) * self.finalDriveRatio
+    local finalDriveOutputSpeed = (inputShaftSpeed * math.pi / 30) / self.finalDriveRatio
 
     -- Since this is an open differential (currently), we need the average wheel speed for calculating the torque on the differential input shaft
     local avgWheelSpeed = (leftWheel.shaftVelocity + rightWheel.shaftVelocity) / 2
@@ -50,7 +50,7 @@ function drivetrain:update(inputShaftSpeed, inputTorque, clutchPosition, dt)
     local couplingTorque = (speedDiff * currentStiffness * dt) + (speedDiff * currentDamping)
 
     -- Total torque is the input torque (corrected for final drive ratio and scaled by clutch engagement) plus the coupling torque
-    local totalTorque = ((inputTorque * self.finalDriveRatio * clutchEngagement) + couplingTorque)
+    local totalTorque = (((inputTorque / self.finalDriveRatio) * clutchEngagement) + couplingTorque)
 
     -- Split torque equally between wheels as this is an open differential
     local wheelTorque = totalTorque * 0.5
@@ -61,7 +61,7 @@ function drivetrain:update(inputShaftSpeed, inputTorque, clutchPosition, dt)
     ac.addElectricTorque(self.drivenWheels[2], limitedTorque, true)
 
     -- Calculate feedback torque through final drive
-    local rawFeedback = ((leftWheel.feedbackTorque + (0.1 * leftWheel.brakeTorque)) + (rightWheel.feedbackTorque + (0.1 * rightWheel.brakeTorque))) / self.finalDriveRatio
+    local rawFeedback = ((leftWheel.feedbackTorque + (0.1 * leftWheel.brakeTorque)) + (rightWheel.feedbackTorque + (0.1 * rightWheel.brakeTorque))) * self.finalDriveRatio
 
     -- Scale feedback by clutch engagement
     local clutchFeedback = rawFeedback * clutchEngagement

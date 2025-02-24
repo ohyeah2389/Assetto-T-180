@@ -48,20 +48,26 @@ local state = {
         front = {
             throttle = 0.0,
             throttleAfterburner = 0.0,
-            torque = 0.0,
+            outputTorque = 0.0,
             fuelPumpEnabled = true,
             rpm = 0.0,
-            feedbackTorque = 0.0
+            feedbackTorque = 0.0,
+            warnings = {},
+            cautions = {}
         },
         rear = {
             throttle = 0.0,
             throttleAfterburner = 0.0, 
-            torque = 0.0,
+            outputTorque = 0.0,
             fuelPumpEnabled = true,
             rpm = 0.0,
-            feedbackTorque = 0.0
+            feedbackTorque = 0.0,
+            warnings = {},
+            cautions = {}
         }
     },
+    warnings = {},
+    cautions = {}
 }
 
 

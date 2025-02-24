@@ -9,7 +9,7 @@ local controls = require('script_controls')
 local helpers = require('script_helpers')
 local WheelSteerController = require('script_wheelsteerctrlr')
 local JumpJack = require('script_jumpjack')
-local Turbothruster = require('script_turbothruster')
+local Turbojet = require('script_turbojet')
 local CustomDrivetrain = require('script_customDrivetrain')
 
 
@@ -26,22 +26,22 @@ local jumpJackSystem = JumpJack({
         frontLeft = {
             length = 1.2,
             baseForce = 60000,
-            position = vec3(-0.545, 0.18, 0.77)
+            position = vec3(-0.8, 0.18, 0.77)
         },
         frontRight = {
             length = 1.2,
             baseForce = 60000,
-            position = vec3(0.545, 0.18, 0.77)
+            position = vec3(0.8, 0.18, 0.77)
         },
         rearLeft = {
             length = 1.2,
             baseForce = 60000,
-            position = vec3(-0.45, 0.18, -0.77)
+            position = vec3(-0.8, 0.18, -0.77)
         },
         rearRight = {
             length = 1.2,
             baseForce = 60000,
-            position = vec3(0.45, 0.18, -0.77)
+            position = vec3(0.8, 0.18, -0.77)
         }
     }
 })
@@ -61,24 +61,22 @@ end
 
 
 local wheelSteerCtrlr = WheelSteerController()
-local turbothruster = Turbothruster()
+local turbojet = Turbojet()
 
 local frontTurbine = nil
 local rearTurbine = nil
 local frontDrivetrain = nil
 local rearDrivetrain = nil
 
-if config.torqueTurbine.present then
-    local TorqueTurbine = require('script_torqueTurbine')
-    frontTurbine = TorqueTurbine('front')
-    rearTurbine = TorqueTurbine('rear')
+if config.turboshaft.present then
+    local Turboshaft = require('script_turboshaft')
+    frontTurbine = Turboshaft('front')
+    rearTurbine = Turboshaft('rear')
     frontDrivetrain = CustomDrivetrain({
-        finalDriveRatio = config.torqueTurbine.front.finalDriveRatio,
         drivenWheels = {ac.Wheel.FrontLeft, ac.Wheel.FrontRight},
         id = "front"
     })
     rearDrivetrain = CustomDrivetrain({
-        finalDriveRatio = config.torqueTurbine.rear.finalDriveRatio,
         drivenWheels = {ac.Wheel.RearLeft, ac.Wheel.RearRight},
         id = "rear"
     })
@@ -89,10 +87,10 @@ end
 function script.reset()
     wheelSteerCtrlr:reset()
     jumpJackSystem:reset()
-    if config.turbothruster.present then
-        turbothruster:reset()
+    if config.turbojet.present then
+        turbojet:reset()
     end
-    if config.torqueTurbine.present then
+    if config.turboshaft.present then
         frontTurbine:reset()
         rearTurbine:reset()
     end
@@ -114,28 +112,62 @@ function script.update(dt)
 
     wheelSteerCtrlr:update(dt)
 
-    if config.turbothruster.present then
-        turbothruster:update(dt)
-        game.car_cphys.controllerInputs[8] = helpers.mapRange(state.turbine.throttle, config.turbothruster.minThrottle, 1, 0, 1, true)
+    if config.turbojet.present then
+        turbojet:update(dt)
+        game.car_cphys.controllerInputs[8] = helpers.mapRange(state.turbine.throttle, config.turbojet.minThrottle, 1, 0, 1, true)
         game.car_cphys.controllerInputs[9] = helpers.mapRange(state.turbine.thrust, 1000, 8000, 0, 1, true)
         game.car_cphys.controllerInputs[10] = state.turbine.rpm
         game.car_cphys.controllerInputs[11] = state.turbine.fuelPumpEnabled and 1 or 0
         game.car_cphys.controllerInputs[12] = state.turbine.throttleAfterburner    
     end
 
-    if config.torqueTurbine.present then
-        if config.torqueTurbine.type == "dual" then
+    if config.turboshaft.present then
+        if config.turboshaft.type == "dual" then
+            -- Clear previous warnings/cautions
+            state.warnings = {}
+            state.cautions = {}
+            state.turbine.front.warnings = {}
+            state.turbine.front.cautions = {}
+            state.turbine.rear.warnings = {}
+            state.turbine.rear.cautions = {}
+
             -- Update front turbine
-            frontTurbine:update(dt)
-            game.car_cphys.controllerInputs[13] = helpers.mapRange(state.turbine.front.throttle, config.turbothruster.minThrottle, 1, 0, 1, true)
-            game.car_cphys.controllerInputs[14] = frontTurbine.fuelSystem.actualFlow / frontTurbine.fadec.maxFuelFlow
-            game.car_cphys.controllerInputs[15] = state.turbine.front.rpm / 2.5
-            
+            game.car_cphys.controllerInputs[18] = frontTurbine:update(dt) -- turbine:update() returns the damage state of the turbine
+            game.car_cphys.controllerInputs[13] = helpers.mapRange(state.turbine.front.throttle, config.turbojet.minThrottle, 1, 0, 1, true)
+            game.car_cphys.controllerInputs[14] = frontTurbine.fuelSystem.actualFuelFlow / frontTurbine.fadec.maxFuelFlow
+            game.car_cphys.controllerInputs[15] = ((frontTurbine.gasTurbine.angularSpeed * 60 / (2 * math.pi)) or 0) * (20000 / 45000)
+            game.car_cphys.controllerInputs[18] = frontTurbine:update(dt)
+            -- Copy warnings/cautions from turbine to state
+            for _, warning in ipairs(frontTurbine.state.warnings) do
+                table.insert(state.turbine.front.warnings, warning)
+                table.insert(state.warnings, "FRONT: " .. warning)
+            end
+            for _, caution in ipairs(frontTurbine.state.cautions) do
+                table.insert(state.turbine.front.cautions, caution)
+                table.insert(state.cautions, "FRONT: " .. caution)
+            end
+
             -- Update rear turbine
-            rearTurbine:update(dt)
-            game.car_cphys.controllerInputs[8] = helpers.mapRange(state.turbine.rear.throttle, config.turbothruster.minThrottle, 1, 0, 1, true)
-            game.car_cphys.controllerInputs[9] = rearTurbine.fuelSystem.actualFlow / rearTurbine.fadec.maxFuelFlow
-            game.car_cphys.controllerInputs[10] = state.turbine.rear.rpm / 2.5
+            game.car_cphys.controllerInputs[8] = helpers.mapRange(state.turbine.rear.throttle, config.turbojet.minThrottle, 1, 0, 1, true)
+            game.car_cphys.controllerInputs[9] = rearTurbine.fuelSystem.actualFuelFlow / rearTurbine.fadec.maxFuelFlow
+            game.car_cphys.controllerInputs[10] = ((rearTurbine.gasTurbine.angularSpeed * 60 / (2 * math.pi)) or 0) * (20000 / 45000)
+            game.car_cphys.controllerInputs[19] = rearTurbine:update(dt)
+            -- Copy warnings/cautions from turbine to state
+            for _, warning in ipairs(rearTurbine.state.warnings) do
+                table.insert(state.turbine.rear.warnings, warning)
+                table.insert(state.warnings, "REAR: " .. warning)
+            end
+            for _, caution in ipairs(rearTurbine.state.cautions) do
+                table.insert(state.turbine.rear.cautions, caution)
+                table.insert(state.cautions, "REAR: " .. caution)
+            end
+
+            -- Display warnings and cautions
+            if #state.warnings > 0 then
+                ac.setMessage("MASTER WARNING", table.concat(state.warnings, ", "))
+            elseif #state.cautions > 0 then
+                ac.setMessage("MASTER CAUTION", table.concat(state.cautions, ", "))
+            end
 
             -- Common updates
             ac.overrideTurboBoost(0, 0, 0)
@@ -149,24 +181,23 @@ function script.update(dt)
             -- Update drivetrains
             state.turbine.front.throttle = math.clamp(game.car_cphys.gas - (ac.isControllerGearDownPressed() and 0.75 or 0), 0, 1)
             state.turbine.rear.throttle = math.clamp(game.car_cphys.gas - (ac.isControllerGearUpPressed() and 0.75 or 0), 0, 1)
-            local frontFeedback = frontDrivetrain:update(state.turbine.front.rpm, state.turbine.front.torque, math.clamp(game.car_cphys.gas - game.car_cphys.brake, 0, 1), dt)
-            local rearFeedback = rearDrivetrain:update(state.turbine.rear.rpm, state.turbine.rear.torque, math.clamp(game.car_cphys.gas - game.car_cphys.brake, 0, 1), dt)
+            local frontFeedback = frontDrivetrain:update(state.turbine.front.outputRPM, state.turbine.front.outputTorque, math.clamp(game.car_cphys.gas - game.car_cphys.brake, 0, 1), dt)
+            local rearFeedback = rearDrivetrain:update(state.turbine.rear.outputRPM, state.turbine.rear.outputTorque, math.clamp(game.car_cphys.gas - game.car_cphys.brake, 0, 1), dt)
             state.turbine.front.feedbackTorque = frontFeedback
             state.turbine.rear.feedbackTorque = rearFeedback
         else
-            -- Original single turbine code
             frontTurbine:update(dt)
-            game.car_cphys.controllerInputs[8] = helpers.mapRange(state.turbine.throttle, config.turbothruster.minThrottle, 1, 0, 1, true)
-            game.car_cphys.controllerInputs[9] = helpers.mapRange(state.turbine.torque, 0, 2000, 0, 1, true)
-            game.car_cphys.controllerInputs[10] = state.turbine.rpm / 2.5
+            game.car_cphys.controllerInputs[8] = helpers.mapRange(state.turbine.throttle, config.turbojet.minThrottle, 1, 0, 1, true)
+            game.car_cphys.controllerInputs[9] = helpers.mapRange(state.turbine.outputTorque, 0, 2000, 0, 1, true)
+            game.car_cphys.controllerInputs[10] = state.turbine.outputRPM / 2.5
             game.car_cphys.controllerInputs[11] = state.turbine.fuelPumpEnabled and 1 or 0
             game.car_cphys.controllerInputs[12] = state.turbine.throttleAfterburner
             ac.overrideTurboBoost(0, 0, 0)
             ac.overrideEngineTorque(0)
             ac.overrideCarState('limiter', 38000 / 4)
-            ac.setEngineRPM(state.turbine.rpm * 0)
+            ac.setEngineRPM(state.turbine.outputRPM * 0.4)
             state.turbine.throttle = game.car_cphys.gas
-            local drivetrainFeedback = rearDrivetrain:update(state.turbine.rpm, state.turbine.torque, game.car_cphys.clutch, dt)
+            local drivetrainFeedback = rearDrivetrain:update(state.turbine.outputRPM, state.turbine.outputTorque, game.car_cphys.clutch, dt)
             state.turbine.feedbackTorque = drivetrainFeedback
         end
     end
