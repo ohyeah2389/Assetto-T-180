@@ -132,7 +132,6 @@ function script.update(dt)
             state.turbine.rear.cautions = {}
 
             -- Update front turbine
-            game.car_cphys.controllerInputs[18] = frontTurbine:update(dt) -- turbine:update() returns the damage state of the turbine
             game.car_cphys.controllerInputs[13] = helpers.mapRange(state.turbine.front.throttle, config.turbojet.minThrottle, 1, 0, 1, true)
             game.car_cphys.controllerInputs[14] = frontTurbine.fuelSystem.actualFuelFlow / frontTurbine.fadec.maxFuelFlow
             game.car_cphys.controllerInputs[15] = ((frontTurbine.gasTurbine.angularSpeed * 60 / (2 * math.pi)) or 0) * (20000 / 45000)
