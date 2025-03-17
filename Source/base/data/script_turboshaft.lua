@@ -25,19 +25,8 @@ function Turboshaft:initialize(turbineId)
         expFrictionCoef = 1.3
     })
 
-    -- Power (free) turbine (NP)
-    self.powerTurbine = physics({
-        rotary = true,
-        inertia = config.turboshaft.inertiaNP or 0.05, -- Usually higher inertia than NG
-        forceMax = 10000,
-        frictionCoef = 0.002,
-        staticFrictionCoef = 1.1,
-        expFrictionCoef = 1.2
-    })
-
-    -- Initial turbine speeds
+    -- Initial turbine speed
     self.gasTurbine.angularSpeed = config.turboshaft.designMaxNGRPM * math.pi / 60
-    self.powerTurbine.angularSpeed = config.turboshaft.designPowerRPM * math.pi / 60
 
     -- Ambient conditions
     self.ambientPressure = ac.getAirPressure(game.car_cphys.position)  -- kPa at sea level
@@ -107,9 +96,8 @@ function Turboshaft:initialize(turbineId)
         timeConstant = 0.15   -- seconds, fuel system response time
     }
 
-    -- Add power turbine specific parameters
-    self.powerTurbineEfficiency = config.turboshaft.powerTurbineEfficiency or 0.85
-    self.interTurbinePressureLoss = 0.02 -- Pressure loss between turbines
+    -- Turbine efficiency
+    self.turbineEfficiency = config.turboshaft.totalTurbineEfficiency or 0.85
 end
 
 
@@ -173,48 +161,36 @@ function Turboshaft:update(dt)
 
     -- Turbine torque calculations
     local deltaTemp = combustionExitTemp - inletTemp
-    local gasTurbineTorque = 0
-    local powerTurbineTorque = 0
+    local turbineTorque = 0
 
     if deltaTemp > 0 and self.state.combustionActive then
         -- Calculate total power available from combustion (in kW)
         local totalPowerAvailable = (totalMassFlow * self.specificHeatCapacity *
-                                  deltaTemp * config.turboshaft.totalTurbineEfficiency) / 1000
+                                  deltaTemp * self.turbineEfficiency) / 1000
 
-        -- Gas generator turbine extracts its portion based on efficiency
-        local gasTurbinePower = totalPowerAvailable * config.turboshaft.ngTurbineEfficiency
         -- Convert power (kW) to torque (Nm)
-        gasTurbineTorque = gasTurbinePower * 1000 / math.max(self.gasTurbine.angularSpeed, 1)
-
-        -- Power turbine gets the remaining energy
-        local powerTurbinePower = (totalPowerAvailable - gasTurbinePower) * config.turboshaft.powerTurbineEfficiency
-        -- Convert power (kW) to torque (Nm)
-        powerTurbineTorque = powerTurbinePower * 1000 / math.max(self.powerTurbine.angularSpeed, 1)
+        turbineTorque = totalPowerAvailable * 1000 / math.max(self.gasTurbine.angularSpeed, 1)
     end
 
     -- Apply damage derating
-    gasTurbineTorque = gasTurbineTorque * self.damageTurbineDerateCurve:get(self.state.damageTurbineBlades)
-    powerTurbineTorque = powerTurbineTorque * self.damageTurbineDerateCurve:get(self.state.damageTurbineBlades)
+    turbineTorque = turbineTorque * self.damageTurbineDerateCurve:get(self.state.damageTurbineBlades)
 
     -- Net torque for gas generator is turbine - compressor (note the sign change)
-    local ngAppliedTorque = gasTurbineTorque + compressorTorque
+    local ngAppliedTorque = turbineTorque + compressorTorque
 
     -- Apply torque limits and step physics
     local finalNGTorque = math.clamp(ngAppliedTorque, -10000, 10000)
-    local finalPTTorque = math.clamp(powerTurbineTorque, -10000, 10000)
 
-    self.gasTurbine:step(finalNGTorque, dt)
-    self.powerTurbine:step(finalPTTorque - state.turbine[self.turbineId].feedbackTorque, dt)
+    self.gasTurbine:step(finalNGTorque - state.turbine[self.turbineId].feedbackTorque, dt)
 
     -- Update state values
-    state.turbine[self.turbineId].outputTorque = finalPTTorque -- Use power turbine torque as output
-    state.turbine[self.turbineId].outputRPM = self.powerTurbine.angularSpeed * 60 / (2 * math.pi)
+    state.turbine[self.turbineId].outputTorque = turbineTorque -- Use gas turbine torque as output
+    state.turbine[self.turbineId].outputRPM = self.gasTurbine.angularSpeed * 60 / (2 * math.pi)
 
     -- Debug outputs with turbine ID
-    ac.debug("turboshaft." .. self.turbineId .. ".gasTurbineTorque", gasTurbineTorque)
+    ac.debug("turboshaft." .. self.turbineId .. ".turbineTorque", turbineTorque)
     ac.debug("turboshaft." .. self.turbineId .. ".gasTurbine.RPM", self.gasTurbine.angularSpeed * 60 / (2 * math.pi))
     ac.debug("turboshaft." .. self.turbineId .. ".compressorTorque", compressorTorque)
-    ac.debug("turboshaft." .. self.turbineId .. ".powerTurbine.RPM", self.powerTurbine.angularSpeed * 60 / (2 * math.pi))
     ac.debug("turboshaft." .. self.turbineId .. ".pressureRatio", self.state.pressureRatio)
     ac.debug("turboshaft." .. self.turbineId .. ".combustionExitTemp", combustionExitTemp)
     ac.debug("turboshaft." .. self.turbineId .. ".combustionExitPressure", combustionExitPressure)
@@ -223,7 +199,6 @@ function Turboshaft:update(dt)
     ac.debug("turboshaft." .. self.turbineId .. ".combustionActive", self.state.combustionActive)
     ac.debug("turboshaft." .. self.turbineId .. ".damageTurbineBlades", self.state.damageTurbineBlades)
     ac.debug("turboshaft." .. self.turbineId .. ".damageCompressorBlades", self.state.damageCompressorBlades)
-    ac.debug("turboshaft." .. self.turbineId .. ".finalPTTorque", finalPTTorque)
     ac.debug("turboshaft." .. self.turbineId .. ".finalNGTorque", finalNGTorque)
 
     -- Damage calculations
@@ -294,7 +269,6 @@ end
 
 function Turboshaft:reset()
     self.gasTurbine.angularSpeed = config.turboshaft.designMaxNGRPM * math.pi / 60
-    self.powerTurbine.angularSpeed = config.turboshaft.designPowerRPM * math.pi / 60
     self.state.combustionActive = true
     self.state.flameoutTimer = 0
     self.state.tit = self.ambientTemp

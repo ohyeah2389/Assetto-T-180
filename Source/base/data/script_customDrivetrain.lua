@@ -10,11 +10,11 @@ local drivetrain = class("drivetrain")
 
 function drivetrain:initialize(params)
     self.drivenWheels = params.drivenWheels or {ac.Wheel.RearLeft, ac.Wheel.RearRight}
-    self.finalDriveRatio = params.finalDriveRatio or 4
+    self.finalDriveRatio = params.finalDriveRatio or 8
 
     -- Open differential parameters with speed-dependent coupling
-    self.couplingStiffness = params.couplingStiffness or 2000
-    self.couplingDamping = params.couplingDamping or 1000
+    self.couplingStiffness = params.couplingStiffness or 1000
+    self.couplingDamping = params.couplingDamping or 500
 
     -- Clutch parameters
     self.clutchEngageRate = params.clutchEngageRate or 10  -- Exponent for clutch engagement
