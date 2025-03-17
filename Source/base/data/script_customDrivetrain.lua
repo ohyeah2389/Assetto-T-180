@@ -10,17 +10,17 @@ local drivetrain = class("drivetrain")
 
 function drivetrain:initialize(params)
     self.drivenWheels = params.drivenWheels or {ac.Wheel.RearLeft, ac.Wheel.RearRight}
-    self.finalDriveRatio = params.finalDriveRatio or 8
+    self.finalDriveRatio = params.finalDriveRatio or 4
 
     -- Open differential parameters with speed-dependent coupling
-    self.couplingStiffness = params.couplingStiffness or 1000
-    self.couplingDamping = params.couplingDamping or 500
+    self.couplingStiffness = params.couplingStiffness or 2000
+    self.couplingDamping = params.couplingDamping or 1000
 
     -- Clutch parameters
-    self.clutchEngageRate = params.clutchEngageRate or 2  -- Exponent for clutch engagement
+    self.clutchEngageRate = params.clutchEngageRate or 10  -- Exponent for clutch engagement
     self.minClutchCoupling = params.minClutchCoupling or 0.0  -- Minimum coupling with clutch disengaged
 
-    self.torqueLimit = params.torqueLimit or 1000
+    self.torqueLimit = params.torqueLimit or 2000
 
     self.id = params.id or "rear"
 end
@@ -52,13 +52,28 @@ function drivetrain:update(inputShaftSpeed, inputTorque, clutchPosition, dt)
     -- Total torque is the input torque (corrected for final drive ratio and scaled by clutch engagement) plus the coupling torque
     local totalTorque = (((inputTorque / self.finalDriveRatio) * clutchEngagement) + couplingTorque)
 
-    -- Split torque equally between wheels as this is an open differential
-    local wheelTorque = totalTorque * 0.5
+    -- Calculate wheel speed difference for torque distribution
+    local wheelSpeedDiff = math.abs(leftWheel.shaftVelocity - rightWheel.shaftVelocity)
+    local speedRatio = wheelSpeedDiff / (math.max(math.abs(leftWheel.shaftVelocity), math.abs(rightWheel.shaftVelocity)) + 0.001)
+    
+    -- Base torque distribution (50/50)
+    local leftRatio = 0.5
+    local rightRatio = 0.5
+    
+    -- Adjust distribution based on which wheel is slower (up to 90/10 split)
+    if leftWheel.shaftVelocity < rightWheel.shaftVelocity then
+        leftRatio = math.lerp(0.5, 0.9, speedRatio)
+        rightRatio = 1 - leftRatio
+    else
+        rightRatio = math.lerp(0.5, 0.9, speedRatio)
+        leftRatio = 1 - rightRatio
+    end
 
-    -- Apply torques to wheels (with limits)
-    local limitedTorque = math.clamp(wheelTorque, -self.torqueLimit, self.torqueLimit)
-    ac.addElectricTorque(self.drivenWheels[1], limitedTorque, true)
-    ac.addElectricTorque(self.drivenWheels[2], limitedTorque, true)
+    -- Apply torques to wheels with new distribution (with limits)
+    local limitedTorqueLeft = math.clamp(totalTorque * leftRatio, -self.torqueLimit, self.torqueLimit)
+    local limitedTorqueRight = math.clamp(totalTorque * rightRatio, -self.torqueLimit, self.torqueLimit)
+    ac.addElectricTorque(self.drivenWheels[1], limitedTorqueLeft, true)
+    ac.addElectricTorque(self.drivenWheels[2], limitedTorqueRight, true)
 
     -- Calculate feedback torque through final drive
     local rawFeedback = ((leftWheel.feedbackTorque + (0.1 * leftWheel.brakeTorque)) + (rightWheel.feedbackTorque + (0.1 * rightWheel.brakeTorque))) * self.finalDriveRatio
@@ -75,9 +90,12 @@ function drivetrain:update(inputShaftSpeed, inputTorque, clutchPosition, dt)
     ac.debug("drivetrain." .. self.id .. ".currentStiffness", currentStiffness)
     ac.debug("drivetrain." .. self.id .. ".couplingTorque", couplingTorque)
     ac.debug("drivetrain." .. self.id .. ".totalTorque", totalTorque)
-    ac.debug("drivetrain." .. self.id .. ".wheelTorque", wheelTorque)
-    ac.debug("drivetrain." .. self.id .. ".leftWheel.feedbackTorque", leftWheel.feedbackTorque)
-    ac.debug("drivetrain." .. self.id .. ".rightWheel.feedbackTorque", rightWheel.feedbackTorque)
+    ac.debug("drivetrain." .. self.id .. ".wheelSpeedDiff", wheelSpeedDiff)
+    ac.debug("drivetrain." .. self.id .. ".speedRatio", speedRatio)
+    ac.debug("drivetrain." .. self.id .. ".leftRatio", leftRatio)
+    ac.debug("drivetrain." .. self.id .. ".rightRatio", rightRatio)
+    ac.debug("drivetrain." .. self.id .. ".limitedTorqueLeft", limitedTorqueLeft)
+    ac.debug("drivetrain." .. self.id .. ".limitedTorqueRight", limitedTorqueRight)
     ac.debug("drivetrain." .. self.id .. ".output.rawFeedback", rawFeedback)
     ac.debug("drivetrain." .. self.id .. ".output.finalFeedback", finalFeedback)
 
