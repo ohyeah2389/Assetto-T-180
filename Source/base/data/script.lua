@@ -173,7 +173,7 @@ function script.update(dt)
             ac.overrideEngineTorque(0)
             ac.overrideCarState('limiter', 38000 / 4)
             ac.setEngineRPM(0)
-            ac.switchToNeutralGear()
+            game.car_cphys.requestedGearIndex = 1
 
             local clutchFadeout = helpers.mapRange(game.car_cphys.speedKmh, 0, 300, 1, 0, true) ^ 0.01
 
