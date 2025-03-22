@@ -169,7 +169,7 @@ function WheelSteerCtrlr:update(dt)
     self:updateSetupValues()
     self.isReversing = helpers.getWheelsOffGround() > 3 or game.car_cphys.localVelocity.z < 0
 
-    local driftAngle = math.atan2(game.car_cphys.localVelocity.x, game.car_cphys.localVelocity.z)
+    local driftAngle = math.atan2(game.car_cphys.localVelocity.x, game.car_cphys.localVelocity.z) * helpers.mapRange(car.speedKmh, 2, 20, 0.1, 1, true)
     
     -- Check for drift angle inversion (crossing +/-pi boundary)
     local angleDiff = driftAngle - self.lastDriftAngle
@@ -197,10 +197,10 @@ function WheelSteerCtrlr:update(dt)
 
     local driftAngleMultiplier = helpers.mapRange(math.abs(driftAngle) * math.sign(steerNormalizedInput), math.rad(90), math.rad(180), 1, 8, true)
 
-    local slipAngleFL = (game.car_cphys.wheels[0].slipAngle ~= 0 and game.car_cphys.wheels[0].slipAngle or self.slipAngleFL_prev)
-    local slipAngleFR = (game.car_cphys.wheels[1].slipAngle ~= 0 and game.car_cphys.wheels[1].slipAngle or self.slipAngleFR_prev)
-    local slipAngleRL = (game.car_cphys.wheels[2].slipAngle ~= 0 and game.car_cphys.wheels[2].slipAngle or self.slipAngleRL_prev)
-    local slipAngleRR = (game.car_cphys.wheels[3].slipAngle ~= 0 and game.car_cphys.wheels[3].slipAngle or self.slipAngleRR_prev)
+    local slipAngleFL = (game.car_cphys.wheels[0].slipAngle ~= 0 and game.car_cphys.wheels[0].slipAngle or self.slipAngleFL_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true)
+    local slipAngleFR = (game.car_cphys.wheels[1].slipAngle ~= 0 and game.car_cphys.wheels[1].slipAngle or self.slipAngleFR_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true)
+    local slipAngleRL = (game.car_cphys.wheels[2].slipAngle ~= 0 and game.car_cphys.wheels[2].slipAngle or self.slipAngleRL_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true)
+    local slipAngleRR = (game.car_cphys.wheels[3].slipAngle ~= 0 and game.car_cphys.wheels[3].slipAngle or self.slipAngleRR_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true)
 
     self.slipAngleFL_prev = slipAngleFL
     self.slipAngleFR_prev = slipAngleFR
@@ -213,10 +213,10 @@ function WheelSteerCtrlr:update(dt)
     local slipOffsetRR = yawRateOutput * 0.5 * driftAngleMultiplier * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)
 
     -- Calculate base PID-controlled steering targets
-    local pidSteerFL = self.steerFL_PID:update(slipOffsetFL, -math.clamp(slipAngleFL, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.2, 1, true) * helpers.mapRange(car.gas, 0, 1, 0.7, 1, true)
-    local pidSteerFR = self.steerFR_PID:update(slipOffsetFR, -math.clamp(slipAngleFR, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.2, 1, true) * helpers.mapRange(car.gas, 0, 1, 0.7, 1, true)
-    local pidSteerRL = self.steerRL_PID:update(slipOffsetRL, -math.clamp(slipAngleRL, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.2, 1, true) * helpers.mapRange(car.gas, 0, 1, 1, 0.8, true)
-    local pidSteerRR = self.steerRR_PID:update(slipOffsetRR, -math.clamp(slipAngleRR, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.2, 1, true) * helpers.mapRange(car.gas, 0, 1, 1, 0.8, true)
+    local pidSteerFL = self.steerFL_PID:update(slipOffsetFL, -math.clamp(slipAngleFL, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true) * helpers.mapRange(car.gas, 0, 1, 0.7, 1, true)
+    local pidSteerFR = self.steerFR_PID:update(slipOffsetFR, -math.clamp(slipAngleFR, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true) * helpers.mapRange(car.gas, 0, 1, 0.7, 1, true)
+    local pidSteerRL = self.steerRL_PID:update(slipOffsetRL, -math.clamp(slipAngleRL, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true) * helpers.mapRange(car.gas, 0, 1, 1, 0.8, true)
+    local pidSteerRR = self.steerRR_PID:update(slipOffsetRR, -math.clamp(slipAngleRR, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true) * helpers.mapRange(car.gas, 0, 1, 1, 0.8, true)
 
     -- Update inversion blend factor
     if state.control.driftInversion then
@@ -284,10 +284,14 @@ function WheelSteerCtrlr:update(dt)
     ac.debug("steerctrl.FR_slipTargetPID.previousError", self.steerFR_PID.previousError)
     ac.debug("steerctrl.RL_slipTargetPID.previousError", self.steerRL_PID.previousError)
     ac.debug("steerctrl.RR_slipTargetPID.previousError", self.steerRR_PID.previousError)
-    ac.debug("steerctrl.slipAngleFL", game.car_cphys.wheels[0].slipAngle)
-    ac.debug("steerctrl.slipAngleFR", game.car_cphys.wheels[1].slipAngle)
-    ac.debug("steerctrl.slipAngleRL", game.car_cphys.wheels[2].slipAngle)
-    ac.debug("steerctrl.slipAngleRR", game.car_cphys.wheels[3].slipAngle)
+    ac.debug("steerctrl.actualSlipAngleFL", game.car_cphys.wheels[0].slipAngle)
+    ac.debug("steerctrl.actualSlipAngleFR", game.car_cphys.wheels[1].slipAngle)
+    ac.debug("steerctrl.actualSlipAngleRL", game.car_cphys.wheels[2].slipAngle)
+    ac.debug("steerctrl.actualSlipAngleRR", game.car_cphys.wheels[3].slipAngle)
+    ac.debug("steerctrl.calcSlipAngleFL", slipAngleFL)
+    ac.debug("steerctrl.calcSlipAngleFR", slipAngleFR)
+    ac.debug("steerctrl.calcSlipAngleRL", slipAngleRL)
+    ac.debug("steerctrl.calcSlipAngleRR", slipAngleRR)
     ac.debug("steerctrl.driftInversion", state.control.driftInversion)
     ac.debug("steerctrl.acceleration.y", car.acceleration.y)
 end
