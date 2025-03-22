@@ -175,13 +175,23 @@ function script.update(dt)
             ac.setEngineRPM(0)
             game.car_cphys.requestedGearIndex = 1
 
-            local clutchFadeout = helpers.mapRange(game.car_cphys.speedKmh, 0, 300, 1, 0, true) ^ 0.01
-
             -- Update drivetrains
-            state.turbine.front.throttle = math.clamp(game.car_cphys.gas - (ac.isControllerGearDownPressed() and 0.75 or 0), 0, 1)
-            state.turbine.rear.throttle = math.clamp(game.car_cphys.gas - (ac.isControllerGearUpPressed() and 0.75 or 0), 0, 1)
-            local frontFeedback = frontDrivetrain:update(state.turbine.front.outputRPM, state.turbine.front.outputTorque, math.clamp(game.car_cphys.gas - game.car_cphys.brake, 0, 1), dt)
-            local rearFeedback = rearDrivetrain:update(state.turbine.rear.outputRPM, state.turbine.rear.outputTorque, math.clamp(game.car_cphys.gas - game.car_cphys.brake, 0, 1), dt)
+            local slipFront = (game.car_cphys.wheels[ac.Wheel.FrontLeft].ndSlip + game.car_cphys.wheels[ac.Wheel.FrontRight].ndSlip) / 2
+            local slipRear = (game.car_cphys.wheels[ac.Wheel.RearLeft].ndSlip + game.car_cphys.wheels[ac.Wheel.RearRight].ndSlip) / 2
+
+            local overLimitFront = math.max(0, slipFront - 1) * 0.02
+            local overLimitRear = math.max(0, slipRear - 1) * 0.02
+
+            ac.debug("slipFront", slipFront)
+            ac.debug("slipRear", slipRear)
+            ac.debug("overLimitFront", overLimitFront)
+            ac.debug("overLimitRear", overLimitRear)
+
+
+            state.turbine.front.throttle = math.clamp(game.car_cphys.gas + (ac.isControllerGearUpPressed() and 0.75 or 0) - overLimitFront, 0, 1)
+            state.turbine.rear.throttle = math.clamp(game.car_cphys.gas + (ac.isControllerGearDownPressed() and 0.75 or 0) - overLimitRear, 0, 1)
+            local frontFeedback = frontDrivetrain:update(state.turbine.front.outputRPM, state.turbine.front.outputTorque, math.clamp(state.turbine.front.throttle - game.car_cphys.brake, 0, 1), dt)
+            local rearFeedback = rearDrivetrain:update(state.turbine.rear.outputRPM, state.turbine.rear.outputTorque, math.clamp(state.turbine.rear.throttle - game.car_cphys.brake, 0, 1), dt)
             state.turbine.front.feedbackTorque = frontFeedback
             state.turbine.rear.feedbackTorque = rearFeedback
         else
