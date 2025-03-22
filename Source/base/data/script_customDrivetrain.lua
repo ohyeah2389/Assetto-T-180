@@ -10,14 +10,14 @@ local drivetrain = class("drivetrain")
 
 function drivetrain:initialize(params)
     self.drivenWheels = params.drivenWheels or {ac.Wheel.RearLeft, ac.Wheel.RearRight}
-    self.finalDriveRatio = params.finalDriveRatio or 8
+    self.finalDriveRatio = params.finalDriveRatio or 6
 
     -- Open differential parameters with speed-dependent coupling
-    self.couplingStiffness = params.couplingStiffness or 1000
-    self.couplingDamping = params.couplingDamping or 500
+    self.couplingStiffness = params.couplingStiffness or 200
+    self.couplingDamping = params.couplingDamping or self.couplingStiffness/2
 
     -- Clutch parameters
-    self.clutchEngageRate = params.clutchEngageRate or 10  -- Exponent for clutch engagement
+    self.clutchEngageRate = params.clutchEngageRate or 2  -- Exponent for clutch engagement
     self.minClutchCoupling = params.minClutchCoupling or 0.0  -- Minimum coupling with clutch disengaged
 
     self.torqueLimit = params.torqueLimit or 2000
@@ -43,10 +43,8 @@ function drivetrain:update(inputShaftSpeed, inputTorque, clutchPosition, dt)
     local currentStiffness = math.lerp(self.couplingStiffness * self.minClutchCoupling, self.couplingStiffness, clutchEngagement)
     local currentDamping = math.lerp(self.couplingDamping * self.minClutchCoupling, self.couplingDamping, clutchEngagement)
 
-    -- The difference in speed between the diff's input shaft and the final drive's ouptut shaft is calculated here
-    local speedDiff = finalDriveOutputSpeed - avgWheelSpeed
-
     -- Calculate coupling torque with speed-scaled spring-damper model
+    local speedDiff = finalDriveOutputSpeed - avgWheelSpeed
     local couplingTorque = (speedDiff * currentStiffness * dt) + (speedDiff * currentDamping)
 
     -- Total torque is the input torque (corrected for final drive ratio and scaled by clutch engagement) plus the coupling torque
