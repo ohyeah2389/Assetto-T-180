@@ -42,17 +42,11 @@ controls.steeringModes.lockFronts:onPressed(function()
     state.control.lockedFronts = not state.control.lockedFronts
 end)
 
-controls.steeringModes.rearAntiCrab:onPressed(function()
-    state.control.rearAntiCrab = not state.control.rearAntiCrab
-end)
-
-
 function controls.update()
     state.jumpJackSystem.jackFL.active = controls.jumpJack.right:down() or controls.jumpJack.all:down()
     state.jumpJackSystem.jackFR.active = controls.jumpJack.left:down() or controls.jumpJack.all:down()
     state.jumpJackSystem.jackRL.active = controls.jumpJack.right:down() or controls.jumpJack.all:down()
     state.jumpJackSystem.jackRR.active = controls.jumpJack.left:down() or controls.jumpJack.all:down()
-    state.control.spinMode = controls.steeringModes.spinMode:down()
 end
 
 
