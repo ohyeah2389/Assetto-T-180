@@ -137,19 +137,19 @@ function script.update(dt)
         -- Calculate target values
         local targetThrottle = math.min(car.gas + (car.extraB and 1 or 0), 1)
         local targetThrust = math.min(((car.rpm / 2) / car.rpmLimiter) + (car.extraB and 1 or 0), 1)
-        local targetRPM = (math.min(((car.rpm / 2) / car.rpmLimiter) + (car.extraB and 1 or 0), 1) * 10000) + 4000
+        local targetRPM = (math.min(car.gas + (car.extraB and 1 or 0), 1) * 10000) + 4000
         local targetAfterburner = car.extraB and 1 or 0
 
         -- Apply fadeouts with lerp
         replayFadeouts.throttle = math.lerp(replayFadeouts.throttle, targetThrottle, dt * 5)
         replayFadeouts.thrust = math.lerp(replayFadeouts.thrust, targetThrust, dt * 5)
-        replayFadeouts.rpm = math.lerp(replayFadeouts.rpm, targetRPM, dt * 5)
+        replayFadeouts.rpm = math.lerp(replayFadeouts.rpm, targetRPM, dt * 1)
         replayFadeouts.afterburner = math.lerp(replayFadeouts.afterburner, targetAfterburner, dt * 8)
 
         -- Front turbine replay handling
         replayFadeouts.frontThrottle = math.lerp(replayFadeouts.frontThrottle, targetThrottle, dt * 5)
         replayFadeouts.frontThrust = math.lerp(replayFadeouts.frontThrust, targetThrust, dt * 5)
-        replayFadeouts.frontRpm = math.lerp(replayFadeouts.frontRpm, targetRPM, dt * 5)
+        replayFadeouts.frontRpm = math.lerp(replayFadeouts.frontRpm, targetRPM, dt * 1)
         replayFadeouts.frontAfterburner = math.lerp(replayFadeouts.frontAfterburner, targetAfterburner, dt * 8)
 
         -- Apply faded values
