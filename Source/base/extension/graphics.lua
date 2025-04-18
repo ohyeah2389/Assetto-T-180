@@ -27,30 +27,33 @@ local lightFadeout = 0
 
 local audio_engine = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/engine_custom", true, true)
 audio_engine.cameraInteriorMultiplier = 0.5
+audio_engine.volume = 0.8
 audio_engine:setPosition(vec3(0.0, 1.2, 0.225), vec3(0, 0, 1), vec3(0, 1, 0))
 audio_engine:start()
 
 -- Rear turbine audio
 local audio_turbine = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/turbine", true, true)
 audio_turbine.cameraInteriorMultiplier = 0.5
+audio_turbine.volume = 0.8
 audio_turbine:setPosition(vec3(0, 0.772, -2.05), vec3(0, 1, 0), vec3(0, 0, -1))
 audio_turbine:start()
 
 local audio_turbine_fuelpump = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/turbine_fuelpump", true, true)
 audio_turbine_fuelpump.cameraInteriorMultiplier = 0.5
-audio_turbine_fuelpump.volume = 0.5
+audio_turbine_fuelpump.volume = 0.45
 audio_turbine_fuelpump:setPosition(vec3(0, 0.7, -0.75), vec3(0, 0, 1), vec3(0, 1, 0))
 audio_turbine_fuelpump:start()
 
 -- Front turbine audio
 local audio_turbine_front = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/turbine", true, true)
 audio_turbine_front.cameraInteriorMultiplier = 0.5
+audio_turbine_front.volume = 0.8
 audio_turbine_front:setPosition(vec3(0, 0.772, 1.05), vec3(0, 0, 1), vec3(0, 1, 0))
 audio_turbine_front:start()
 
 local audio_turbine_fuelpump_front = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/turbine_fuelpump", true, true)
 audio_turbine_fuelpump_front.cameraInteriorMultiplier = 0.5
-audio_turbine_fuelpump_front.volume = 0.5
+audio_turbine_fuelpump_front.volume = 0.45
 audio_turbine_fuelpump_front:setPosition(vec3(0, 0.7, 0.75), vec3(0, 0, 1), vec3(0, 1, 0))
 audio_turbine_fuelpump_front:start()
 
@@ -157,7 +160,7 @@ function script.update(dt)
         ctrlrData.turbineThrust = replayFadeouts.thrust
         ctrlrData.turbineRPM = replayFadeouts.rpm
         ctrlrData.fuelPumpEnabled = 1
-        ctrlrData.turbineAfterburner = replayFadeouts.afterburner
+        ctrlrData.turbineAfterburner = replayFadeouts.afterburner * (ac.getCarID(0) == "ohyeah2389_t180_fumee" and 0 or 1)
         ctrlrData.turbineDamage = 0
 
         -- Front turbine faded values
@@ -165,7 +168,7 @@ function script.update(dt)
         ctrlrData.frontTurbineThrust = replayFadeouts.frontThrust
         ctrlrData.frontTurbineRPM = replayFadeouts.frontRpm
         ctrlrData.frontFuelPumpEnabled = 1
-        ctrlrData.frontTurbineAfterburner = replayFadeouts.frontAfterburner
+        ctrlrData.frontTurbineAfterburner = replayFadeouts.frontAfterburner * (ac.getCarID(0) == "ohyeah2389_t180_fumee" and 0 or 1)
         ctrlrData.frontTurbineDamage = 0
     end
 
@@ -273,6 +276,7 @@ function script.update(dt)
     ac.debug("ctrlrData.frontTurbineRPM", ctrlrData.frontTurbineRPM)
     ac.debug("ctrlrData.frontFuelPumpEnabled", ctrlrData.frontFuelPumpEnabled)
     ac.debug("ctrlrData.frontTurbineAfterburner", ctrlrData.frontTurbineAfterburner)
+    ac.debug("car.name", ac.getCarID(0))
     
 end
 
