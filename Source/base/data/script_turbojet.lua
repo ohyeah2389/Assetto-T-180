@@ -93,13 +93,7 @@ function turbojet:update(dt)
     -- Bleed pressure from turbine engine
     state.turbine.bleedBoost = state.turbine.thrust * config.turbojet.boostThrustFactor + self.turbine.angularSpeed * config.turbojet.boostSpeedFactor
     ac.overrideTurboBoost(0, state.turbine.bleedBoost, state.turbine.bleedBoost)
-
-    -- Torque transfers between piston engine and turbine engine
-    local turbineTorqueFromEngine = rpmDelta * 0.1
-    local engineTorqueFromTurbine = rpmDelta * config.turbojet.gearRatio * 0.0001
-    ac.setExtraTorque(state.turbine.clutchDisconnected and 0 or engineTorqueFromTurbine) -- Engine torque from turbine
-    self.turbine:step((state.turbine.clutchDisconnected and 0 or turbineTorqueFromEngine) + (state.turbine.fuelPumpEnabled and 10 * state.turbine.thrust * (helpers.mapRange(self.turbine.angularSpeed, 0, 2000, 0.1, 0, true) ^ 0.8) or 0), dt) -- Turbine torque from engine plus turbine internally generated torque
-
+    
     -- Clamp the turbine speed to a minimum of 0 RPM to prevent reversing weirdness
     if self.turbine.angularSpeed < 0 then
         self.turbine.angularSpeed = 0
