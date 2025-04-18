@@ -74,11 +74,13 @@ if config.turboshaft.present then
     rearTurbine = Turboshaft('rear')
     frontDrivetrain = CustomDrivetrain({
         drivenWheels = {ac.Wheel.FrontLeft, ac.Wheel.FrontRight},
-        id = "front"
+        id = "front",
+        clutchEngageRate = 3
     })
     rearDrivetrain = CustomDrivetrain({
         drivenWheels = {ac.Wheel.RearLeft, ac.Wheel.RearRight},
-        id = "rear"
+        id = "rear",
+        clutchEngageRate = 2
     })
 end
 
