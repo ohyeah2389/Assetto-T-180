@@ -14,24 +14,18 @@ local controls = {
     turbine = {
         throttle = ac.ControlButton("__EXT_LIGHT_B"),
         fuelPump = ac.ControlButton("__EXT_LIGHT_TURBINE_FUELPUMP"),
-        clutchDisconnect = ac.ControlButton("__EXT_LIGHT_TURBINE_CLUTCHDISCO")
     },
     steeringModes = {
         lockRears = ac.ControlButton("__EXT_LIGHT_STEERMODE_LOCKREARS"),
         lockFronts = ac.ControlButton("__EXT_LIGHT_STEERMODE_LOCKFRONTS"),
         rearAntiCrab = ac.ControlButton("__EXT_LIGHT_STEERMODE_ANTICRAB"),
         spinMode = ac.ControlButton("__EXT_LIGHT_STEERMODE_SPINMODE")
-
     }
 }
 
 
 controls.turbine.fuelPump:onPressed(function()
     state.turbine.fuelPumpEnabled = not state.turbine.fuelPumpEnabled
-end)
-
-controls.turbine.clutchDisconnect:onPressed(function()
-    state.turbine.clutchDisconnected = not state.turbine.clutchDisconnected
 end)
 
 controls.steeringModes.lockRears:onPressed(function()

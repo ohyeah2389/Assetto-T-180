@@ -37,7 +37,6 @@ local state = {
         thrust = 0.0,
         torque = 0.0,
         fuelPumpEnabled = true,
-        clutchDisconnected = false,
         rpm = 0.0,
         feedbackTorque = 0.0,
         fuelConsumption = 0.0,
