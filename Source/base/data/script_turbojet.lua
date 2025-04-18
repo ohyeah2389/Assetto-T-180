@@ -61,7 +61,7 @@ function turbojet:update(dt)
     local driftAngle = math.atan(game.car_cphys.localVelocity.x / math.abs(game.car_cphys.localVelocity.z))
 
     -- Base throttle request from drift
-    local baseThrottle = helpers.mapRange(game.car_cphys.gas * helpers.mapRange(math.abs(driftAngle), math.rad(30), math.rad(90), 0, 1, true), 0, 1, config.turbojet.minThrottle, 1, true)
+    local baseThrottle = helpers.mapRange(game.car_cphys.gas * helpers.mapRange(math.abs(driftAngle), math.rad(config.turbojet.helperStartAngle), math.rad(config.turbojet.helperEndAngle), 0, 1, true), 0, 1, config.turbojet.minThrottle, 1, true)
 
     -- Throttle final calculation
     if controls.turbine.throttle:down() then -- Full throttle override
@@ -84,7 +84,7 @@ function turbojet:update(dt)
     end
 
     -- Turbine thrust with fadeout based on intake speed (is that realistic?)
-    state.turbine.thrust = self.turbine.angularSpeed * 4 * state.turbine.throttle * (helpers.mapRange(car.speedKmh, 0, config.turbojet.maximumEffectiveIntakeSpeed, 1, 0, true) ^ config.turbojet.thrustFadeoutExponent)
+    state.turbine.thrust = self.turbine.angularSpeed * config.turbojet.thrustMultiplier * state.turbine.throttle * (helpers.mapRange(car.speedKmh, 0, config.turbojet.maximumEffectiveIntakeSpeed, 1, 0, true) ^ config.turbojet.thrustFadeoutExponent)
     ac.addForce(vec3(0.0, 0.77, -2), true, vec3(0, 0, state.turbine.thrust), true)
 
     -- Turbine afterburner extra thrust
@@ -93,7 +93,7 @@ function turbojet:update(dt)
     -- Bleed pressure from turbine engine
     state.turbine.bleedBoost = state.turbine.thrust * config.turbojet.boostThrustFactor + self.turbine.angularSpeed * config.turbojet.boostSpeedFactor
     ac.overrideTurboBoost(0, state.turbine.bleedBoost, state.turbine.bleedBoost)
-    
+
     -- Clamp the turbine speed to a minimum of 0 RPM to prevent reversing weirdness
     if self.turbine.angularSpeed < 0 then
         self.turbine.angularSpeed = 0
