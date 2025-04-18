@@ -17,8 +17,8 @@ function drivetrain:initialize(params)
     self.couplingDamping = params.couplingDamping or self.couplingStiffness/2
 
     -- Clutch parameters
-    self.clutchEngageRate = params.clutchEngageRate or 2  -- Exponent for clutch engagement
-    self.minClutchCoupling = params.minClutchCoupling or 0.0  -- Minimum coupling with clutch disengaged
+    self.clutchEngageRate = params.clutchEngageRate or 2
+    self.minClutchCoupling = params.minClutchCoupling or 0.0
 
     self.torqueLimit = params.torqueLimit or 2000
 
