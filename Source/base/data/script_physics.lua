@@ -38,7 +38,7 @@ function physics:step(force, dt)
     if self.rotary then
         -- Rotary motion calculations
         local distanceFromCenter = (self.angle % (2 * math.pi)) - math.pi
-        self.torque = math.clamp(force * self.inertia, -self.forceMax, self.forceMax) + (distanceFromCenter * -self.springCoef) + self.constantForce
+        self.torque = math.clamp(force, -self.forceMax, self.forceMax) + (distanceFromCenter * -self.springCoef) + self.constantForce
 
         -- Static friction
         local staticFrictionTorque = self.frictionCoef * self.staticFrictionCoef * self.inertia
@@ -46,8 +46,8 @@ function physics:step(force, dt)
             self.angularAccel = 0
         else
             -- Kinetic friction with speed-dependent component
-            local frictionTorque = self.frictionCoef * self.inertia * 
-                                 (math.abs(self.angularSpeed) ^ self.expFrictionCoef) * 
+            local frictionTorque = self.frictionCoef *
+                                 (math.abs(self.angularSpeed) ^ self.expFrictionCoef) *
                                  math.sign(self.angularSpeed)
             self.angularAccel = (self.torque - frictionTorque) / self.inertia
         end

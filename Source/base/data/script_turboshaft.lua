@@ -18,11 +18,11 @@ function Turboshaft:initialize(turbineId)
     -- Gas Generator turbine (NG)
     self.gasTurbine = physics({
         rotary = true,
-        inertia = config.turboshaft.inertiaNG or 0.02,
+        inertia = config.turboshaft.inertiaNG or 0.5,
         forceMax = 10000,
-        frictionCoef = 0.003,
+        frictionCoef = 0.006,
         staticFrictionCoef = 1.2,
-        expFrictionCoef = 1.3
+        expFrictionCoef = 1.4
     })
 
     -- Initial turbine speed
@@ -42,10 +42,10 @@ function Turboshaft:initialize(turbineId)
     self.TITLag = 1.0
 
     -- Damage constants
-    self.damageTurbineOvertempK = 0.0004
+    self.damageTurbineOvertempK = 0.001
     self.damageTurbineOvertempStart = 1500
     self.damageTurbineOvertempRecoveryK = 0.035
-    self.damageCompressorOverspeedK = 0.00003
+    self.damageCompressorOverspeedK = 0.0001
     self.damageCompressorOverspeedStart = 40000
     self.damageCompressorOverspeedRecoveryK = 0.035
     self.damageAccumulatorMaxTime = 5.0      -- Maximum accumulation time in seconds

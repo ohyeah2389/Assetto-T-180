@@ -2,6 +2,9 @@
 -- Authored by ohyeah2389
 
 local config = {
+    turbojetType = nil, -- "single" or "dual" or nil if not present
+    turboshaftPresent = true, -- true or false
+
     coordinates = {
         turbineExhaust = vec3(0.0, 0.494, -1.91)
     },
