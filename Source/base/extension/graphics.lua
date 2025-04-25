@@ -19,6 +19,14 @@ local flameTurbo = ac.Particles.Flame({
     flameIntensity = coordsConfig.flame.afterburnerIntensity
 })
 
+local flameExplosion = ac.Particles.Flame({
+    color = rgbm(1, 0.5, 0.2, 1),
+    size = 30,
+    temperatureMultiplier = 1.0,
+    flameIntensity = 2
+})
+local flameExplosionFadeout = 0
+
 local exhaustSmoke = ac.Particles.Smoke({color = rgbm(0.3, 0.32, 0.35, 0.1), life = 10, size = 0.1, spreadK = 2, growK = 3, targetYVelocity = 0.5, flags = ac.Particles.SmokeFlags.FadeIn})
 
 local light_headlight_left = ac.accessCarLight("LIGHT_HEADLIGHT_1")
@@ -179,6 +187,14 @@ end
 function script.update(dt)
     ac.boostFrameRate()
 
+    --if car.acceleration:length() > 100 then
+    --    flameExplosion:emit(vec3(0, 0, 0), -car.localVelocity*0.5, 1)
+    --    flameExplosionFadeout = 1
+    --else
+    --    flameExplosion:emit(vec3(0, 0, 0), -car.localVelocity*0.5, flameExplosionFadeout)
+    --    flameExplosionFadeout = math.max(flameExplosionFadeout - dt * 5, 0)
+    --end
+
     -- Read all potentially relevant controller inputs
     local rawCtrlrData = {
         -- Inputs [8-12] (Single TJ OR Left Dual TJ OR Rear TS)
@@ -204,9 +220,10 @@ function script.update(dt)
     if ac.isInReplayMode() then
         -- Estimate turbine states based on standard car data
         local targetGas = car.gas
-        -- Correctly estimate Afterburner trigger based on gas pedal position, matching physics
-        local targetAfterburnerTrigger = mapRange(targetGas, 0.9, 1.0, 0, 1, true)
-        -- local targetAfterburnerTrigger = (car.extraB and (ac.getCarID(0) ~= "ohyeah2389_t180_fumee")) and 1 or 0 -- Old incorrect logic
+        -- Estimate Afterburner trigger based on gas pedal position (for dual turbojet)
+        local targetAfterburnerTrigger_Gas = mapRange(targetGas, 0.9, 1.0, 0, 1, true)
+        -- Estimate Afterburner trigger based on extraB (for single turbojet)
+        local targetAfterburnerTrigger_ExtraB = car.extraB and 1 or 0
 
         local estimated = {} -- Temporary table for target values before fading
 
@@ -214,17 +231,17 @@ function script.update(dt)
         if coordsConfig.turbojetType then
             if coordsConfig.turbojetType == "single" then
                 estimated.throttle = targetGas
-                -- Estimate RPM considering potential afterburner effect
-                estimated.rpm = mapRange(targetGas, 0, 1, TURBOJET_IDLE_RPM, TURBOJET_MAX_RPM) + targetAfterburnerTrigger * TURBOJET_AB_RPM_BOOST
-                estimated.afterburner = targetAfterburnerTrigger -- Assign estimated AB state
+                -- Estimate RPM considering potential afterburner effect using extraB trigger
+                estimated.rpm = mapRange(targetGas, 0, 1, TURBOJET_IDLE_RPM, TURBOJET_MAX_RPM) + targetAfterburnerTrigger_ExtraB * TURBOJET_AB_RPM_BOOST
+                estimated.afterburner = targetAfterburnerTrigger_ExtraB -- Assign estimated AB state based on extraB
                 estimated.thrust = mapRange(estimated.rpm, TURBOJET_IDLE_RPM, TURBOJET_MAX_RPM + TURBOJET_AB_RPM_BOOST, 0.1, 1.0)
                 estimated.fuelPumpEnabled = 1
                 estimated.damage = 0
             elseif coordsConfig.turbojetType == "dual" then
-                -- Estimate Left/Right symmetrically based on gas/AB trigger
+                -- Estimate Left/Right symmetrically based on gas/AB trigger (using gas pedal mapping)
                 estimated.throttle = targetGas
-                estimated.rpm = mapRange(targetGas, 0, 1, TURBOJET_IDLE_RPM, TURBOJET_MAX_RPM) + targetAfterburnerTrigger * TURBOJET_AB_RPM_BOOST
-                estimated.afterburner = targetAfterburnerTrigger -- Assign estimated AB state
+                estimated.rpm = mapRange(targetGas, 0, 1, TURBOJET_IDLE_RPM, TURBOJET_MAX_RPM) + targetAfterburnerTrigger_Gas * TURBOJET_AB_RPM_BOOST
+                estimated.afterburner = targetAfterburnerTrigger_Gas -- Assign estimated AB state based on gas pedal
                 estimated.thrust = mapRange(estimated.rpm, TURBOJET_IDLE_RPM, TURBOJET_MAX_RPM + TURBOJET_AB_RPM_BOOST, 0.1, 1.0)
                 estimated.fuelPumpEnabled = 1
                 estimated.damage = 0
