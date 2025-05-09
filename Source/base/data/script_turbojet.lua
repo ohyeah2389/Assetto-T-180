@@ -75,17 +75,13 @@ function turbojet:update(dt)
         local baseThrottle = helpers.mapRange(game.car_cphys.gas * helpers.mapRange(math.abs(driftAngle), math.rad(config.turbojet.helperStartAngle), math.rad(config.turbojet.helperEndAngle), 0, 1, true), 0, 1, config.turbojet.minThrottle, 1, true)
 
         -- Throttle final calculation
-        if controls.turbine.throttle:down() then -- Full throttle override
+        if controls.turbine.throttle:down() and state.turbine.fuelPumpEnabled then -- Full throttle override
             self.state.throttle = math.applyLag(self.state.throttle, 1, config.turbojet.throttleLag, dt)
             if self.state.throttle > 0.9 then
                 self.state.throttleAfterburner = math.applyLag(self.state.throttleAfterburner, 1, config.turbojet.throttleLagAfterburner, dt)
             else
                 self.state.throttleAfterburner = math.applyLag(self.state.throttleAfterburner, 0, config.turbojet.throttleLagAfterburner, dt)
             end
-            self.throttlePID:reset()  -- Reset PID when override is active
-        elseif state.control.spinMode then -- Zero throttle override for spin mode
-            self.state.throttle = math.applyLag(self.state.throttle, 0, config.turbojet.throttleLag, dt)
-            self.state.throttleAfterburner = math.applyLag(self.state.throttleAfterburner, 0, config.turbojet.throttleLagAfterburner, dt)
             self.throttlePID:reset()  -- Reset PID when override is active
         else
             self.state.throttleAfterburner = math.applyLag(self.state.throttleAfterburner, 0, config.turbojet.throttleLagAfterburner, dt)
@@ -101,7 +97,7 @@ function turbojet:update(dt)
 
 
     -- Turbine thrust calculation (common for both)
-    local currentThrust = self.turbine.angularSpeed * config.turbojet.thrustMultiplier * self.state.throttle * (helpers.mapRange(car.speedKmh, 0, config.turbojet.maximumEffectiveIntakeSpeed, 1, 0, true) ^ config.turbojet.thrustFadeoutExponent)
+    local currentThrust = self.turbine.angularSpeed * config.turbojet.thrustMultiplier * self.state.throttle * (helpers.mapRange(car.speedKmh, 0, config.turbojet.maximumEffectiveIntakeSpeed, 1, 0, true) ^ config.turbojet.thrustFadeoutExponent) * (self.state.fuelPumpEnabled and 1 or 0)
     ac.addForce(self.thrustApplicationPoint, true, vec3(0, 0, currentThrust), true)
     self.state.thrust = currentThrust -- Store thrust for potential external use/display
 
@@ -109,7 +105,7 @@ function turbojet:update(dt)
     self.turbine:step((self.state.fuelPumpEnabled and self.state.thrust * (helpers.mapRange(self.turbine.angularSpeed, 0, 2000, 1, 0, true) ^ 1.2) or 0), dt)
 
     -- Turbine afterburner extra thrust
-    ac.addForce(self.thrustApplicationPoint, true, vec3(0, 0, helpers.mapRange(self.state.throttleAfterburner, 0, 1, 0, 2500, true)), true)
+    ac.addForce(self.thrustApplicationPoint, true, vec3(0, 0, helpers.mapRange(self.state.throttleAfterburner, 0, 1, 0, 2500, true) * (self.state.fuelPumpEnabled and 1 or 0)), true)
 
     if self.id == 'single' then
         -- Bleed pressure from turbine engine (only for single engine interacting with piston engine)
