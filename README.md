@@ -31,7 +31,7 @@ The driver's controls are similar in form to that of a classical race car, but t
 
 ## Requirements
 - A legal and activated copy of Assetto Corsa for personal computers
-- Custom Shaders Patch public version v0.2.6 or preview version v0.2.7p1 or higher
+- Custom Shaders Patch public version v0.2.8 or preview version v0.2.9p1 or higher
 - Custom Shaders Patch
 - Virtual Racing Cars' Extended Controls app
 - Extended Controls
