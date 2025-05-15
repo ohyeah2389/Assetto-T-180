@@ -24,21 +24,6 @@ This car is designed for use with a wheel, but you can use it with a gamepad/con
 - Virtual Racing Cars' Extended Controls app
 - Extended Controls
 
-## Systems
-T-180s can be equipped with a variety of systems. Below is a short explanation of the systems configured for the "T-180 Demo" car included with each release.
-
-### Jump Jacks
-The car is equipped with four jacks at each corner that can thrust the car into the air on command. They can be activated all at once or on the left or right independently.
-
-### Engine and Drivetrain
-The car uses a V-12 piston engine for its mechanical energy generation. The engine generates rotary motion by deflagrating fuel inside its combustion chambers to drive pistons. The fuel is a conventional racing gasoline mixture homologated by the WRL. The engine is mechanically linked through a driver-operated clutch to a manually-shifted six-speed gearbox and final drive, which can be reconfigured to the driver's gear ratio preferences. It is further connected through a center differential to a front differential and rear differential powering each wheel through a flexible mechanical connection.
-
-### Integrated Turbine
-A low-inertia turbojet engine is integrated with the piston engine to provide direct thrust output at the rear of the car for enhanced cornering and extra acceleration. The spool of the turbojet is geared to a torque converter attached to the main engine to allow high turbine RPMs to "drag up" the piston engine RPM if it is lower. The turbine also contains a bleed-air system which, much like a turbo- or supercharger, can deliver pressurized air to the piston engine for extra power, though the turbine must be spun up for this boost pressure to be developed. The torque converter can be disengaged to allow the turbine to spin freely from the piston engine, and the turbine can be cut off entirely during times when rearward blast thrust may be dangerous to the pit crew.
-
-### Wheel Steering Controller
-The wheels are controlled independently of each other via servo motors commanded by the car's central computer. The computer can detect each wheel's slip angle, or "angle of attack", and can steer each wheel to a specified offset of that angle. Angle offsets are calculated through an algorithm that takes the car's yaw rate and the driver's steering angle as inputs. On entry to a corner and upon steering input, the wheels are steered to change the car's yaw rate. Holding the wheel at zero steering angle will maintain a drift angle if the car is in a corner and will maintain a straight trajectory if the car is traveling straight. Countersteering will reduce the drift angle and straighten the car's trajectory.
-
 # Development
 
 For information about developing the platform, or for critical information you need to know about making your own T-180s, please visit the [Wiki.](https://github.com/ohyeah2389/Assetto-T-180/wiki)
