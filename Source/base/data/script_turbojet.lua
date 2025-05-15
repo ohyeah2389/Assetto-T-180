@@ -73,6 +73,8 @@ function turbojet:update(dt)
         local driftAngle = math.atan(game.car_cphys.localVelocity.x / math.abs(game.car_cphys.localVelocity.z))
         -- Base throttle request from drift
         local baseThrottle = helpers.mapRange(game.car_cphys.gas * helpers.mapRange(math.abs(driftAngle), math.rad(config.turbojet.helperStartAngle), math.rad(config.turbojet.helperEndAngle), 0, 1, true), 0, 1, config.turbojet.minThrottle, 1, true)
+        local clutchFactor = (1 - game.car_cphys.clutch) * (car.isInPit and 0 or 1)
+        local baseThrottle = math.max(baseThrottle, clutchFactor)
 
         -- Throttle final calculation
         if controls.turbine.throttle:down() and state.turbine.fuelPumpEnabled then -- Full throttle override
@@ -84,9 +86,9 @@ function turbojet:update(dt)
             end
             self.throttlePID:reset()  -- Reset PID when override is active
         else
-            self.state.throttleAfterburner = math.applyLag(self.state.throttleAfterburner, 0, config.turbojet.throttleLagAfterburner, dt)
+            self.state.throttleAfterburner = math.applyLag(self.state.throttleAfterburner, (clutchFactor > 0.95 and 1 or 0) * (state.turbine.fuelPumpEnabled and 1 or 0), config.turbojet.throttleLagAfterburner, dt)
             local pidOutput = self.throttlePID:update(0, rpmDelta, dt)
-            local correctedThrottle = math.clamp(baseThrottle * (1 + pidOutput), config.turbojet.minThrottle, 1)
+            local correctedThrottle = math.clamp(baseThrottle * (1 + pidOutput) * (state.turbine.fuelPumpEnabled and 1 or 0), config.turbojet.minThrottle, 1)
             self.state.throttle = math.applyLag(self.state.throttle, correctedThrottle, config.turbojet.throttleLag, dt)
         end
     else -- Dual engine: Throttle is set externally in script.lua
