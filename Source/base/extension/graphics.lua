@@ -33,6 +33,8 @@ local light_headlight_left = ac.accessCarLight("LIGHT_HEADLIGHT_1")
 local light_headlight_right = ac.accessCarLight("LIGHT_HEADLIGHT_2")
 local lightFadeout = 0
 
+local turbineExhaustGlow = ac.findMeshes(coordsConfig.turbineExhaustGlowMesh)
+
 local audio_engine = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/engine_custom", true, true)
 audio_engine.cameraInteriorMultiplier = 0.5
 audio_engine.volume = 0.8
@@ -572,7 +574,11 @@ function script.update(dt)
         end
     end
 
-    -- Headlight Logic (no changes needed here)
+    -- Turbine exhaust glow logic
+    turbineExhaustGlow:setMaterialProperty("ksEmissive", (vec3(2, 2, 4) * ctrlrData.turbineThrottle * 10) + (vec3(1, 1, 1) * ctrlrData.turbineAfterburner * 20))
+
+
+    -- Headlight Logic
     lightFadeout = math.lerp(lightFadeout, car.headlightsActive and 1 or 0, dt * 15)
     light_headlight_left.color = rgb(27, 25, 22)
     light_headlight_left.singleFrequency = 0
@@ -618,7 +624,7 @@ function script.update(dt)
     jumpJack_left_last = ac.ControlButton("__EXT_LIGHT_JUMPJACK_LEFT"):down()
     jumpJack_right_last = ac.ControlButton("__EXT_LIGHT_JUMPJACK_RIGHT"):down()
 
-    -- Debug section (Updated to show new ctrlrData structure)
+    -- Debug section
     ac.debug("Config: Turbojet Type", coordsConfig.turbojetType or "N/A")
     ac.debug("Config: Turboshaft Present", coordsConfig.turboshaftPresent and "Yes" or "No")
     ac.debug("Mode", ac.isInReplayMode() and "Replay" or "Live")
