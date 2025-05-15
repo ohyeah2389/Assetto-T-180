@@ -17,29 +17,6 @@ This car is designed for use with a wheel, but you can use it with a gamepad/con
 ## Credits
 - [Mectreno](https://sketchfab.com/Mectren0) for the Mach 6 3D model base
 
-## What is a T-180?
-T-180s are specialized racing vehicles that use four wheel independent steering, thrusters, active aero, and other technologies to drive and race on the purpose-built banked and looped circuits homologated by the World Racing League. While not a spec series, there is a common rule set, likely specifying things such as tire dimensions and materials, maximum power outputs, allowed and banned materials, required safety equipment, and banned offensive devices. Each team constructs their own car within the bounds of the regulations.
-
-The cars, at minimum, feature:
-- a power source that generates tractive effort at the wheels; 
-- independent steering, suspension, and braking mechanisms controlling the positioning of each wheel;
-- a cockpit with a steering wheel, pedals, and other controls for the drivetrain, such as a shift lever, if the car has a traditional transmission;
-- integral jacks which can lift the car for maintenance or for strategic jumps during races.
-
-As examples, cars could also feature the following technologies:
-- exhaust thrusters fed from turbine engines or other pressure sources;
-- active aerodynamic devices for control mid-jump or for extra downforce on less banked corners;
-- torque vectoring and/or traction control through use of active differentials, electric power transmission, or other means;
-- brake vectoring and/or anti-lock braking systems;
-- exhaust thrust vectoring;
-- active backfeed suspension to control ride height and to dampen jump landings.
-
-The driver's controls are similar in form to that of a classical race car, but they can serve different functions depending on the construction of the car:
-- The steering wheel is not directly connected to any wheel, instead serving as an input device to the car's central computer, which uses steering angle, car trajectory, car speed, and other factors to drive the steering actuators to pivot the wheels;
-- The pedals may be set up traditionally (clutch, brake, gas) or non-traditionally, with as many as five pedals spotted on certain cars;
-- A gear-like lever may be present, but it may or may not control a gearbox;
-- Steering wheels can have many buttons on them to control the car's different modes or features, such as the jacks or the steering control modes.
-
 ## Requirements
 - A legal and activated copy of Assetto Corsa for personal computers
 - Custom Shaders Patch public version v0.2.8 or preview version v0.2.9p1 or higher
