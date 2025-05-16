@@ -17,7 +17,7 @@ local config = {
         intensity = 0.9,
         afterburnerIntensity = 1
     },
-    turbineExhaustGlowMesh = "Mach6Turbine_SUB2"
+    turbineExhaustGlowMesh = "Mach6Turbine_SUB3"
 }
 
 return config
