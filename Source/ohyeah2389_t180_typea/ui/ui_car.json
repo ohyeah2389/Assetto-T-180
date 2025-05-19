@@ -1,7 +1,7 @@
 {
-  "name": "T-180 Fumee",
-  "brand": "E2",
-  "description": "The Fumee is a WRL-homologated T-180 racing vehicle designed by E2 to compete in the WRL championship racing series. It uses an unconventional drivetrain: twin KaraSugoi gas turbines which provide torque to each the front and rear wheels through variable-vane torque converters, producing only torque, with no thrust.",
+  "name": "T-180 Type A",
+  "brand": "Generic",
+  "description": "The Type A is a WRL-homologated T-180 racing vehicle designed by E2 to compete in the WRL championship racing series. It shares bodywork with E2's Fumee, but with a different, more conventional drivetrain. It uses a 26-chamber KaraSugoi pulse-detonation engine to generate tractive effort, with twin underchargers providing boost pressure, charge cooling, and a marginal amount of thrust.",
   "tags": [
     "awd",
     "4ws",
