@@ -25,6 +25,7 @@ import json
 from datetime import datetime
 import fnmatch
 from typing import List, Optional
+import configparser
 
 try:
     import tomllib
@@ -205,21 +206,78 @@ def handle_sfx_files(car_build_dir, car_name):
                 print(f"Error handling sfx files: {e}")
             break
 
+def merge_ini_files(base_ini_path, addon_ini_path, output_path):
+    """
+    Merge an addon INI file into a base INI file.
+    The addon INI can contain partial sections that will override
+    corresponding sections in the base INI.
+    """
+    try:
+        # Create parsers for both files
+        base_config = configparser.ConfigParser()
+        addon_config = configparser.ConfigParser()
+        
+        # Preserve case sensitivity and allow duplicate keys
+        base_config.optionxform = str
+        addon_config.optionxform = str
+        
+        # Read the base INI file
+        base_config.read(base_ini_path, encoding='utf-8')
+        
+        # Read the addon INI file
+        addon_config.read(addon_ini_path, encoding='utf-8')
+        
+        # Merge addon sections into base config
+        for section_name in addon_config.sections():
+            if not base_config.has_section(section_name):
+                # If section doesn't exist in base, add it entirely
+                base_config.add_section(section_name)
+            
+            # Override/add all options from addon section
+            for option_name, option_value in addon_config.items(section_name):
+                base_config.set(section_name, option_name, option_value)
+        
+        # Write the merged result
+        with open(output_path, 'w', encoding='utf-8') as f:
+            base_config.write(f, space_around_delimiters=False)
+        
+        print(f"Merged INI: {os.path.basename(addon_ini_path)} -> {os.path.basename(output_path)}")
+        
+    except Exception as e:
+        print(f"Error merging INI files {base_ini_path} + {addon_ini_path}: {e}")
+
 def merge_directories(src, dst, ignore_patterns):
     """
     Recursively merge contents of src directory into dst directory.
     Files from src will overwrite those in dst.
     Skips files matching ignore patterns.
+    Special handling for .addon.ini files which are merged with their base INI files.
     """
     if not os.path.exists(dst):
         os.makedirs(dst)
+    
+    # First pass: collect .addon.ini files for processing
+    addon_files = {}
+    regular_files = []
+    
     for item in os.listdir(src):
         s_item = os.path.join(src, item)
         if should_ignore_file(s_item, ignore_patterns):
             print(f"Skipping ignored file/folder '{item}'")
             continue
-            
+        
+        if item.endswith('.addon.ini'):
+            # Map addon file to its base name
+            base_name = item.replace('.addon.ini', '.ini')
+            addon_files[base_name] = s_item
+        else:
+            regular_files.append(item)
+    
+    # Second pass: process regular files and handle INI merging
+    for item in regular_files:
+        s_item = os.path.join(src, item)
         d_item = os.path.join(dst, item)
+        
         try:
             if os.path.isdir(s_item):
                 if not os.path.exists(d_item):
@@ -228,10 +286,38 @@ def merge_directories(src, dst, ignore_patterns):
                 else:
                     merge_directories(s_item, d_item, ignore_patterns)
             else:
-                shutil.copy2(s_item, d_item)
-                print(f"Overwritten file '{item}' from source merge.")
+                # Check if this file has a corresponding .addon.ini file
+                if item.endswith('.ini') and item in addon_files:
+                    # This is a base INI file with an addon - merge them
+                    addon_path = addon_files[item]
+                    merge_ini_files(s_item, addon_path, d_item)
+                else:
+                    # Regular file copy
+                    shutil.copy2(s_item, d_item)
+                    print(f"Overwritten file '{item}' from source merge.")
         except Exception as e:
             print(f"Error merging {s_item} into {d_item}: {e}")
+    
+    # Third pass: handle .addon.ini files that don't have corresponding base files
+    for base_name, addon_path in addon_files.items():
+        base_exists_in_src = os.path.exists(os.path.join(src, base_name))
+        base_exists_in_dst = os.path.exists(os.path.join(dst, base_name))
+        
+        if not base_exists_in_src and base_exists_in_dst:
+            # Addon file exists but no base file in src - merge with existing dst file
+            d_item = os.path.join(dst, base_name)
+            try:
+                merge_ini_files(d_item, addon_path, d_item)
+            except Exception as e:
+                print(f"Error merging addon {addon_path} with existing {d_item}: {e}")
+        elif not base_exists_in_src and not base_exists_in_dst:
+            # No base file anywhere - treat addon as the complete file
+            d_item = os.path.join(dst, base_name)
+            try:
+                shutil.copy2(addon_path, d_item)
+                print(f"Copied addon file '{os.path.basename(addon_path)}' as '{base_name}' (no base file found)")
+            except Exception as e:
+                print(f"Error copying addon file {addon_path}: {e}")
 
 def main():
     # Get the directory in which the script is located
