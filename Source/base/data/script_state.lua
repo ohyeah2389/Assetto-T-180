@@ -42,6 +42,7 @@ local state = {
         fuelConsumption = 0.0,
         fuelLevel = 10000.0,
         bleedBoost = 0.0,
+        afterburnerThrust = 0.0,
 
         -- Dual turbine specific fields
         front = {
@@ -51,6 +52,7 @@ local state = {
             fuelPumpEnabled = true,
             rpm = 0.0,
             feedbackTorque = 0.0,
+            afterburnerThrust = 0.0,
             warnings = {},
             cautions = {}
         },
@@ -61,6 +63,7 @@ local state = {
             fuelPumpEnabled = true,
             rpm = 0.0,
             feedbackTorque = 0.0,
+            afterburnerThrust = 0.0,
             warnings = {},
             cautions = {}
         },
@@ -71,6 +74,7 @@ local state = {
             fuelPumpEnabled = true,
             rpm = 0.0,
             feedbackTorque = 0.0,
+            afterburnerThrust = 0.0,
             warnings = {},
             cautions = {}
         },
@@ -81,6 +85,7 @@ local state = {
             fuelPumpEnabled = true,
             rpm = 0.0,
             feedbackTorque = 0.0,
+            afterburnerThrust = 0.0,
             warnings = {},
             cautions = {}
         }

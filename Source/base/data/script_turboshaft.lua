@@ -121,25 +121,17 @@ function Turboshaft:update(dt)
     }
 
     -- Update and get FADEC-commanded fuel flow
-    self.fuelSystem.commandedFuelFlow = state.turbine[self.turbineId].fuelPumpEnabled and self.fadec:update(dt, self.sensors, controls, self.maxNG, self.maxTIT) or 0
+    self.fuelSystem.commandedFuelFlow = state.turbine[self.turbineId].fuelPumpEnabled and
+    self.fadec:update(dt, self.sensors, controls, self.maxNG, self.maxTIT) or 0
 
     -- Afterburner control logic
-    local throttleLevel = controls.throttle or 0
-    if throttleLevel > 0.9 and state.turbine[self.turbineId].fuelPumpEnabled then
-        self.afterburner.throttleAfterburner = math.applyLag(
-            self.afterburner.throttleAfterburner, 
-            1, 
-            config.turboshaft.throttleLagAfterburner or 0.5, 
-            dt
-        )
-    else
-        self.afterburner.throttleAfterburner = math.applyLag(
-            self.afterburner.throttleAfterburner, 
-            0, 
-            config.turboshaft.throttleLagAfterburner or 0.5, 
-            dt
-        )
-    end
+    local throttleLevel = car.extraB and 1 or (1 - game.car_cphys.clutch) * (car.isInPit and 0 or 1)
+    self.afterburner.throttleAfterburner = math.applyLag(
+        self.afterburner.throttleAfterburner,
+        throttleLevel,
+        config.turboshaft.throttleLagAfterburner or 0.5,
+        dt
+    )
 
     -- Apply fuel system lag
     local fuelFlowDelta = self.fuelSystem.commandedFuelFlow - self.fuelSystem.actualFuelFlow
@@ -152,7 +144,7 @@ function Turboshaft:update(dt)
 
     -- Air mass flow (simplified estimation)
     self.state.massFlowAir = self.speedRatio * self.massFlowAirCoefficient *
-    self.damageCompressorDerateCurve:get(self.state.damageCompressorBlades)
+        self.damageCompressorDerateCurve:get(self.state.damageCompressorBlades)
 
     -- Combustion stability and flameout check
     --if self.fuelSystem.actualFuelFlow < self.minimumStableFuelFlow then
@@ -166,11 +158,11 @@ function Turboshaft:update(dt)
 
     -- Calculate compressor discharge temperature using "isentropic relation", whatever that means
     local inletTemp = self.ambientTemp *
-    (self.state.pressureRatio ^ ((self.specificHeatRatio - 1) / self.specificHeatRatio))
+        (self.state.pressureRatio ^ ((self.specificHeatRatio - 1) / self.specificHeatRatio))
 
     -- Compressor torque calculations
     local powerRequired = self.state.massFlowAir * self.specificHeatCapacity * (inletTemp - self.ambientTemp) /
-    config.turboshaft.compressorEfficiency
+        config.turboshaft.compressorEfficiency
     -- Convert power from Watts to kilowatts for better numerical stability
     powerRequired = powerRequired / 1000
 
@@ -180,10 +172,10 @@ function Turboshaft:update(dt)
     -- Combustion calculations
     local fuelAirRatio = self.fuelSystem.actualFuelFlow / math.max(self.state.massFlowAir, 0.001)
     local combustionHeatAdded = self.fuelSystem.actualFuelFlow * config.turboshaft.fuelLHV *
-    config.turboshaft.combustionEfficiency
+        config.turboshaft.combustionEfficiency
     local totalMassFlow = self.state.massFlowAir + self.fuelSystem.actualFuelFlow
     local combustionExitTemp = inletTemp +
-    (combustionHeatAdded / math.max(totalMassFlow, 0.001)) / self.specificHeatCapacity
+        (combustionHeatAdded / math.max(totalMassFlow, 0.001)) / self.specificHeatCapacity
     local combustionExitPressure = self.ambientPressure * self.state.pressureRatio * (1 - self.combustorPressureLoss)
 
     -- Implement "thermal mass" for TIT using lag
@@ -269,12 +261,12 @@ function Turboshaft:update(dt)
 
     if (self.gasTurbine.angularSpeed * 60 / (2 * math.pi)) > self.damageCompressorOverspeedStart then
         self.state.damageCompressorBlades = math.clamp(
-        self.state.damageCompressorBlades +
-        self.damageCompressorOverspeedK *
-        ((self.gasTurbine.angularSpeed * 60 / (2 * math.pi)) - self.damageCompressorOverspeedStart) * dt, 0, 1)
+            self.state.damageCompressorBlades +
+            self.damageCompressorOverspeedK *
+            ((self.gasTurbine.angularSpeed * 60 / (2 * math.pi)) - self.damageCompressorOverspeedStart) * dt, 0, 1)
     else
         self.state.damageCompressorBlades = math.clamp(
-        self.state.damageCompressorBlades - self.damageCompressorOverspeedRecoveryK * dt, 0, 1)
+            self.state.damageCompressorBlades - self.damageCompressorOverspeedRecoveryK * dt, 0, 1)
     end
 
     -- Damage notification
@@ -317,16 +309,16 @@ function Turboshaft:update(dt)
     -- Calculate exhaust velocity using isentropic flow equations
     local pressureRatio = exhaustPressure / self.ambientPressure
     local velocityTerm = 1 - math.pow(pressureRatio, (self.specificHeatRatio - 1) / self.specificHeatRatio)
-    
+
     ac.debug("turboshaft." .. self.turbineId .. ".debug.pressureRatio", pressureRatio)
     ac.debug("turboshaft." .. self.turbineId .. ".debug.velocityTerm", velocityTerm)
-    
+
     -- Add safety check for velocity term
     if velocityTerm < 0 then
         ac.debug("turboshaft." .. self.turbineId .. ".debug.velocityTermError", "Negative velocity term")
         velocityTerm = 0
     end
-    
+
     local exhaustVelocity = math.sqrt(2 * self.specificHeatCapacity * exhaustTemp * velocityTerm)
     ac.debug("turboshaft." .. self.turbineId .. ".debug.exhaustVelocity", exhaustVelocity)
 
@@ -337,12 +329,12 @@ function Turboshaft:update(dt)
     -- Add pressure thrust component
     local pressureThrust = (exhaustPressure - self.ambientPressure) * config.turboshaft.exhaustThrust.nozzleArea
     ac.debug("turboshaft." .. self.turbineId .. ".debug.pressureThrust", pressureThrust)
-    
+
     local totalThrust = exhaustThrust + pressureThrust
     ac.debug("turboshaft." .. self.turbineId .. ".debug.totalThrust", totalThrust)
 
     -- Safety checks for thrust calculation
-    if not (totalThrust and totalThrust == totalThrust) then  -- Check for NaN
+    if not (totalThrust and totalThrust == totalThrust) then -- Check for NaN
         ac.debug("turboshaft." .. self.turbineId .. ".thrustError", "Invalid thrust value")
         ac.debug("turboshaft." .. self.turbineId .. ".error.exhaustThrust", exhaustThrust)
         ac.debug("turboshaft." .. self.turbineId .. ".error.pressureThrust", pressureThrust)
@@ -365,8 +357,8 @@ function Turboshaft:update(dt)
     end
 
     -- Safety check for thrust vector
-    if not (thrustVector.x == thrustVector.x and 
-            thrustVector.y == thrustVector.y and 
+    if not (thrustVector.x == thrustVector.x and
+            thrustVector.y == thrustVector.y and
             thrustVector.z == thrustVector.z) then
         ac.debug("turboshaft." .. self.turbineId .. ".vectorError", "Invalid thrust vector")
         thrustVector = vec3(0, 0, 0)
@@ -374,9 +366,9 @@ function Turboshaft:update(dt)
 
     -- Safety check for application point
     local applicationPoint = config.turboshaft.exhaustThrust.thrustApplicationPoint
-    if not (applicationPoint and 
-            applicationPoint.x == applicationPoint.x and 
-            applicationPoint.y == applicationPoint.y and 
+    if not (applicationPoint and
+            applicationPoint.x == applicationPoint.x and
+            applicationPoint.y == applicationPoint.y and
             applicationPoint.z == applicationPoint.z) then
         ac.debug("turboshaft." .. self.turbineId .. ".pointError", "Invalid application point")
         applicationPoint = vec3(0, 0, 0)
@@ -393,10 +385,13 @@ function Turboshaft:update(dt)
     end
 
     -- Apply afterburner thrust
-    local afterburnerThrust = self.afterburner.throttleAfterburner * 
-        (config.turboshaft.afterburnerMaxThrust or 2500) * 
+    local afterburnerThrust = self.afterburner.throttleAfterburner *
+        (config.turboshaft.afterburnerMaxThrust or 2500) *
         (state.turbine[self.turbineId].fuelPumpEnabled and 1 or 0)
-    
+
+    -- Store afterburner thrust in state for performance tracking
+    state.turbine[self.turbineId].afterburnerThrust = afterburnerThrust
+
     if afterburnerThrust > 0 then
         local afterburnerVector = vec3(
             0,

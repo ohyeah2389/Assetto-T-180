@@ -11,6 +11,10 @@ local WheelSteerController = require('script_wheelsteerctrlr')
 local JumpJack = require('script_jumpjack')
 local Turbojet = require('script_turbojet')
 local CustomDrivetrain = require('script_customDrivetrain')
+local PerfTracker = require('script_perfTracker')
+
+
+local perfTracker = PerfTracker()
 
 
 local lastDebugTime = os.clock()
@@ -62,6 +66,7 @@ end
 
 local wheelSteerCtrlr = WheelSteerController()
 
+
 local turbojet = nil
 local turbojetLeft = nil
 local turbojetRight = nil
@@ -80,10 +85,12 @@ if config.turbojet.present then
     end
 end
 
+
 local frontTurbine = nil
 local rearTurbine = nil
 local frontDrivetrain = nil
 local rearDrivetrain = nil
+
 
 if config.turboshaft.present then
     local Turboshaft = require('script_turboshaft')
@@ -106,6 +113,7 @@ end
 function script.reset()
     wheelSteerCtrlr:reset()
     jumpJackSystem:reset()
+    perfTracker:reset()
     if config.turbojet.present then
         if config.turbojet.type == "single" then
             turbojet:reset()
@@ -185,6 +193,7 @@ function script.update(dt)
             game.car_cphys.controllerInputs[13] = helpers.mapRange(state.turbine.front.throttle, config.turbojet.minThrottle, 1, 0, 1, true)
             game.car_cphys.controllerInputs[14] = frontTurbine.fuelSystem.actualFuelFlow / frontTurbine.fadec.maxFuelFlow
             game.car_cphys.controllerInputs[15] = ((frontTurbine.gasTurbine.angularSpeed * 60 / (2 * math.pi)) or 0) * (10000 / 45000)
+            game.car_cphys.controllerInputs[16] = frontTurbine.afterburner.throttleAfterburner
             game.car_cphys.controllerInputs[18] = frontTurbine:update(dt)
             -- Copy warnings/cautions from turbine to state
             for _, warning in ipairs(frontTurbine.state.warnings) do
@@ -200,6 +209,7 @@ function script.update(dt)
             game.car_cphys.controllerInputs[8] = helpers.mapRange(state.turbine.rear.throttle, config.turbojet.minThrottle, 1, 0, 1, true)
             game.car_cphys.controllerInputs[9] = rearTurbine.fuelSystem.actualFuelFlow / rearTurbine.fadec.maxFuelFlow
             game.car_cphys.controllerInputs[10] = ((rearTurbine.gasTurbine.angularSpeed * 60 / (2 * math.pi)) or 0) * (10000 / 45000)
+            game.car_cphys.controllerInputs[11] = rearTurbine.afterburner.throttleAfterburner
             game.car_cphys.controllerInputs[19] = rearTurbine:update(dt)
             -- Copy warnings/cautions from turbine to state
             for _, warning in ipairs(rearTurbine.state.warnings) do
@@ -249,7 +259,7 @@ function script.update(dt)
             game.car_cphys.controllerInputs[8] = helpers.mapRange(state.turbine.throttle, config.turbojet.minThrottle, 1, 0, 1, true)
             game.car_cphys.controllerInputs[9] = helpers.mapRange(state.turbine.outputTorque, 0, 2000, 0, 1, true)
             game.car_cphys.controllerInputs[10] = state.turbine.outputRPM / 2.5
-            game.car_cphys.controllerInputs[11] = state.turbine.fuelPumpEnabled and 1 or 0
+            game.car_cphys.controllerInputs[11] = frontTurbine.afterburner.throttleAfterburner
             game.car_cphys.controllerInputs[12] = state.turbine.throttleAfterburner
             ac.overrideTurboBoost(0, 0, 0)
             ac.overrideEngineTorque(0)
@@ -279,6 +289,8 @@ function script.update(dt)
     if ffb and ffb == ffb then  -- Check if value exists and is not NaN
         ac.setSteeringFFB(ffb)
     end
+
+    perfTracker:update(dt)
 
     showDebugValues(dt)
 end

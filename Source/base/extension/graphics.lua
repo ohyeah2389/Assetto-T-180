@@ -260,22 +260,22 @@ function script.update(dt)
         if coordsConfig.turboshaftPresent then
             -- Turboshaft estimates (may overwrite or coexist with turbojet estimates)
             -- Rear Turboshaft (primary values)
-            if not coordsConfig.turbojetType or coordsConfig.turbojetType ~= "single" then -- If not single turbojet config
-                 estimated.throttle = targetGas -- Simple approximation, ignores gear buttons/slip
+            if not coordsConfig.turbojetType or coordsConfig.turbojetType ~= "single" then
+                 estimated.throttle = targetGas
                  estimated.rpm = mapRange(estimated.throttle, 0, 1, TURBOSHAFT_IDLE_RPM, TURBOSHAFT_MAX_RPM)
-                 estimated.thrust = mapRange(estimated.throttle, 0, 1, 0.05, 1.0) -- Estimate fuel flow ratio ('thrust') based on throttle
-                 estimated.fuelPumpEnabled = 1 -- Assume ON
-                 estimated.damage = 0          -- Assume none
-                 estimated.afterburner = 0     -- No afterburner for turboshaft
+                 estimated.thrust = mapRange(estimated.throttle, 0, 1, 0.05, 1.0)
+                 estimated.fuelPumpEnabled = 1
+                 estimated.damage = 0
+                 estimated.afterburner = car.extraB and 1 or (1 - car.clutch)
             end
             -- Front Turboshaft (alt values)
-            if coordsConfig.turbojetType ~= "dual" then -- If not dual turbojet config
-                estimated.throttle_alt = targetGas -- Simple approximation
+            if coordsConfig.turbojetType ~= "dual" then
+                estimated.throttle_alt = targetGas
                 estimated.rpm_alt = mapRange(estimated.throttle_alt, 0, 1, TURBOSHAFT_IDLE_RPM, TURBOSHAFT_MAX_RPM)
-                estimated.thrust_alt = mapRange(estimated.throttle_alt, 0, 1, 0.05, 1.0) -- Estimate fuel flow ratio ('thrust_alt')
-                estimated.fuelPumpEnabled_alt = 1 -- Assume ON
-                estimated.damage_alt = 0          -- Assume none
-                estimated.afterburner_alt = 0     -- No afterburner for turboshaft
+                estimated.thrust_alt = mapRange(estimated.throttle_alt, 0, 1, 0.05, 1.0)
+                estimated.fuelPumpEnabled_alt = 1
+                estimated.damage_alt = 0
+                estimated.afterburner_alt = car.extraB and 1 or (1 - car.clutch)
             end
         end
 
@@ -332,7 +332,7 @@ function script.update(dt)
                  ctrlrData.turbineRPM = replayFadeouts.rpm           -- Read primary rpm
                  ctrlrData.fuelPumpEnabled = replayFadeouts.fuelPumpEnabled -- Read primary pump state
                  ctrlrData.turbineDamage = replayFadeouts.damage         -- Read primary damage
-                 ctrlrData.turbineAfterburner = 0 -- Ensure AB is off for TS
+                 ctrlrData.turbineAfterburner = replayFadeouts.afterburner -- Read primary afterburner
              end
              -- Populate Front Turboshaft data (if not dual turbojet config)
              if coordsConfig.turbojetType ~= "dual" then
@@ -341,6 +341,7 @@ function script.update(dt)
                  ctrlrData.frontTurbineRPM = replayFadeouts.rpm_alt       -- Read alt rpm
                  ctrlrData.frontFuelPumpEnabled = replayFadeouts.fuelPumpEnabled_alt -- Read alt pump state
                  ctrlrData.frontTurbineDamage = replayFadeouts.damage_alt     -- Read alt damage
+                 ctrlrData.frontTurbineAfterburner = replayFadeouts.afterburner_alt -- Read alt afterburner
              end
         end
 
@@ -374,23 +375,24 @@ function script.update(dt)
 
         -- Populate/Overwrite with Turboshaft data if present and not masked
         if coordsConfig.turboshaftPresent then
-            -- Rear Turboshaft (Inputs 8, 9, 10, 19)
+            -- Rear Turboshaft (Inputs 8, 9, 10, 11, 19)
             if not coordsConfig.turbojetType or coordsConfig.turbojetType ~= "single" then
                  ctrlrData.turbineThrottle = rawCtrlrData.input8    -- Throttle
                  ctrlrData.turbineThrust = rawCtrlrData.input9     -- Fuel Flow Ratio
                  -- Unscale RPM from physics input (input10 is RPM * scale)
                  ctrlrData.turbineRPM = (rawCtrlrData.input10 ~= 0 and TURBOSHAFT_PHYSICS_RPM_SCALE ~= 0) and (rawCtrlrData.input10 / TURBOSHAFT_PHYSICS_RPM_SCALE) or 0
+                 ctrlrData.turbineAfterburner = rawCtrlrData.input11 -- Read actual afterburner from physics
                  ctrlrData.turbineDamage = rawCtrlrData.input19    -- Damage
                  -- Estimate fuel pump state based on unscaled RPM vs idle threshold
-                 ctrlrData.fuelPumpEnabled = (ctrlrData.turbineRPM > (TURBOSHAFT_IDLE_RPM * 0.9)) and 1 or 0 -- Pump ON if near/above idle
-                 ctrlrData.turbineAfterburner = 0 -- Ensure AB is off
+                 ctrlrData.fuelPumpEnabled = (ctrlrData.turbineRPM > (TURBOSHAFT_IDLE_RPM * 0.9)) and 1 or 0
             end
-            -- Front Turboshaft (Inputs 13, 14, 15, 18)
+            -- Front Turboshaft (Inputs 13, 14, 15, 16, 18)
             if coordsConfig.turbojetType ~= "dual" then
                  ctrlrData.frontTurbineThrottle = rawCtrlrData.input13 -- Throttle
                  ctrlrData.frontTurbineThrust = rawCtrlrData.input14   -- Fuel Flow Ratio
                  -- Unscale RPM from physics input (input15 is RPM * scale)
                  ctrlrData.frontTurbineRPM = (rawCtrlrData.input15 ~= 0 and TURBOSHAFT_PHYSICS_RPM_SCALE ~= 0) and (rawCtrlrData.input15 / TURBOSHAFT_PHYSICS_RPM_SCALE) or 0
+                 ctrlrData.frontTurbineAfterburner = rawCtrlrData.input16 -- Read actual afterburner from physics
                  ctrlrData.frontTurbineDamage = rawCtrlrData.input18   -- Damage
                  -- Estimate fuel pump state based on unscaled RPM vs idle threshold
                  ctrlrData.frontFuelPumpEnabled = (ctrlrData.frontTurbineRPM > (TURBOSHAFT_IDLE_RPM * 0.9)) and 1 or 0
@@ -497,8 +499,7 @@ function script.update(dt)
              if audio_turbine_rear then -- This audio source might be shared/overwritten by single TJ, handle carefully
                  audio_turbine_rear:setParam("rpm", ctrlrData.turbineRPM)
                  audio_turbine_rear:setParam("throttle", ctrlrData.turbineThrottle)
-                 -- Turboshaft doesn't have afterburner, ensure it's 0 if this sound is used for TS
-                 audio_turbine_rear:setParam("afterburner", 0)
+                 audio_turbine_rear:setParam("afterburner", ctrlrData.turbineAfterburner or 0)
                  audio_turbine_rear:setParam("damage", ctrlrData.turbineDamage)
              end
              if audio_turbine_fuelpump_rear then
@@ -510,7 +511,7 @@ function script.update(dt)
             if audio_turbine_front then
                  audio_turbine_front:setParam("rpm", ctrlrData.frontTurbineRPM)
                  audio_turbine_front:setParam("throttle", ctrlrData.frontTurbineThrottle)
-                 audio_turbine_front:setParam("afterburner", 0) -- Ensure AB is off
+                 audio_turbine_front:setParam("afterburner", ctrlrData.frontTurbineAfterburner or 0)
                  audio_turbine_front:setParam("damage", ctrlrData.frontTurbineDamage)
             end
              if audio_turbine_fuelpump_front then
@@ -576,7 +577,6 @@ function script.update(dt)
 
     -- Turbine exhaust glow logic
     turbineExhaustGlow:setMaterialProperty("ksEmissive", (vec3(2, 2, 4) * ctrlrData.turbineThrottle * 10) + (vec3(1, 1, 1) * ctrlrData.turbineAfterburner * 20))
-
 
     -- Headlight Logic
     lightFadeout = math.lerp(lightFadeout, car.headlightsActive and 1 or 0, dt * 15)
