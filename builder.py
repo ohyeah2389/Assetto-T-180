@@ -144,7 +144,7 @@ def update_ui_json(ui_json_path, version, year):
     data["version"] = version
     data["year"] = year
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    append_text = f" Car compiled on {now_str}."
+    append_text = f"<br><br>Car compiled on {now_str}."
     if "description" in data and isinstance(data["description"], str):
         data["description"] += append_text
     else:
