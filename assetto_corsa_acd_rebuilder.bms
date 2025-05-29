@@ -1,0 +1,177 @@
+# Assetto Corsa ACD rebuilder (script 0.1.1b) (filename truncation fix by ohyeah2389)
+#   the key is the name of the folder so don't modify their name
+#
+#   How to use:
+#   quickbms assetto_corsa_acd_rebuilder.bms ORIGINAL_LOCATION_OF_DATA.ACD FOLDER_WHERE_ARE_LOCATED_THE_FILES
+#   quickbms assetto_corsa_acd_rebuilder.bms c:\assetto_corsa\abarth500\data.acd c:\files_dumped_before
+#
+#   The new archive will be created in the folder where are located the input files.
+#   It should have the name data.acd.rebuilt and is contained in a folder with the same name of the original.
+#
+####
+#
+#   Easier how to use:
+#   - launch quickbms.exe
+#   - select assetto_corsa_acd_rebuilder.bms
+#   - select the original data.acd file (don't worry, it will be not modified)
+#   - select the folder where are located all the files (so inside the "data" folder)
+#   - you will receive a success message
+#   - go from Windows in the data folder
+#   - you should see a new sub-folder with the same name of the car
+#   - go in this sub-folder and you will see the file data.acd.rebuilt (for example "c:\path\game\ks_mclaren_p1\data\ks_mclaren_p1\data.acd.rebuilt")
+#   - that's the new file that you can rename and move over the original data.acd
+#
+# script for QuickBMS http://quickbms.aluigi.org
+
+
+math ACD_VERSION = 0    # set it to 1 for the Dream Pack
+
+
+# generate the key (copy&pasted from assetto_corsa_acd.bms)
+
+get NAME fullname
+string NAME l NAME
+string NAME >>= \
+string NAME != \
+strlen NAMESZ NAME
+
+math KEY1 = 0
+for i = 0 < NAMESZ
+    getvarchr TMP NAME i
+    math KEY1 += TMP
+next i
+
+xmath TMPSZ "NAMESZ - 1"
+math KEY2 = 0
+for i = 0 < TMPSZ
+    getvarchr TMP NAME i
+    math KEY2 *= TMP
+    math i += 1
+    getvarchr TMP2 NAME i
+    math KEY2 -= TMP2
+next i
+
+xmath TMPSZ "NAMESZ - 3"
+math KEY3 = 0
+for i = 1 < TMPSZ
+    getvarchr TMP NAME i
+    math KEY3 *= TMP
+    math i += 1
+    getvarchr TMP2 NAME i
+    math TMP2 += 0x1b
+    math KEY3 /= TMP2
+    math i -= 2
+    getvarchr TMP3 NAME i
+    math TMP = -0x1b
+    math TMP -= TMP3
+    math KEY3 += TMP
+next i += 4
+
+math KEY4 = 0x1683
+for i = 1 < NAMESZ
+    getvarchr TMP NAME i
+    math KEY4 -= TMP
+next i
+
+xmath TMPSZ "NAMESZ - 4"
+math KEY5 = 0x42
+for i = 1 < TMPSZ
+    getvarchr TMP NAME i
+    math TMP += 0xf
+    math TMP *= KEY5
+    math i -= 1
+    getvarchr TMP2 NAME i
+    math i += 1
+    math TMP2 += 0xf
+    math TMP2 *= TMP
+    math TMP2 += 0x16
+    math KEY5 = TMP2
+next i += 4
+
+xmath TMPSZ "NAMESZ - 2"
+math KEY6 = 0x65
+for i = 0 < TMPSZ
+    getvarchr TMP NAME i
+    math KEY6 -= TMP
+next i += 2
+
+xmath TMPSZ "NAMESZ - 2"
+math KEY7 = 0xab
+for i = 0 < TMPSZ
+    getvarchr TMP NAME i
+    math KEY7 %= TMP
+next i += 2
+
+xmath TMPSZ "NAMESZ - 1"
+math KEY8 = 0xab
+for i = 0 < TMPSZ
+    getvarchr TMP NAME i
+    math KEY8 /= TMP
+    math i += 1
+    getvarchr TMP2 NAME i
+    math KEY8 += TMP2
+    math i -= 1
+next i
+
+math KEY1 &= 0xff
+math KEY2 &= 0xff
+math KEY3 &= 0xff
+math KEY4 &= 0xff
+math KEY5 &= 0xff
+math KEY6 &= 0xff
+math KEY7 &= 0xff
+math KEY8 &= 0xff
+
+string TMP  p= "%d-%d-%d-%d-" KEY1 KEY2 KEY3 KEY4
+string TMP2 p= "%d-%d-%d-%d" KEY5 KEY6 KEY7 KEY8
+string KEY  p= "%s%s" TMP TMP2
+
+print "KEY %NAME% -> %KEY%"
+
+
+# rebuilding
+# this is a rebuilding so there are no size limitations
+
+set ACD_NAME string NAME
+get TMP filename
+string ACD_NAME += /
+string ACD_NAME += TMP
+string ACD_NAME += ".rebuilt"
+
+log MEMORY_FILE2 0 0
+if ACD_VERSION == 1
+    put 0xfffffba9 long MEMORY_FILE2
+    put 0x000a4691 long MEMORY_FILE2
+endif
+for
+    scandir "." NAME SIZE
+    if NAME == ""
+        break
+    endif
+    if NAME & "./"
+        string NAME >>= 2   # remove ./
+    elif NAME & ".\\"
+        string NAME >>= 2   # remove .\
+    endif
+    
+    print "INPUT FILE: %NAME% %SIZE|x%"
+
+    open "." NAME
+
+    strlen NAMESZ NAME
+    put NAMESZ long MEMORY_FILE2
+    putdstring NAME NAMESZ MEMORY_FILE2
+    put SIZE long MEMORY_FILE2
+
+    encryption rot KEY "" 0
+    log MEMORY_FILE 0 SIZE
+    encryption "" ""
+
+    for x = 0 < SIZE
+        getvarchr TMP MEMORY_FILE x
+        put TMP long MEMORY_FILE2
+    next x
+next
+
+get SIZE asize MEMORY_FILE2
+log ACD_NAME 0 SIZE MEMORY_FILE2

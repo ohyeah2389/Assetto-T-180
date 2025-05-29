@@ -26,6 +26,8 @@ from datetime import datetime
 import fnmatch
 from typing import List, Optional
 import configparser
+import subprocess
+import tempfile
 
 try:
     import tomllib
@@ -319,6 +321,155 @@ def merge_directories(src, dst, ignore_patterns):
             except Exception as e:
                 print(f"Error copying addon file {addon_path}: {e}")
 
+def pack_data_folder(car_build_dir, car_name):
+    """
+    Uses QuickBMS with the rebuilder script to pack the data folder into data.acd,
+    then deletes the original data folder.
+    """
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    quickbms_path = os.path.join(script_dir, "quickbms.exe")
+    rebuilder_script = os.path.join(script_dir, "assetto_corsa_acd_rebuilder.bms")
+    data_dir = os.path.join(car_build_dir, "data")
+    
+    # Check if QuickBMS and the rebuilder script exist
+    if not os.path.exists(quickbms_path):
+        print(f"Warning: QuickBMS not found at {quickbms_path}. Skipping data packing for {car_name}")
+        return False
+    
+    if not os.path.exists(rebuilder_script):
+        print(f"Warning: Rebuilder script not found at {rebuilder_script}. Skipping data packing for {car_name}")
+        return False
+    
+    if not os.path.exists(data_dir):
+        print(f"Warning: Data folder not found for {car_name}. Skipping data packing.")
+        return False
+    
+    try:
+        # Create a simple temp directory structure
+        with tempfile.TemporaryDirectory() as temp_base:
+            # Create the car folder structure
+            temp_car_dir = os.path.join(temp_base, car_name)
+            os.makedirs(temp_car_dir)
+            
+            # Copy data folder contents directly to the car folder (not in a data subfolder)
+            print(f"Copying data files to temporary location: {temp_car_dir}")
+            for item in os.listdir(data_dir):
+                src_item = os.path.join(data_dir, item)
+                dst_item = os.path.join(temp_car_dir, item)
+                if os.path.isfile(src_item):
+                    shutil.copy2(src_item, dst_item)
+                else:
+                    shutil.copytree(src_item, dst_item)
+            
+            # Create a minimal dummy data.acd file
+            temp_acd = os.path.join(temp_car_dir, "data.acd")
+            with open(temp_acd, 'wb') as f:
+                f.write(b'\x00' * 16)  # Create minimal dummy file
+            
+            # Run QuickBMS directly in the car folder
+            cmd = [
+                quickbms_path,
+                rebuilder_script,
+                "data.acd",
+                "."
+            ]
+            
+            print(f"Packing data folder for {car_name}...")
+            print(f"Command: {' '.join(cmd)} (in directory: {temp_car_dir})")
+            
+            # Change working directory to the temp car folder
+            original_cwd = os.getcwd()
+            os.chdir(temp_car_dir)
+            
+            try:
+                result = subprocess.run(cmd, capture_output=True, text=True)
+            finally:
+                # Always restore original working directory
+                os.chdir(original_cwd)
+            
+            # Print QuickBMS output for debugging
+            if result.stdout:
+                print("QuickBMS stdout:")
+                print(result.stdout)
+            if result.stderr:
+                print("QuickBMS stderr:")
+                print(result.stderr)
+            
+            if result.returncode == 0:
+                # Look for the generated .rebuilt file
+                rebuilt_files = []
+                for root, dirs, files in os.walk(temp_base):
+                    for file in files:
+                        if file.endswith('.rebuilt'):
+                            rebuilt_files.append(os.path.join(root, file))
+                
+                if rebuilt_files:
+                    # Move the .rebuilt file to data.acd in the original location
+                    rebuilt_file = rebuilt_files[0]
+                    final_acd = os.path.join(car_build_dir, "data.acd")
+                    shutil.move(rebuilt_file, final_acd)
+                    
+                    # Remove the original data folder
+                    shutil.rmtree(data_dir)
+                    
+                    print(f"Successfully packed data folder for {car_name} -> data.acd")
+                    return True
+                else:
+                    print(f"Error: No .rebuilt file generated for {car_name}")
+                    return False
+            else:
+                print(f"Error packing data for {car_name}: QuickBMS returned code {result.returncode}")
+                return False
+                
+    except Exception as e:
+        print(f"Error packing data folder for {car_name}: {e}")
+        return False
+
+def debug_directory_scan(data_dir):
+    """
+    Debug function to see what files are actually in the directory
+    and test if there are any problematic files.
+    """
+    print(f"DEBUG: Scanning directory {data_dir}")
+    try:
+        files = os.listdir(data_dir)
+        print(f"DEBUG: Found {len(files)} items")
+        
+        for file in sorted(files):
+            file_path = os.path.join(data_dir, file)
+            try:
+                if os.path.isfile(file_path):
+                    size = os.path.getsize(file_path)
+                    # Check for non-ASCII characters
+                    try:
+                        file.encode('ascii')
+                        ascii_ok = "✓"
+                    except UnicodeEncodeError:
+                        ascii_ok = "✗ (non-ASCII)"
+                    
+                    print(f"  FILE: {file} ({size} bytes) {ascii_ok}")
+                else:
+                    print(f"  DIR:  {file}/")
+            except Exception as e:
+                print(f"  ERROR: {file} - {e}")
+                
+        # Check for hidden files on Windows
+        try:
+            import subprocess
+            result = subprocess.run(['dir', '/a', data_dir], 
+                                  capture_output=True, text=True, shell=True)
+            hidden_files = [line for line in result.stdout.split('\n') 
+                          if 'ro.ini' in line.lower()]
+            if hidden_files:
+                print(f"DEBUG: Found ro.ini references in dir output:")
+                for line in hidden_files:
+                    print(f"  {line.strip()}")
+        except:
+            pass
+            
+    except Exception as e:
+        print(f"DEBUG: Error scanning directory: {e}")
+
 def main():
     # Get the directory in which the script is located
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -438,6 +589,9 @@ def main():
                 update_ui_json(ui_json_path, info_version, info_year)
             else:
                 print(f"Warning: 'ui/ui_car.json' not found for {car_name}")
+            
+            # Pack the data folder into data.acd
+            pack_data_folder(car_build_dir, car_name)
     
     print("\nBuild process complete.")
 
