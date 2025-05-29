@@ -40,7 +40,7 @@ local state = {
         rpm = 0.0,
         feedbackTorque = 0.0,
         fuelConsumption = 0.0,
-        fuelLevel = 100.0,
+        fuelLevel = 10000.0,
         bleedBoost = 0.0,
 
         -- Dual turbine specific fields
