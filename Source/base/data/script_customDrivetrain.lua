@@ -10,7 +10,7 @@ local drivetrain = class("drivetrain")
 
 function drivetrain:initialize(params)
     self.drivenWheels = params.drivenWheels or {ac.Wheel.RearLeft, ac.Wheel.RearRight}
-    self.finalDriveRatio = params.finalDriveRatio or 6
+    self.finalDriveRatio = params.finalDriveRatio or 3
 
     -- Open differential parameters with speed-dependent coupling
     self.couplingStiffness = params.couplingStiffness or 200
