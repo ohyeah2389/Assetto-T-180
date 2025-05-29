@@ -575,6 +575,30 @@ function script.update(dt)
         end
     end
 
+    -- Add turboshaft flame effects (including afterburner flames)
+    if coordsConfig.turboshaftPresent then
+        local scale = mapRange(car.speedKmh, 0, 400, 1, 0.1, true)
+        local pos = coordsConfig.coordinates.turbineExhaust
+        local afterburnerBaseEjectionVel = vec3(0, 0, -3 * 0.5) -- Slower ejection speed for AB
+        local carVelComponent = car.localVelocity * -0.35
+        local baseVel = vec3(0, 0, -3) + carVelComponent
+        local afterburnerVel = afterburnerBaseEjectionVel + carVelComponent
+        local particlePos = vec3(pos.x + car.localVelocity.x * 0.012, pos.y, pos.z + car.localVelocity.z * 0.01)
+
+        -- Rear turboshaft flames (if not single turbojet config)
+        if not coordsConfig.turbojetType or coordsConfig.turbojetType ~= "single" then
+            flameBoost:emit(particlePos, baseVel,
+                mapRange(ctrlrData.turbineThrottle, 0.9, 1, 0, 1, true) * mapRange(car.speedKmh, 0, 400, 0.5, 0.1, true))
+
+            -- Emit afterburner flames for turboshaft
+            flameTurbo:emit(particlePos, afterburnerVel,
+                (ctrlrData.turbineAfterburner or 0) * scale * 0.6)
+
+            exhaustSmoke:emit(particlePos, baseVel * mapRange(ctrlrData.turbineThrottle, 0, 1, 10, 20, true),
+                mapRange(ctrlrData.turbineThrottle, 0, 1, 0.05, 0.2, true) * (1 + (ctrlrData.turbineAfterburner or 0)))
+        end
+    end
+
     -- Turbine exhaust glow logic
     turbineExhaustGlow:setMaterialProperty("ksEmissive", (vec3(2, 2, 4) * ctrlrData.turbineThrottle * 10) + (vec3(1, 1, 1) * ctrlrData.turbineAfterburner * 20))
 
