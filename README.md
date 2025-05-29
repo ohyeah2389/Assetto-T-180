@@ -15,7 +15,8 @@ This car is designed for use with a wheel, but you can use it with a gamepad/con
 - You shouldn't use an assisted gamepad script (like Advanced Gamepad Assist) with this car, as it will not know how to steer the wheels of the car very well, if at all.
 
 ## Credits
-- [Mectreno](https://sketchfab.com/Mectren0) for the Mach 6 3D model base
+- [Mectreno](https://sketchfab.com/Mectren0) for the base of the Mach 6 3D model
+- Mad Agus for the Augury model
 
 ## Requirements
 - A legal and activated copy of Assetto Corsa for personal computers
