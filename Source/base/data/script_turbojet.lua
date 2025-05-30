@@ -19,7 +19,7 @@ function turbojet:initialize(params)
     self.state = self.id == 'single' and state.turbine or state.turbine[self.id] -- Reference correct state sub-table
 
     self.carReversing = false
-    self.thrustApplicationPoint = params.thrustApplicationPoint or vec3(0.0, 0.77, -2)
+    self.thrustApplicationPoint = config.turbojet.thrustApplicationPoint or vec3(0.0, 0.77, -2)
     self.turbine = physics({
         rotary = true,
         inertia = config.turbojet.inertia,
