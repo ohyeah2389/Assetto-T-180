@@ -1,7 +1,7 @@
 {
   "name": "Mach 4",
   "brand": "Racer Motors",
-  "description": "The Mach 4 is a WRL-homologated racing vehicle designed by Pops Racer and built by the Racer family to compete in the WRL championship racing series. It is powered by a large V8 engine with a manual drivetrain and a pneumatically interlinked afterburning turbine engine for cornering thrust. It is not a T-180, as it existed before the technology was developed, but it does feature reinforced rear suspension components that would later be developed into the T-180 platform. It uses conventional front wheel steering and is a rear-wheel drive vehicle.",
+  "description": "The Mach 4 is a WRL-homologated racing vehicle designed by Pops Racer and built by the Racer family to compete in the WRL championship racing series. It is powered by a large V8 engine with a manual drivetrain and a pneumatically interlinked afterburning turbine engine for cornering thrust. It is not a T-180, as it existed before the technology was developed, but it does feature reinforced rear suspension components that would later be developed into the T-180 platform. It uses conventional front wheel steering and is a rear-biased all-wheel drive vehicle.",
   "tags": [
     "rwd",
     "race",
