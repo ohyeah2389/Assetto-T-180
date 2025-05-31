@@ -13,7 +13,7 @@
   "specs": {
     "bhp": "2029 bhp",
     "torque": "1714 Nm",
-    "weight": "745 kg",
+    "weight": "775 kg",
     "topspeed": ">700 km/h",
     "acceleration": "2.1 s 0-100",
     "pwratio": "0.37 kg/hp"
