@@ -19,15 +19,16 @@ local flameTurbo = ac.Particles.Flame({
     flameIntensity = coordsConfig.flame.afterburnerIntensity
 })
 
-local flameExplosion = ac.Particles.Flame({
-    color = rgbm(1, 0.5, 0.2, 1),
-    size = 30,
-    temperatureMultiplier = 1.0,
-    flameIntensity = 2
+local exhaustSmoke = ac.Particles.Smoke({
+    color = rgbm(0.3, 0.32, 0.35, 0.1),
+    life = 10,
+    size = 0.1,
+    spreadK = 2,
+    growK = 3,
+    targetYVelocity = 0.5,
+    flags =
+        ac.Particles.SmokeFlags.FadeIn
 })
-local flameExplosionFadeout = 0
-
-local exhaustSmoke = ac.Particles.Smoke({color = rgbm(0.3, 0.32, 0.35, 0.1), life = 10, size = 0.1, spreadK = 2, growK = 3, targetYVelocity = 0.5, flags = ac.Particles.SmokeFlags.FadeIn})
 
 local light_headlight_left = ac.accessCarLight("LIGHT_HEADLIGHT_1")
 local light_headlight_right = ac.accessCarLight("LIGHT_HEADLIGHT_2")
@@ -60,7 +61,9 @@ if coordsConfig.turbojetType then -- Check if turbojetType is defined
         audio_turbine_fuelpump_rear = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/turbine_fuelpump", true, true)
         audio_turbine_fuelpump_rear.cameraInteriorMultiplier = 0.5
         audio_turbine_fuelpump_rear.volume = 0.45
-        audio_turbine_fuelpump_rear:setPosition(vec3(coordsConfig.coordinates.turbineExhaust.x, coordsConfig.coordinates.turbineExhaust.y - 0.07, coordsConfig.coordinates.turbineExhaust.z + 1.3), vec3(0, 0, 1), vec3(0, 1, 0))
+        audio_turbine_fuelpump_rear:setPosition(
+            vec3(coordsConfig.coordinates.turbineExhaust.x, coordsConfig.coordinates.turbineExhaust.y - 0.07,
+                coordsConfig.coordinates.turbineExhaust.z + 1.3), vec3(0, 0, 1), vec3(0, 1, 0))
         audio_turbine_fuelpump_rear:start()
     elseif coordsConfig.turbojetType == "dual" then
         -- Left Turbine Audio
@@ -73,7 +76,9 @@ if coordsConfig.turbojetType then -- Check if turbojetType is defined
         audio_turbine_fuelpump_left = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/turbine_fuelpump", true, true)
         audio_turbine_fuelpump_left.cameraInteriorMultiplier = 0.5
         audio_turbine_fuelpump_left.volume = 0.40
-        audio_turbine_fuelpump_left:setPosition(vec3(coordsConfig.coordinates.turbineExhaustLeft.x, coordsConfig.coordinates.turbineExhaustLeft.y - 0.07, coordsConfig.coordinates.turbineExhaustLeft.z + 1.3), vec3(0, 0, 1), vec3(0, 1, 0))
+        audio_turbine_fuelpump_left:setPosition(
+            vec3(coordsConfig.coordinates.turbineExhaustLeft.x, coordsConfig.coordinates.turbineExhaustLeft.y - 0.07,
+                coordsConfig.coordinates.turbineExhaustLeft.z + 1.3), vec3(0, 0, 1), vec3(0, 1, 0))
         audio_turbine_fuelpump_left:start()
 
         -- Right Turbine Audio
@@ -86,7 +91,9 @@ if coordsConfig.turbojetType then -- Check if turbojetType is defined
         audio_turbine_fuelpump_right = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/turbine_fuelpump", true, true)
         audio_turbine_fuelpump_right.cameraInteriorMultiplier = 0.5
         audio_turbine_fuelpump_right.volume = 0.40
-        audio_turbine_fuelpump_right:setPosition(vec3(coordsConfig.coordinates.turbineExhaustRight.x, coordsConfig.coordinates.turbineExhaustRight.y - 0.07, coordsConfig.coordinates.turbineExhaustRight.z + 1.3), vec3(0, 0, 1), vec3(0, 1, 0))
+        audio_turbine_fuelpump_right:setPosition(
+            vec3(coordsConfig.coordinates.turbineExhaustRight.x, coordsConfig.coordinates.turbineExhaustRight.y - 0.07,
+                coordsConfig.coordinates.turbineExhaustRight.z + 1.3), vec3(0, 0, 1), vec3(0, 1, 0))
         audio_turbine_fuelpump_right:start()
     end
 end
@@ -108,11 +115,11 @@ if coordsConfig.turboshaftPresent then -- Use value from coordsConfig
     audio_turbine_fuelpump_front:start()
 end
 
+-- Fuel Pump Load Curve
 local fuelPumpRPMLUT = ac.DataLUT11()
 fuelPumpRPMLUT:add(0, 4000)
 fuelPumpRPMLUT:add(6000, 5000)
 fuelPumpRPMLUT:add(18000, 4500)
-local fuelPumpFadeout = 0 -- Generic fadeout, will need specifics per pump
 
 local jumpJackSound_left = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/jumpjack", true, true)
 jumpJackSound_left.cameraInteriorMultiplier = 0.5
@@ -145,14 +152,14 @@ local frontFuelPumpFadeoutState = 0
 local replayFadeouts = {
     -- Common / Rear Turbine (Turboshaft) / Left Turbine (Dual Turbojet)
     throttle = 0,
-    rpm = 4000,       -- Default idle estimate
-    thrust = 0,       -- Turbojet thrust / Turboshaft fuel flow ratio estimate
-    afterburner = 0,  -- Turbojet specific
+    rpm = 4000,      -- Default idle estimate
+    thrust = 0,      -- Turbojet thrust / Turboshaft fuel flow ratio estimate
+    afterburner = 0, -- Turbojet specific
     fuelPumpEnabled = 0,
     damage = 0,
 
     -- Front Turbine (Turboshaft) / Right Turbine (Dual Turbojet)
-    throttle_alt = 0, -- Front throttle (TS) / Right throttle (TJ)
+    throttle_alt = 0,    -- Front throttle (TS) / Right throttle (TJ)
     rpm_alt = 4000,      -- Front RPM (TS) / Right RPM (TJ)
     thrust_alt = 0,      -- Right thrust (TJ) / Front fuel flow ratio estimate
     afterburner_alt = 0, -- Right afterburner (TJ)
@@ -188,14 +195,6 @@ end
 ---@diagnostic disable-next-line: duplicate-set-field
 function script.update(dt)
     ac.boostFrameRate()
-
-    --if car.acceleration:length() > 100 then
-    --    flameExplosion:emit(vec3(0, 0, 0), -car.localVelocity*0.5, 1)
-    --    flameExplosionFadeout = 1
-    --else
-    --    flameExplosion:emit(vec3(0, 0, 0), -car.localVelocity*0.5, flameExplosionFadeout)
-    --    flameExplosionFadeout = math.max(flameExplosionFadeout - dt * 5, 0)
-    --end
 
     -- Read all potentially relevant controller inputs
     local rawCtrlrData = {
@@ -261,12 +260,12 @@ function script.update(dt)
             -- Turboshaft estimates (may overwrite or coexist with turbojet estimates)
             -- Rear Turboshaft (primary values)
             if not coordsConfig.turbojetType or coordsConfig.turbojetType ~= "single" then
-                 estimated.throttle = targetGas
-                 estimated.rpm = mapRange(estimated.throttle, 0, 1, TURBOSHAFT_IDLE_RPM, TURBOSHAFT_MAX_RPM)
-                 estimated.thrust = mapRange(estimated.throttle, 0, 1, 0.05, 1.0)
-                 estimated.fuelPumpEnabled = 1
-                 estimated.damage = 0
-                 estimated.afterburner = car.extraB and 1 or (1 - car.clutch)
+                estimated.throttle = targetGas
+                estimated.rpm = mapRange(estimated.throttle, 0, 1, TURBOSHAFT_IDLE_RPM, TURBOSHAFT_MAX_RPM)
+                estimated.thrust = mapRange(estimated.throttle, 0, 1, 0.05, 1.0)
+                estimated.fuelPumpEnabled = 1
+                estimated.damage = 0
+                estimated.afterburner = car.extraB and 1 or (1 - car.clutch)
             end
             -- Front Turboshaft (alt values)
             if coordsConfig.turbojetType ~= "dual" then
@@ -280,9 +279,9 @@ function script.update(dt)
         end
 
         -- Apply fadeouts (Lerp towards estimated targets)
-        local lerpFactor = dt * 5 -- Adjust rate as needed
+        local lerpFactor = dt * 5    -- Adjust rate as needed
         local lerpFactorRPM = dt * 2 -- RPM might change slower
-        local lerpFactorAB = dt * 8 -- Faster AB fade
+        local lerpFactorAB = dt * 8  -- Faster AB fade
 
         replayFadeouts.throttle = math.lerp(replayFadeouts.throttle, estimated.throttle or 0, lerpFactor)
         replayFadeouts.rpm = math.lerp(replayFadeouts.rpm, estimated.rpm or TURBOJET_IDLE_RPM, lerpFactorRPM) -- Use TJ Idle as default
@@ -325,28 +324,26 @@ function script.update(dt)
             end
         end
         if coordsConfig.turboshaftPresent then
-             -- Populate Rear Turboshaft data (if not single turbojet config)
-             if not coordsConfig.turbojetType or coordsConfig.turbojetType ~= "single" then
-                 ctrlrData.turbineThrottle = replayFadeouts.throttle     -- Read primary throttle
-                 ctrlrData.turbineThrust = replayFadeouts.thrust       -- Read primary thrust (representing fuel flow here)
-                 ctrlrData.turbineRPM = replayFadeouts.rpm           -- Read primary rpm
-                 ctrlrData.fuelPumpEnabled = replayFadeouts.fuelPumpEnabled -- Read primary pump state
-                 ctrlrData.turbineDamage = replayFadeouts.damage         -- Read primary damage
-                 ctrlrData.turbineAfterburner = replayFadeouts.afterburner -- Read primary afterburner
-             end
-             -- Populate Front Turboshaft data (if not dual turbojet config)
-             if coordsConfig.turbojetType ~= "dual" then
-                 ctrlrData.frontTurbineThrottle = replayFadeouts.throttle_alt -- Read alt throttle
-                 ctrlrData.frontTurbineThrust = replayFadeouts.thrust_alt   -- Read alt thrust (fuel flow)
-                 ctrlrData.frontTurbineRPM = replayFadeouts.rpm_alt       -- Read alt rpm
-                 ctrlrData.frontFuelPumpEnabled = replayFadeouts.fuelPumpEnabled_alt -- Read alt pump state
-                 ctrlrData.frontTurbineDamage = replayFadeouts.damage_alt     -- Read alt damage
-                 ctrlrData.frontTurbineAfterburner = replayFadeouts.afterburner_alt -- Read alt afterburner
-             end
+            -- Populate Rear Turboshaft data (if not single turbojet config)
+            if not coordsConfig.turbojetType or coordsConfig.turbojetType ~= "single" then
+                ctrlrData.turbineThrottle = replayFadeouts.throttle        -- Read primary throttle
+                ctrlrData.turbineThrust = replayFadeouts.thrust            -- Read primary thrust (representing fuel flow here)
+                ctrlrData.turbineRPM = replayFadeouts.rpm                  -- Read primary rpm
+                ctrlrData.fuelPumpEnabled = replayFadeouts.fuelPumpEnabled -- Read primary pump state
+                ctrlrData.turbineDamage = replayFadeouts.damage            -- Read primary damage
+                ctrlrData.turbineAfterburner = replayFadeouts.afterburner  -- Read primary afterburner
+            end
+            -- Populate Front Turboshaft data (if not dual turbojet config)
+            if coordsConfig.turbojetType ~= "dual" then
+                ctrlrData.frontTurbineThrottle = replayFadeouts.throttle_alt        -- Read alt throttle
+                ctrlrData.frontTurbineThrust = replayFadeouts.thrust_alt            -- Read alt thrust (fuel flow)
+                ctrlrData.frontTurbineRPM = replayFadeouts.rpm_alt                  -- Read alt rpm
+                ctrlrData.frontFuelPumpEnabled = replayFadeouts.fuelPumpEnabled_alt -- Read alt pump state
+                ctrlrData.frontTurbineDamage = replayFadeouts.damage_alt            -- Read alt damage
+                ctrlrData.frontTurbineAfterburner = replayFadeouts.afterburner_alt  -- Read alt afterburner
+            end
         end
-
     else -- Not in Replay: Populate ctrlrData directly from raw script inputs
-
         if coordsConfig.turbojetType then
             if coordsConfig.turbojetType == "single" then
                 ctrlrData.turbineThrottle = rawCtrlrData.input8
@@ -377,25 +374,25 @@ function script.update(dt)
         if coordsConfig.turboshaftPresent then
             -- Rear Turboshaft (Inputs 8, 9, 10, 11, 19)
             if not coordsConfig.turbojetType or coordsConfig.turbojetType ~= "single" then
-                 ctrlrData.turbineThrottle = rawCtrlrData.input8    -- Throttle
-                 ctrlrData.turbineThrust = rawCtrlrData.input9     -- Fuel Flow Ratio
-                 -- Unscale RPM from physics input (input10 is RPM * scale)
-                 ctrlrData.turbineRPM = (rawCtrlrData.input10 ~= 0 and TURBOSHAFT_PHYSICS_RPM_SCALE ~= 0) and (rawCtrlrData.input10 / TURBOSHAFT_PHYSICS_RPM_SCALE) or 0
-                 ctrlrData.turbineAfterburner = rawCtrlrData.input11 -- Read actual afterburner from physics
-                 ctrlrData.turbineDamage = rawCtrlrData.input19    -- Damage
-                 -- Estimate fuel pump state based on unscaled RPM vs idle threshold
-                 ctrlrData.fuelPumpEnabled = (ctrlrData.turbineRPM > (TURBOSHAFT_IDLE_RPM * 0.9)) and 1 or 0
+                ctrlrData.turbineThrottle = rawCtrlrData.input8 -- Throttle
+                ctrlrData.turbineThrust = rawCtrlrData.input9   -- Fuel Flow Ratio
+                -- Unscale RPM from physics input (input10 is RPM * scale)
+                ctrlrData.turbineRPM = (rawCtrlrData.input10 ~= 0 and TURBOSHAFT_PHYSICS_RPM_SCALE ~= 0) and (rawCtrlrData.input10 / TURBOSHAFT_PHYSICS_RPM_SCALE) or 0
+                ctrlrData.turbineAfterburner = rawCtrlrData.input11 -- Read actual afterburner from physics
+                ctrlrData.turbineDamage = rawCtrlrData.input19      -- Damage
+                -- Estimate fuel pump state based on unscaled RPM vs idle threshold
+                ctrlrData.fuelPumpEnabled = (ctrlrData.turbineRPM > (TURBOSHAFT_IDLE_RPM * 0.9)) and 1 or 0
             end
             -- Front Turboshaft (Inputs 13, 14, 15, 16, 18)
             if coordsConfig.turbojetType ~= "dual" then
-                 ctrlrData.frontTurbineThrottle = rawCtrlrData.input13 -- Throttle
-                 ctrlrData.frontTurbineThrust = rawCtrlrData.input14   -- Fuel Flow Ratio
-                 -- Unscale RPM from physics input (input15 is RPM * scale)
-                 ctrlrData.frontTurbineRPM = (rawCtrlrData.input15 ~= 0 and TURBOSHAFT_PHYSICS_RPM_SCALE ~= 0) and (rawCtrlrData.input15 / TURBOSHAFT_PHYSICS_RPM_SCALE) or 0
-                 ctrlrData.frontTurbineAfterburner = rawCtrlrData.input16 -- Read actual afterburner from physics
-                 ctrlrData.frontTurbineDamage = rawCtrlrData.input18   -- Damage
-                 -- Estimate fuel pump state based on unscaled RPM vs idle threshold
-                 ctrlrData.frontFuelPumpEnabled = (ctrlrData.frontTurbineRPM > (TURBOSHAFT_IDLE_RPM * 0.9)) and 1 or 0
+                ctrlrData.frontTurbineThrottle = rawCtrlrData.input13 -- Throttle
+                ctrlrData.frontTurbineThrust = rawCtrlrData.input14   -- Fuel Flow Ratio
+                -- Unscale RPM from physics input (input15 is RPM * scale)
+                ctrlrData.frontTurbineRPM = (rawCtrlrData.input15 ~= 0 and TURBOSHAFT_PHYSICS_RPM_SCALE ~= 0) and (rawCtrlrData.input15 / TURBOSHAFT_PHYSICS_RPM_SCALE) or 0
+                ctrlrData.frontTurbineAfterburner = rawCtrlrData.input16 -- Read actual afterburner from physics
+                ctrlrData.frontTurbineDamage = rawCtrlrData.input18      -- Damage
+                -- Estimate fuel pump state based on unscaled RPM vs idle threshold
+                ctrlrData.frontFuelPumpEnabled = (ctrlrData.frontTurbineRPM > (TURBOSHAFT_IDLE_RPM * 0.9)) and 1 or 0
             end
         end
         -- Ensure default numerical values (0) for any fields that might not have been set by the logic above
@@ -427,13 +424,21 @@ function script.update(dt)
     -- Ensure Audio Sources are Playing
     if not audio_engine:isPlaying() then audio_engine:start() end
     if audio_turbine_rear and not audio_turbine_rear:isPlaying() then audio_turbine_rear:start() end
-    if audio_turbine_fuelpump_rear and not audio_turbine_fuelpump_rear:isPlaying() then audio_turbine_fuelpump_rear:start() end
+    if audio_turbine_fuelpump_rear and not audio_turbine_fuelpump_rear:isPlaying() then
+        audio_turbine_fuelpump_rear:start()
+    end
     if audio_turbine_left and not audio_turbine_left:isPlaying() then audio_turbine_left:start() end
-    if audio_turbine_fuelpump_left and not audio_turbine_fuelpump_left:isPlaying() then audio_turbine_fuelpump_left:start() end
+    if audio_turbine_fuelpump_left and not audio_turbine_fuelpump_left:isPlaying() then
+        audio_turbine_fuelpump_left:start()
+    end
     if audio_turbine_right and not audio_turbine_right:isPlaying() then audio_turbine_right:start() end
-    if audio_turbine_fuelpump_right and not audio_turbine_fuelpump_right:isPlaying() then audio_turbine_fuelpump_right:start() end
+    if audio_turbine_fuelpump_right and not audio_turbine_fuelpump_right:isPlaying() then
+        audio_turbine_fuelpump_right:start()
+    end
     if audio_turbine_front and not audio_turbine_front:isPlaying() then audio_turbine_front:start() end
-    if audio_turbine_fuelpump_front and not audio_turbine_fuelpump_front:isPlaying() then audio_turbine_fuelpump_front:start() end
+    if audio_turbine_fuelpump_front and not audio_turbine_fuelpump_front:isPlaying() then
+        audio_turbine_fuelpump_front:start()
+    end
 
     -- Calculate Fuel Pump Fadeouts (Using state variables)
     local rearPumpTarget = ctrlrData.fuelPumpEnabled or 0
@@ -496,27 +501,27 @@ function script.update(dt)
     if coordsConfig.turboshaftPresent then
         -- Control Rear Turboshaft Audio (if not single turbojet config)
         if not coordsConfig.turbojetType or coordsConfig.turbojetType ~= "single" then
-             if audio_turbine_rear then -- This audio source might be shared/overwritten by single TJ, handle carefully
-                 audio_turbine_rear:setParam("rpm", ctrlrData.turbineRPM)
-                 audio_turbine_rear:setParam("throttle", ctrlrData.turbineThrottle)
-                 audio_turbine_rear:setParam("afterburner", ctrlrData.turbineAfterburner or 0)
-                 audio_turbine_rear:setParam("damage", ctrlrData.turbineDamage)
-             end
-             if audio_turbine_fuelpump_rear then
-                  audio_turbine_fuelpump_rear:setParam("rpm", fuelPumpRPMLUT:get(ctrlrData.turbineRPM) * rearFuelPumpFadeout)
-             end
+            if audio_turbine_rear then -- This audio source might be shared/overwritten by single TJ, handle carefully
+                audio_turbine_rear:setParam("rpm", ctrlrData.turbineRPM)
+                audio_turbine_rear:setParam("throttle", ctrlrData.turbineThrottle)
+                audio_turbine_rear:setParam("afterburner", ctrlrData.turbineAfterburner or 0)
+                audio_turbine_rear:setParam("damage", ctrlrData.turbineDamage)
+            end
+            if audio_turbine_fuelpump_rear then
+                audio_turbine_fuelpump_rear:setParam("rpm", fuelPumpRPMLUT:get(ctrlrData.turbineRPM) * rearFuelPumpFadeout)
+            end
         end
-         -- Control Front Turboshaft Audio (if not dual turbojet config)
+        -- Control Front Turboshaft Audio (if not dual turbojet config)
         if coordsConfig.turbojetType ~= "dual" then
             if audio_turbine_front then
-                 audio_turbine_front:setParam("rpm", ctrlrData.frontTurbineRPM)
-                 audio_turbine_front:setParam("throttle", ctrlrData.frontTurbineThrottle)
-                 audio_turbine_front:setParam("afterburner", ctrlrData.frontTurbineAfterburner or 0)
-                 audio_turbine_front:setParam("damage", ctrlrData.frontTurbineDamage)
+                audio_turbine_front:setParam("rpm", ctrlrData.frontTurbineRPM)
+                audio_turbine_front:setParam("throttle", ctrlrData.frontTurbineThrottle)
+                audio_turbine_front:setParam("afterburner", ctrlrData.frontTurbineAfterburner or 0)
+                audio_turbine_front:setParam("damage", ctrlrData.frontTurbineDamage)
             end
-             if audio_turbine_fuelpump_front then
-                 audio_turbine_fuelpump_front:setParam("rpm", fuelPumpRPMLUT:get(ctrlrData.frontTurbineRPM) * frontFuelPumpFadeout)
-             end
+            if audio_turbine_fuelpump_front then
+                audio_turbine_fuelpump_front:setParam("rpm", fuelPumpRPMLUT:get(ctrlrData.frontTurbineRPM) * frontFuelPumpFadeout)
+            end
         end
     end
 
@@ -528,20 +533,12 @@ function script.update(dt)
             -- Base velocity calculation (remains the same)
             local baseVel = vec3(0, 0, -3) + (car.localVelocity * -0.35)
             -- Calculate velocity specifically for afterburner, scaling only the ejection part
-            local afterburnerBaseEjectionVel = vec3(0, 0, -3 * 0.5) -- Slower ejection speed
+            local afterburnerBaseEjectionVel = vec3(0, 0, -3 * 0.5)                         -- Slower ejection speed
             local afterburnerVel = afterburnerBaseEjectionVel + (car.localVelocity * -0.35) -- Add the same car velocity component
             local particlePos = vec3(pos.x + car.localVelocity.x * 0.012, pos.y, pos.z + car.localVelocity.z * 0.01)
-
-            flameBoost:emit(particlePos, baseVel,
-                mapRange(ctrlrData.turbineThrottle, 0.9, 1, 0, 1, true) * mapRange(car.speedKmh, 0, 400, 0.5, 0.1, true))
-
-            -- Use the corrected afterburner velocity
-            flameTurbo:emit(particlePos, afterburnerVel,
-                ctrlrData.turbineAfterburner * scale * 0.6)
-
-            exhaustSmoke:emit(particlePos, baseVel * mapRange(ctrlrData.turbineThrottle, 0, 1, 10, 20, true),
-                mapRange(ctrlrData.turbineThrottle, 0, 1, 0.05, 0.2, true) * (1 + ctrlrData.turbineAfterburner))
-
+            flameBoost:emit(particlePos, baseVel, mapRange(ctrlrData.turbineThrottle, 0.9, 1, 0, 1, true) * mapRange(car.speedKmh, 0, 400, 0.5, 0.1, true))
+            flameTurbo:emit(particlePos, afterburnerVel, ctrlrData.turbineAfterburner * scale * 0.6)
+            exhaustSmoke:emit(particlePos, baseVel * mapRange(ctrlrData.turbineThrottle, 0, 1, 10, 20, true), mapRange(ctrlrData.turbineThrottle, 0, 1, 0.05, 0.2, true) * (1 + ctrlrData.turbineAfterburner))
         elseif coordsConfig.turbojetType == "dual" then
             -- Calculate common components first
             local afterburnerBaseEjectionVel = vec3(0, 0, -3 * 0.5) -- Slower ejection speed for AB
@@ -552,26 +549,18 @@ function script.update(dt)
             local particlePosL = vec3(posL.x + car.localVelocity.x * 0.012, posL.y, posL.z + car.localVelocity.z * 0.01)
             local baseVelL = vec3(0, 0, -3) + carVelComponent
             local afterburnerVelL = afterburnerBaseEjectionVel + carVelComponent -- Corrected AB velocity
-            flameBoost:emit(particlePosL, baseVelL,
-                mapRange(ctrlrData.leftThrottle, 0.9, 1, 0, 1, true) * mapRange(car.speedKmh, 0, 400, 0.5, 0.1, true))
-            -- Use the corrected afterburner velocity
-            flameTurbo:emit(particlePosL, afterburnerVelL,
-                ctrlrData.leftAfterburner * scale * 0.6)
-            exhaustSmoke:emit(particlePosL, baseVelL * mapRange(ctrlrData.leftThrottle, 0, 1, 10, 20, true),
-                mapRange(ctrlrData.leftThrottle, 0, 1, 0.05, 0.2, true) * (1 + ctrlrData.leftAfterburner))
+            flameBoost:emit(particlePosL, baseVelL, mapRange(ctrlrData.leftThrottle, 0.9, 1, 0, 1, true) * mapRange(car.speedKmh, 0, 400, 0.5, 0.1, true))
+            flameTurbo:emit(particlePosL, afterburnerVelL, ctrlrData.leftAfterburner * scale * 0.6)
+            exhaustSmoke:emit(particlePosL, baseVelL * mapRange(ctrlrData.leftThrottle, 0, 1, 10, 20, true), mapRange(ctrlrData.leftThrottle, 0, 1, 0.05, 0.2, true) * (1 + ctrlrData.leftAfterburner))
 
             -- Right Exhaust
             local posR = coordsConfig.coordinates.turbineExhaustRight
             local particlePosR = vec3(posR.x + car.localVelocity.x * 0.012, posR.y, posR.z + car.localVelocity.z * 0.01)
             local baseVelR = vec3(0, 0, -3) + carVelComponent
             local afterburnerVelR = afterburnerBaseEjectionVel + carVelComponent -- Corrected AB velocity
-            flameBoost:emit(particlePosR, baseVelR,
-                 mapRange(ctrlrData.rightThrottle, 0.9, 1, 0, 1, true) * mapRange(car.speedKmh, 0, 400, 0.5, 0.1, true))
-             -- Use the corrected afterburner velocity
-            flameTurbo:emit(particlePosR, afterburnerVelR,
-                 ctrlrData.rightAfterburner * scale * 0.6)
-            exhaustSmoke:emit(particlePosR, baseVelR * mapRange(ctrlrData.rightThrottle, 0, 1, 10, 20, true),
-                 mapRange(ctrlrData.rightThrottle, 0, 1, 0.05, 0.2, true) * (1 + ctrlrData.rightAfterburner))
+            flameBoost:emit(particlePosR, baseVelR, mapRange(ctrlrData.rightThrottle, 0.9, 1, 0, 1, true) * mapRange(car.speedKmh, 0, 400, 0.5, 0.1, true))
+            flameTurbo:emit(particlePosR, afterburnerVelR, ctrlrData.rightAfterburner * scale * 0.6)
+            exhaustSmoke:emit(particlePosR, baseVelR * mapRange(ctrlrData.rightThrottle, 0, 1, 10, 20, true), mapRange(ctrlrData.rightThrottle, 0, 1, 0.05, 0.2, true) * (1 + ctrlrData.rightAfterburner))
         end
     end
 
@@ -587,20 +576,18 @@ function script.update(dt)
 
         -- Rear turboshaft flames (if not single turbojet config)
         if not coordsConfig.turbojetType or coordsConfig.turbojetType ~= "single" then
-            flameBoost:emit(particlePos, baseVel,
-                mapRange(ctrlrData.turbineThrottle, 0.9, 1, 0, 1, true) * mapRange(car.speedKmh, 0, 400, 0.5, 0.1, true))
+            flameBoost:emit(particlePos, baseVel, mapRange(ctrlrData.turbineThrottle, 0.9, 1, 0, 1, true) * mapRange(car.speedKmh, 0, 400, 0.5, 0.1, true))
 
             -- Emit afterburner flames for turboshaft
-            flameTurbo:emit(particlePos, afterburnerVel,
-                (ctrlrData.turbineAfterburner or 0) * scale * 0.6)
+            flameTurbo:emit(particlePos, afterburnerVel, (ctrlrData.turbineAfterburner or 0) * scale * 0.6)
 
-            exhaustSmoke:emit(particlePos, baseVel * mapRange(ctrlrData.turbineThrottle, 0, 1, 10, 20, true),
-                mapRange(ctrlrData.turbineThrottle, 0, 1, 0.05, 0.2, true) * (1 + (ctrlrData.turbineAfterburner or 0)))
+            exhaustSmoke:emit(particlePos, baseVel * mapRange(ctrlrData.turbineThrottle, 0, 1, 10, 20, true), mapRange(ctrlrData.turbineThrottle, 0, 1, 0.05, 0.2, true) * (1 + (ctrlrData.turbineAfterburner or 0)))
         end
     end
 
     -- Turbine exhaust glow logic
-    turbineExhaustGlow:setMaterialProperty("ksEmissive", (vec3(2, 2, 4) * ctrlrData.turbineThrottle * 10) + (vec3(1, 1, 1) * ctrlrData.turbineAfterburner * 20))
+    turbineExhaustGlow:setMaterialProperty("ksEmissive",
+        (vec3(2, 2, 4) * ctrlrData.turbineThrottle * 10) + (vec3(1, 1, 1) * ctrlrData.turbineAfterburner * 20))
 
     -- Headlight Logic
     lightFadeout = math.lerp(lightFadeout, car.headlightsActive and 1 or 0, dt * 15)
@@ -676,15 +663,15 @@ function script.update(dt)
     end
 
     if coordsConfig.turboshaftPresent then
-         -- Debug Rear Turboshaft (if active)
+        -- Debug Rear Turboshaft (if active)
         if not coordsConfig.turbojetType or coordsConfig.turbojetType ~= "single" then
-             ac.debug("TS Rear: Thr", string.format("%.2f", ctrlrData.turbineThrottle))
-             ac.debug("TS Rear: RPM", string.format("%.0f", ctrlrData.turbineRPM))
-             ac.debug("TS Rear: FuelFlow%", string.format("%.2f", ctrlrData.turbineThrust)) -- Note: Using 'thrust' field for fuel flow ratio
-             ac.debug("TS Rear: Pump", string.format("%.0f", ctrlrData.fuelPumpEnabled))
-             ac.debug("TS Rear: Dmg", string.format("%.2f", ctrlrData.turbineDamage))
+            ac.debug("TS Rear: Thr", string.format("%.2f", ctrlrData.turbineThrottle))
+            ac.debug("TS Rear: RPM", string.format("%.0f", ctrlrData.turbineRPM))
+            ac.debug("TS Rear: FuelFlow%", string.format("%.2f", ctrlrData.turbineThrust)) -- Note: Using 'thrust' field for fuel flow ratio
+            ac.debug("TS Rear: Pump", string.format("%.0f", ctrlrData.fuelPumpEnabled))
+            ac.debug("TS Rear: Dmg", string.format("%.2f", ctrlrData.turbineDamage))
         end
-         -- Debug Front Turboshaft (if active)
+        -- Debug Front Turboshaft (if active)
         if coordsConfig.turbojetType ~= "dual" then
             ac.debug("TS Front: Thr", string.format("%.2f", ctrlrData.frontTurbineThrottle))
             ac.debug("TS Front: RPM", string.format("%.0f", ctrlrData.frontTurbineRPM))
@@ -694,5 +681,3 @@ function script.update(dt)
         end
     end
 end
-
-

@@ -1,0 +1,4 @@
+root = true
+
+[*.lua]
+max_line_length = 1000
