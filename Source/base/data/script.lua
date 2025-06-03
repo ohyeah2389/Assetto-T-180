@@ -290,6 +290,11 @@ function script.update(dt)
         ac.setSteeringFFB(ffb)
     end
 
+    if ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_9") then
+        local rearSteerLinkageRatio = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_9").value or 0
+        game.car_cphys.controllerInputs[20] = rearSteerLinkageRatio
+    end
+
     perfTracker:update(dt)
 
     showDebugValues(dt)
