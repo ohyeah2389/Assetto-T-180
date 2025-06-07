@@ -42,19 +42,11 @@ local config = {
         boostNGMultiplier = 1.5,
         boostTITMultiplier = 1.5,
         inertiaNG = 1.2,
-        pressureRatio = 8.5,
-        compressorEfficiency = 0.85,
-        freeTurbineEfficiency = 0.88,
+        pressureRatio = 7.8,
+        compressorEfficiency = 0.82,
+        totalTurbineEfficiency = 0.88, -- Total efficiency of both turbines combined
         fuelLHV = 43.2e6, -- J/kg (Jet-A)
         combustionEfficiency = 0.98,
-
-        -- Power turbine specific parameters
-        designPowerRPM = 40000,        -- Design RPM for power turbine
-        inertiaNP = 1.8,               -- Power turbine rotor inertia
-        powerTurbineEfficiency = 0.85, -- Efficiency of power extraction from remaining energy
-        totalTurbineEfficiency = 0.92, -- Total efficiency of both turbines combined
-        ngTurbineEfficiency = 0.75,    -- Portion of total power extracted by gas generator
-
         exhaustThrust = {
             nozzleArea = 0.2,                            -- m², cross-sectional area of exhaust nozzle
             nozzleEfficiency = 0.95,                     -- Efficiency of the exhaust nozzle
