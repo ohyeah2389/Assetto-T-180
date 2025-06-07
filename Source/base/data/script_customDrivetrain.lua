@@ -10,11 +10,11 @@ local drivetrain = class("drivetrain")
 
 function drivetrain:initialize(params)
     self.drivenWheels = params.drivenWheels or {ac.Wheel.RearLeft, ac.Wheel.RearRight}
-    self.finalDriveRatio = params.finalDriveRatio or 3
+    self.finalDriveRatio = params.finalDriveRatio or 20
 
     -- Open differential parameters with speed-dependent coupling
     self.couplingStiffness = params.couplingStiffness or 200
-    self.couplingDamping = params.couplingDamping or self.couplingStiffness/2
+    self.couplingDamping = params.couplingDamping or self.couplingStiffness/4
 
     -- Clutch parameters
     self.clutchEngageRate = params.clutchEngageRate or 2
@@ -45,10 +45,10 @@ function drivetrain:update(inputShaftSpeed, inputTorque, clutchPosition, dt)
 
     -- Calculate coupling torque with speed-scaled spring-damper model
     local speedDiff = finalDriveOutputSpeed - avgWheelSpeed
-    local couplingTorque = (speedDiff * currentStiffness * dt) + (speedDiff * currentDamping)
+    local couplingTorque = (speedDiff * currentStiffness) + (speedDiff * currentDamping * dt)
 
     -- Total torque is the input torque (corrected for final drive ratio and scaled by clutch engagement) plus the coupling torque
-    local totalTorque = (((inputTorque / self.finalDriveRatio) * clutchEngagement) + couplingTorque)
+    local totalTorque = (((inputTorque * self.finalDriveRatio) * clutchEngagement) + couplingTorque)
 
     -- Calculate wheel speed difference for torque distribution
     local wheelSpeedDiff = math.abs(leftWheel.shaftVelocity - rightWheel.shaftVelocity)
@@ -81,6 +81,8 @@ function drivetrain:update(inputShaftSpeed, inputTorque, clutchPosition, dt)
     local finalFeedback = math.clamp(clutchFeedback, -self.torqueLimit, self.torqueLimit)
 
     -- Debug outputs
+    ac.debug("drivetrain." .. self.id .. ".inputShaftSpeed", inputShaftSpeed)
+    ac.debug("drivetrain." .. self.id .. ".inputTorque", inputTorque)
     ac.debug("drivetrain." .. self.id .. ".clutchEngagement", clutchEngagement)
     ac.debug("drivetrain." .. self.id .. ".finalDriveOutputSpeed (rads)", finalDriveOutputSpeed)
     ac.debug("drivetrain." .. self.id .. ".avgWheelSpeed (rads)", avgWheelSpeed)
