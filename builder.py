@@ -14,6 +14,9 @@ It does the following:
    - Renames "model.kn5" in the new car folder to "[CAR_FOLDER_NAME].kn5".
    - Edits the "lods.ini" file in the built car folder's data directory so that under the "[LOD_0]" group the line
      "FILE=" is set to the new kn5 filename.
+
+Options:
+   --pack-release: Create a release zip file from the Build folder contents.
      
 Note: This script requires Python 3.8+ for the use of shutil.copytree(..., dirs_exist_ok=True).
 """
@@ -28,6 +31,8 @@ from typing import List, Optional
 import configparser
 import subprocess
 import tempfile
+import argparse
+import zipfile
 
 try:
     import tomllib
@@ -486,16 +491,67 @@ def debug_directory_scan(data_dir):
     except Exception as e:
         print(f"DEBUG: Error scanning directory: {e}")
 
+def pack_release_zip(script_dir, build_dir, project_name, version):
+    """
+    Creates a release zip file from the Build folder contents.
+    The zip structure will be content/cars/each_car_folder.
+    Also includes LICENSE.txt if it exists.
+    """
+    if not os.path.exists(build_dir):
+        print(f"Build directory not found: {build_dir}")
+        return False
+    
+    # Create the zip filename
+    zip_filename = f"{project_name} v{version}.zip"
+    zip_path = os.path.join(script_dir, zip_filename)
+    
+    print(f"Creating release zip: {zip_filename}")
+    
+    try:
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            # Add each car folder to content/cars/
+            for item in os.listdir(build_dir):
+                item_path = os.path.join(build_dir, item)
+                if os.path.isdir(item_path):
+                    car_name = item
+                    print(f"Adding car '{car_name}' to release zip...")
+                    
+                    # Add all files in the car folder
+                    for root, dirs, files in os.walk(item_path):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            # Calculate the relative path from the car folder
+                            rel_path = os.path.relpath(file_path, item_path)
+                            # Create the zip path as content/cars/car_name/rel_path
+                            zip_path_in_archive = f"content/cars/{car_name}/{rel_path}".replace('\\', '/')
+                            zipf.write(file_path, zip_path_in_archive)
+            
+            # Add LICENSE.txt if it exists
+            license_path = os.path.join(script_dir, "LICENSE.txt")
+            if os.path.exists(license_path):
+                zipf.write(license_path, "LICENSE.txt")
+                print("Added LICENSE.txt to release zip")
+            else:
+                print("Warning: LICENSE.txt not found, skipping")
+        
+        print(f"Release zip created successfully: {zip_path}")
+        return True
+        
+    except Exception as e:
+        print(f"Error creating release zip: {e}")
+        return False
+
 def main():
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Build car folders and optionally create release packages')
+    parser.add_argument('--pack-release', action='store_true', 
+                       help='Create a release zip file from the Build folder contents')
+    args = parser.parse_args()
+    
     # Get the directory in which the script is located
     script_dir = os.path.dirname(os.path.abspath(__file__))
     source_dir = os.path.join(script_dir, "Source")
     build_dir = os.path.join(script_dir, "Build")
-    
-    # Ensure Source folder exists
-    if not os.path.exists(source_dir):
-        print(f"Source directory not found: {source_dir}")
-        sys.exit(1)
     
     # Parse info.toml from the Source folder
     info_toml_path = os.path.join(source_dir, "info.toml")
@@ -503,8 +559,33 @@ def main():
         print(f"info.toml not found in {source_dir}")
         sys.exit(1)
     info_version, info_year, ignore_patterns = parse_info_toml(info_toml_path)
+    
+    # Also get the project name for release packaging
+    try:
+        with open(info_toml_path, "rb") as f:
+            data = tomllib.load(f)
+        info = data.get("info", {})
+        project_name = info.get("project", "Unknown Project")
+    except Exception as e:
+        print(f"Error getting project name from {info_toml_path}: {e}")
+        project_name = "Unknown Project"
+    
     if not info_version or not info_year:
         print("Could not parse version and year from info.toml")
+        sys.exit(1)
+    
+    # If --pack-release is specified, create release zip and exit
+    if args.pack_release:
+        if pack_release_zip(script_dir, build_dir, project_name, info_version):
+            print("Release packaging complete.")
+        else:
+            print("Release packaging failed.")
+            sys.exit(1)
+        return
+    
+    # Ensure Source folder exists
+    if not os.path.exists(source_dir):
+        print(f"Source directory not found: {source_dir}")
         sys.exit(1)
     
     # Get the global base folder from Source/base
