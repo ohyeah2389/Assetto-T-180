@@ -213,6 +213,8 @@ def merge_ini_files(base_ini_path, addon_ini_path, output_path):
     Merge an addon INI file into a base INI file.
     The addon INI can contain partial sections that will override
     corresponding sections in the base INI.
+    If a section contains only a single 'DELETE=1' key,
+    the entire section will be removed from the base INI.
     """
     try:
         # Create parsers for both files
@@ -229,8 +231,22 @@ def merge_ini_files(base_ini_path, addon_ini_path, output_path):
         # Read the addon INI file
         addon_config.read(addon_ini_path, encoding='utf-8')
         
-        # Merge addon sections into base config
+        # Process addon sections
         for section_name in addon_config.sections():
+            section_items = list(addon_config.items(section_name))
+            
+            # Check if this section should be deleted
+            if (len(section_items) == 1 and 
+                section_items[0][0].upper() == 'DELETE' and 
+                section_items[0][1] == '1'):
+                
+                # Remove the section from base config if it exists
+                if base_config.has_section(section_name):
+                    base_config.remove_section(section_name)
+                    print(f"Deleted section [{section_name}] from base INI")
+                continue
+            
+            # Normal merge logic for non-DELETE sections
             if not base_config.has_section(section_name):
                 # If section doesn't exist in base, add it entirely
                 base_config.add_section(section_name)
