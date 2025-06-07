@@ -64,7 +64,7 @@ end
 function WheelSteerCtrlr:calculateFFB(dt)
     -- Prevent division by zero
     dt = math.max(dt, 0.001)
-    
+
     -- Add safety check for NaN/infinite values
     if not game.car_cphys.steer or not self.steerInputLast then
         return 0
@@ -110,29 +110,29 @@ function WheelSteerCtrlr:calculateFFB(dt)
     ac.debug("ffb.latGEffect", latGEffect)
     ac.debug("ffb.steerOverLimitDelta", steerOverLimitDelta)
     ac.debug("ffb.steerLimitEffect", steerLimitEffect)
-    
+
     -- Update circular buffer with safety check
     if math.abs(steerChange) < 1000 then  -- Reasonable maximum value
         self.steerChangeHistory[self.historyIndex] = (steerChange * 0.3) + helperEffect
         self.historyIndex = (self.historyIndex % #self.steerChangeHistory) + 1
     end
-    
+
     -- Calculate moving average
     local avgSteerChange = 0
     for _, v in ipairs(self.steerChangeHistory) do
         avgSteerChange = avgSteerChange + (v or 0)  -- Use 0 if value is nil
     end
     avgSteerChange = avgSteerChange / #self.steerChangeHistory
-    
+
     -- Calculate new FFB with exponential smoothing
     local targetFFB = (game.car_cphys.steer or 0) + (avgSteerChange * 0.03)
     local smoothedFFB = self.lastFFB * self.ffbSmoothing + targetFFB * (1 - self.ffbSmoothing)
-    
+
     -- Final safety check before returning
     if math.abs(smoothedFFB) > 1000 or not (smoothedFFB == smoothedFFB) then  -- Check for NaN
         smoothedFFB = 0
     end
-    
+
     self.lastFFB = smoothedFFB
     return math.clamp(smoothedFFB * self.ffbMultiplier, -1, 1)
 end
@@ -170,7 +170,7 @@ function WheelSteerCtrlr:update(dt)
     self.isReversing = helpers.getWheelsOffGround() > 3 or game.car_cphys.localVelocity.z < 0
 
     local driftAngle = math.atan2(game.car_cphys.localVelocity.x, game.car_cphys.localVelocity.z) * helpers.mapRange(car.speedKmh, 2, 20, 0.1, 1, true)
-    
+
     -- Check for drift angle inversion (crossing +/-pi boundary)
     local angleDiff = driftAngle - self.lastDriftAngle
     if angleDiff > math.pi then
@@ -185,7 +185,7 @@ function WheelSteerCtrlr:update(dt)
     if math.abs(driftAngle) < math.rad(120) then
         state.control.driftInversion = false
     end
-    
+
     self.lastDriftAngle = driftAngle
 
     local steerNormalizedInput = math.clamp(game.car_cphys.steer / ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_20").value, -1, 1)
@@ -249,7 +249,7 @@ function WheelSteerCtrlr:update(dt)
     self.steerStateFR = self.desiredSteerFR * (state.control.lockedFronts and 0 or 1)
     self.steerStateRL = self.desiredSteerRL * (state.control.lockedRears and 0 or 1)
     self.steerStateRR = self.desiredSteerRR * (state.control.lockedRears and 0 or 1)
-    
+
     game.car_cphys.controllerInputs[0], game.car_cphys.controllerInputs[1] = threesixtyctrlr_FL:update(self.steerStateFL, dt)
     game.car_cphys.controllerInputs[2], game.car_cphys.controllerInputs[3] = threesixtyctrlr_FR:update(-self.steerStateFR, dt)
     game.car_cphys.controllerInputs[4], game.car_cphys.controllerInputs[5] = threesixtyctrlr_RL:update(self.steerStateRL, dt)
@@ -302,7 +302,7 @@ function WheelSteerCtrlr:reset()
     self.inversionBlendState = 0
     state.control.driftInversion = false
     self.lastDriftAngle = 0
-    
+
     -- Reset steering states and their previous values
     self.steerStateFL_prev = 0
     self.steerStateFR_prev = 0

@@ -7,7 +7,10 @@ local config = require('car_config')
 local state = require('script_state')
 local controls = require('script_controls')
 local helpers = require('script_helpers')
-local WheelSteerController = require('script_wheelsteerctrlr')
+local WheelSteerController = nil
+if not config.misc.traditionalSteering then
+    WheelSteerController = require('script_wheelsteerctrlr')
+end
 local JumpJack = require('script_jumpjack')
 local Turbojet = require('script_turbojet')
 local CustomDrivetrain = require('script_customDrivetrain')
@@ -64,7 +67,7 @@ local function brakeAutoHold()
 end
 
 
-local wheelSteerCtrlr = WheelSteerController()
+local wheelSteerCtrlr = WheelSteerController and WheelSteerController() or nil
 
 
 local turbojet = nil
@@ -113,7 +116,7 @@ end
 
 ---@diagnostic disable-next-line: duplicate-set-field
 function script.reset()
-    wheelSteerCtrlr:reset()
+    if wheelSteerCtrlr then wheelSteerCtrlr:reset() end
     jumpJackSystem:reset()
     perfTracker:reset()
     if config.turbojet.present then
@@ -146,7 +149,7 @@ function script.update(dt)
 
     --sharedData.update()
 
-    wheelSteerCtrlr:update(dt)
+    if wheelSteerCtrlr then wheelSteerCtrlr:update(dt) end
 
     if config.turbojet.present then
         if config.turbojet.type == "single" then
@@ -287,9 +290,11 @@ function script.update(dt)
     state.jumpJackSystem.jackRL.position = jumpJackSystem.jacks.rearLeft.physicsObject.position
     state.jumpJackSystem.jackRR.position = jumpJackSystem.jacks.rearRight.physicsObject.position
 
-    local ffb = wheelSteerCtrlr:calculateFFB(dt)
-    if ffb and ffb == ffb and not config.misc.traditionalSteering then  -- Check if value exists and is not NaN
-        ac.setSteeringFFB(ffb)
+    if wheelSteerCtrlr then
+        local ffb = wheelSteerCtrlr:calculateFFB(dt)
+        if ffb and ffb == ffb then  -- Check if value exists and is not NaN
+            ac.setSteeringFFB(ffb)
+        end
     end
 
     if ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_9") then
