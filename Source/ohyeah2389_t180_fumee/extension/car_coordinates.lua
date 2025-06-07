@@ -9,8 +9,8 @@ local config = {
         turbineExhaust = vec3(0.0, 0.38, -2.61)
     },
     flame = {
-        color = rgbm(0.9, 0.9, 1, 1),
-        afterburnerColor = rgbm(0.8, 0.8, 1, 1),
+        color = rgbm(1, 1, 1, 1),
+        afterburnerColor = rgbm(1, 1, 1, 1),
         size = 3.2,
         temperatureMultiplier = 8,
         afterburnerTemperatureMultiplier = 10,
