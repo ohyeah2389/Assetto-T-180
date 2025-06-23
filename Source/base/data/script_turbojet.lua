@@ -107,7 +107,15 @@ function turbojet:update(dt)
     self.turbine:step((self.state.fuelPumpEnabled and self.state.thrust * (helpers.mapRange(self.turbine.angularSpeed, 0, 2000, 1, 0, true) ^ 1.2) or 0), dt)
 
     -- Turbine afterburner extra thrust
-    ac.addForce(self.thrustApplicationPoint, true, vec3(0, 0, helpers.mapRange(self.state.throttleAfterburner, 0, 1, 0, 2500, true) * (self.state.fuelPumpEnabled and 1 or 0)), true)
+    local thrustMagnitude = helpers.mapRange(self.state.throttleAfterburner, 0, 1, 0, 2500, true)
+    local thrustVector
+    if config.turbojet.thrustAngle then
+        local angleRad = math.rad(config.turbojet.thrustAngle)
+        thrustVector = vec3(0, thrustMagnitude * math.sin(-angleRad), thrustMagnitude * math.cos(-angleRad))
+    else
+        thrustVector = vec3(0, 0, thrustMagnitude)
+    end
+    ac.addForce(self.thrustApplicationPoint, true, thrustVector * (self.state.fuelPumpEnabled and 1 or 0), true)
 
     if self.id == 'single' then
         -- Bleed pressure from turbine engine (only for single engine interacting with piston engine)
