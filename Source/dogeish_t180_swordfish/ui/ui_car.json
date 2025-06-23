@@ -1,0 +1,28 @@
+{
+    "name": "T-180 Swordfish",
+    "brand": "SAMD",
+    "description": "The Swordfish is a thrust-focused car, with a single turbine engine and rear-wheel drive. <br><br>Model by Dogeish and ohyeah2389, concept by Dogeish and Deivid, configured by ohyeah2389.",
+    "tags": [
+        "awd",
+        "4ws",
+        "race",
+        "WRL",
+        "manual"
+    ],
+    "class": "race",
+    "specs": {
+        "bhp": "1600 hp",
+        "torque": "2257 Nm",
+        "weight": "775 kg",
+        "topspeed": ">700 km/h",
+        "acceleration": "2.1 s 0-100",
+        "pwratio": "0.32 kg/hp"
+    },
+    "torqueCurve":[[0,40],[0,40],[1300,189.7],[2600,384],[3900,622.9],[4600,795.4],[6500,1195.7],[9400,1593.1],[10000,1607.7]],
+    "powerCurve":[[0,0],[0,0],[1300,34.6],[2600,140.2],[3900,341.1],[4600,513.8],[6500,1091.5],[9400,2103],[10000,2257.7]],
+    "country": "USA",
+    "author": "ohyeah2389 - Slip Angle Modding and Development",
+    "version": "0.10.0",
+    "url": null,
+    "year": 2025
+}
