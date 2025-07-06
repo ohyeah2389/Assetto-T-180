@@ -42,7 +42,7 @@ audio_engine.volume = 0.8
 audio_engine:setPosition(vec3(0.0, 1.2, 0.225), vec3(0, 0, 1), vec3(0, 1, 0))
 audio_engine:start()
 
--- Turbojet Audio Sources (Conditional Initialization)
+-- Turbojet Audio Sources
 local audio_turbine_rear = nil
 local audio_turbine_fuelpump_rear = nil
 local audio_turbine_left = nil
@@ -148,25 +148,6 @@ local leftFuelPumpFadeoutState = 0
 local rightFuelPumpFadeoutState = 0
 local frontFuelPumpFadeoutState = 0
 
--- Updated Replay Fadeouts - Structured for different configurations
-local replayFadeouts = {
-    -- Common / Rear Turbine (Turboshaft) / Left Turbine (Dual Turbojet)
-    throttle = 0,
-    rpm = 4000,      -- Default idle estimate
-    thrust = 0,      -- Turbojet thrust / Turboshaft fuel flow ratio estimate
-    afterburner = 0, -- Turbojet specific
-    fuelPumpEnabled = 0,
-    damage = 0,
-
-    -- Front Turbine (Turboshaft) / Right Turbine (Dual Turbojet)
-    throttle_alt = 0,    -- Front throttle (TS) / Right throttle (TJ)
-    rpm_alt = 4000,      -- Front RPM (TS) / Right RPM (TJ)
-    thrust_alt = 0,      -- Right thrust (TJ) / Front fuel flow ratio estimate
-    afterburner_alt = 0, -- Right afterburner (TJ)
-    fuelPumpEnabled_alt = 0,
-    damage_alt = 0
-}
-
 -- Define estimated RPM ranges (adjust if necessary)
 local TURBOJET_IDLE_RPM = 4000
 local TURBOJET_MAX_RPM = 18000
@@ -218,208 +199,83 @@ function script.update(dt)
     -- Structure to hold processed state based on config
     local ctrlrData = {}
 
-    if ac.isInReplayMode() then
-        -- Estimate turbine states based on standard car data
-        local targetGas = car.gas
-        -- Estimate Afterburner trigger based on gas pedal position (for dual turbojet)
-        local targetAfterburnerTrigger_Gas = mapRange(targetGas, 0.9, 1.0, 0, 1, true)
-        -- Estimate Afterburner trigger based on extraB (for single turbojet)
-        local targetAfterburnerTrigger_ExtraB = car.extraB and 1 or 0
 
-        local estimated = {} -- Temporary table for target values before fading
-
-        -- Configuration-specific estimations
-        if coordsConfig.turbojetType then
-            if coordsConfig.turbojetType == "single" then
-                estimated.throttle = targetGas
-                -- Estimate RPM considering potential afterburner effect using extraB trigger
-                estimated.rpm = mapRange(targetGas, 0, 1, TURBOJET_IDLE_RPM, TURBOJET_MAX_RPM) + targetAfterburnerTrigger_ExtraB * TURBOJET_AB_RPM_BOOST
-                estimated.afterburner = targetAfterburnerTrigger_ExtraB -- Assign estimated AB state based on extraB
-                estimated.thrust = mapRange(estimated.rpm, TURBOJET_IDLE_RPM, TURBOJET_MAX_RPM + TURBOJET_AB_RPM_BOOST, 0.1, 1.0)
-                estimated.fuelPumpEnabled = 1
-                estimated.damage = 0
-            elseif coordsConfig.turbojetType == "dual" then
-                -- Estimate Left/Right symmetrically based on gas/AB trigger (using gas pedal mapping)
-                estimated.throttle = targetGas
-                estimated.rpm = mapRange(targetGas, 0, 1, TURBOJET_IDLE_RPM, TURBOJET_MAX_RPM) + targetAfterburnerTrigger_Gas * TURBOJET_AB_RPM_BOOST
-                estimated.afterburner = targetAfterburnerTrigger_Gas -- Assign estimated AB state based on gas pedal
-                estimated.thrust = mapRange(estimated.rpm, TURBOJET_IDLE_RPM, TURBOJET_MAX_RPM + TURBOJET_AB_RPM_BOOST, 0.1, 1.0)
-                estimated.fuelPumpEnabled = 1
-                estimated.damage = 0
-                -- Right (alt values)
-                estimated.throttle_alt = estimated.throttle
-                estimated.rpm_alt = estimated.rpm
-                estimated.afterburner_alt = estimated.afterburner -- Use same estimated AB state for right
-                estimated.thrust_alt = estimated.thrust
-                estimated.fuelPumpEnabled_alt = 1
-                estimated.damage_alt = 0
-            end
+    if coordsConfig.turbojetType then
+        if coordsConfig.turbojetType == "single" then
+            ctrlrData.turbineThrottle = rawCtrlrData.input8
+            ctrlrData.turbineThrust = rawCtrlrData.input9
+            ctrlrData.turbineRPM = rawCtrlrData.input10
+            ctrlrData.fuelPumpEnabled = rawCtrlrData.input11
+            ctrlrData.turbineAfterburner = rawCtrlrData.input12
+            ctrlrData.turbineDamage = 0 -- Assume no damage input from physics
+        elseif coordsConfig.turbojetType == "dual" then
+            -- Left
+            ctrlrData.leftThrottle = rawCtrlrData.input8
+            ctrlrData.leftThrust = rawCtrlrData.input9
+            ctrlrData.leftRPM = rawCtrlrData.input10
+            ctrlrData.leftFuelPumpEnabled = rawCtrlrData.input11
+            ctrlrData.leftAfterburner = rawCtrlrData.input12
+            ctrlrData.leftDamage = 0 -- Assume no damage input
+            -- Right
+            ctrlrData.rightThrottle = rawCtrlrData.input13
+            ctrlrData.rightThrust = rawCtrlrData.input14
+            ctrlrData.rightRPM = rawCtrlrData.input15
+            ctrlrData.rightFuelPumpEnabled = rawCtrlrData.input16
+            ctrlrData.rightAfterburner = rawCtrlrData.input17
+            ctrlrData.rightDamage = 0 -- Assume no damage input
         end
-
-        if coordsConfig.turboshaftPresent then
-            -- Turboshaft estimates (may overwrite or coexist with turbojet estimates)
-            -- Rear Turboshaft (primary values)
-            if not coordsConfig.turbojetType or coordsConfig.turbojetType ~= "single" then
-                estimated.throttle = targetGas
-                estimated.rpm = mapRange(estimated.throttle, 0, 1, TURBOSHAFT_IDLE_RPM, TURBOSHAFT_MAX_RPM)
-                estimated.thrust = mapRange(estimated.throttle, 0, 1, 0.05, 1.0)
-                estimated.fuelPumpEnabled = 1
-                estimated.damage = 0
-                estimated.afterburner = car.extraB and 1 or (1 - car.clutch)
-            end
-            -- Front Turboshaft (alt values)
-            if coordsConfig.turbojetType ~= "dual" then
-                estimated.throttle_alt = targetGas
-                estimated.rpm_alt = mapRange(estimated.throttle_alt, 0, 1, TURBOSHAFT_IDLE_RPM, TURBOSHAFT_MAX_RPM)
-                estimated.thrust_alt = mapRange(estimated.throttle_alt, 0, 1, 0.05, 1.0)
-                estimated.fuelPumpEnabled_alt = 1
-                estimated.damage_alt = 0
-                estimated.afterburner_alt = car.extraB and 1 or (1 - car.clutch)
-            end
-        end
-
-        -- Apply fadeouts (Lerp towards estimated targets)
-        local lerpFactor = dt * 5    -- Adjust rate as needed
-        local lerpFactorRPM = dt * 2 -- RPM might change slower
-        local lerpFactorAB = dt * 8  -- Faster AB fade
-
-        replayFadeouts.throttle = math.lerp(replayFadeouts.throttle, estimated.throttle or 0, lerpFactor)
-        replayFadeouts.rpm = math.lerp(replayFadeouts.rpm, estimated.rpm or TURBOJET_IDLE_RPM, lerpFactorRPM) -- Use TJ Idle as default
-        replayFadeouts.thrust = math.lerp(replayFadeouts.thrust, estimated.thrust or 0, lerpFactor)
-        replayFadeouts.afterburner = math.lerp(replayFadeouts.afterburner, estimated.afterburner or 0, lerpFactorAB)
-        replayFadeouts.fuelPumpEnabled = math.lerp(replayFadeouts.fuelPumpEnabled, estimated.fuelPumpEnabled or 0, lerpFactor)
-        replayFadeouts.damage = math.lerp(replayFadeouts.damage, estimated.damage or 0, lerpFactor)
-
-        replayFadeouts.throttle_alt = math.lerp(replayFadeouts.throttle_alt, estimated.throttle_alt or 0, lerpFactor)
-        replayFadeouts.rpm_alt = math.lerp(replayFadeouts.rpm_alt, estimated.rpm_alt or TURBOJET_IDLE_RPM, lerpFactorRPM)
-        replayFadeouts.thrust_alt = math.lerp(replayFadeouts.thrust_alt, estimated.thrust_alt or 0, lerpFactor)
-        replayFadeouts.afterburner_alt = math.lerp(replayFadeouts.afterburner_alt, estimated.afterburner_alt or 0, lerpFactorAB)
-        replayFadeouts.fuelPumpEnabled_alt = math.lerp(replayFadeouts.fuelPumpEnabled_alt, estimated.fuelPumpEnabled_alt or 0, lerpFactor)
-        replayFadeouts.damage_alt = math.lerp(replayFadeouts.damage_alt, estimated.damage_alt or 0, lerpFactor)
-
-        -- Populate ctrlrData from faded replay values based on config
-        if coordsConfig.turbojetType then
-            if coordsConfig.turbojetType == "single" then
-                ctrlrData.turbineThrottle = replayFadeouts.throttle
-                ctrlrData.turbineThrust = replayFadeouts.thrust
-                ctrlrData.turbineRPM = replayFadeouts.rpm
-                ctrlrData.fuelPumpEnabled = replayFadeouts.fuelPumpEnabled
-                ctrlrData.turbineAfterburner = replayFadeouts.afterburner
-                ctrlrData.turbineDamage = replayFadeouts.damage
-            elseif coordsConfig.turbojetType == "dual" then
-                -- Left
-                ctrlrData.leftThrottle = replayFadeouts.throttle
-                ctrlrData.leftThrust = replayFadeouts.thrust
-                ctrlrData.leftRPM = replayFadeouts.rpm
-                ctrlrData.leftFuelPumpEnabled = replayFadeouts.fuelPumpEnabled
-                ctrlrData.leftAfterburner = replayFadeouts.afterburner
-                ctrlrData.leftDamage = replayFadeouts.damage
-                -- Right
-                ctrlrData.rightThrottle = replayFadeouts.throttle_alt
-                ctrlrData.rightThrust = replayFadeouts.thrust_alt
-                ctrlrData.rightRPM = replayFadeouts.rpm_alt
-                ctrlrData.rightFuelPumpEnabled = replayFadeouts.fuelPumpEnabled_alt
-                ctrlrData.rightAfterburner = replayFadeouts.afterburner_alt
-                ctrlrData.rightDamage = replayFadeouts.damage_alt
-            end
-        end
-        if coordsConfig.turboshaftPresent then
-            -- Populate Rear Turboshaft data (if not single turbojet config)
-            if not coordsConfig.turbojetType or coordsConfig.turbojetType ~= "single" then
-                ctrlrData.turbineThrottle = replayFadeouts.throttle        -- Read primary throttle
-                ctrlrData.turbineThrust = replayFadeouts.thrust            -- Read primary thrust (representing fuel flow here)
-                ctrlrData.turbineRPM = replayFadeouts.rpm                  -- Read primary rpm
-                ctrlrData.fuelPumpEnabled = replayFadeouts.fuelPumpEnabled -- Read primary pump state
-                ctrlrData.turbineDamage = replayFadeouts.damage            -- Read primary damage
-                ctrlrData.turbineAfterburner = replayFadeouts.afterburner  -- Read primary afterburner
-            end
-            -- Populate Front Turboshaft data (if not dual turbojet config)
-            if coordsConfig.turbojetType ~= "dual" then
-                ctrlrData.frontTurbineThrottle = replayFadeouts.throttle_alt        -- Read alt throttle
-                ctrlrData.frontTurbineThrust = replayFadeouts.thrust_alt            -- Read alt thrust (fuel flow)
-                ctrlrData.frontTurbineRPM = replayFadeouts.rpm_alt                  -- Read alt rpm
-                ctrlrData.frontFuelPumpEnabled = replayFadeouts.fuelPumpEnabled_alt -- Read alt pump state
-                ctrlrData.frontTurbineDamage = replayFadeouts.damage_alt            -- Read alt damage
-                ctrlrData.frontTurbineAfterburner = replayFadeouts.afterburner_alt  -- Read alt afterburner
-            end
-        end
-    else -- Not in Replay: Populate ctrlrData directly from raw script inputs
-        if coordsConfig.turbojetType then
-            if coordsConfig.turbojetType == "single" then
-                ctrlrData.turbineThrottle = rawCtrlrData.input8
-                ctrlrData.turbineThrust = rawCtrlrData.input9
-                ctrlrData.turbineRPM = rawCtrlrData.input10
-                ctrlrData.fuelPumpEnabled = rawCtrlrData.input11
-                ctrlrData.turbineAfterburner = rawCtrlrData.input12
-                ctrlrData.turbineDamage = 0 -- Assume no damage input from physics
-            elseif coordsConfig.turbojetType == "dual" then
-                -- Left
-                ctrlrData.leftThrottle = rawCtrlrData.input8
-                ctrlrData.leftThrust = rawCtrlrData.input9
-                ctrlrData.leftRPM = rawCtrlrData.input10
-                ctrlrData.leftFuelPumpEnabled = rawCtrlrData.input11
-                ctrlrData.leftAfterburner = rawCtrlrData.input12
-                ctrlrData.leftDamage = 0 -- Assume no damage input
-                -- Right
-                ctrlrData.rightThrottle = rawCtrlrData.input13
-                ctrlrData.rightThrust = rawCtrlrData.input14
-                ctrlrData.rightRPM = rawCtrlrData.input15
-                ctrlrData.rightFuelPumpEnabled = rawCtrlrData.input16
-                ctrlrData.rightAfterburner = rawCtrlrData.input17
-                ctrlrData.rightDamage = 0 -- Assume no damage input
-            end
-        end
-
-        -- Populate/Overwrite with Turboshaft data if present and not masked
-        if coordsConfig.turboshaftPresent then
-            -- Rear Turboshaft (Inputs 8, 9, 10, 11, 19)
-            if not coordsConfig.turbojetType or coordsConfig.turbojetType ~= "single" then
-                ctrlrData.turbineThrottle = rawCtrlrData.input8 -- Throttle
-                ctrlrData.turbineThrust = rawCtrlrData.input9   -- Fuel Flow Ratio
-                -- Unscale RPM from physics input (input10 is RPM * scale)
-                ctrlrData.turbineRPM = (rawCtrlrData.input10 ~= 0 and TURBOSHAFT_PHYSICS_RPM_SCALE ~= 0) and (rawCtrlrData.input10 / TURBOSHAFT_PHYSICS_RPM_SCALE) or 0
-                ctrlrData.turbineAfterburner = rawCtrlrData.input11 -- Read actual afterburner from physics
-                ctrlrData.turbineDamage = rawCtrlrData.input19      -- Damage
-                -- Estimate fuel pump state based on unscaled RPM vs idle threshold
-                ctrlrData.fuelPumpEnabled = (ctrlrData.turbineRPM > (TURBOSHAFT_IDLE_RPM * 0.9)) and 1 or 0
-            end
-            -- Front Turboshaft (Inputs 13, 14, 15, 16, 18)
-            if coordsConfig.turbojetType ~= "dual" then
-                ctrlrData.frontTurbineThrottle = rawCtrlrData.input13 -- Throttle
-                ctrlrData.frontTurbineThrust = rawCtrlrData.input14   -- Fuel Flow Ratio
-                -- Unscale RPM from physics input (input15 is RPM * scale)
-                ctrlrData.frontTurbineRPM = (rawCtrlrData.input15 ~= 0 and TURBOSHAFT_PHYSICS_RPM_SCALE ~= 0) and (rawCtrlrData.input15 / TURBOSHAFT_PHYSICS_RPM_SCALE) or 0
-                ctrlrData.frontTurbineAfterburner = rawCtrlrData.input16 -- Read actual afterburner from physics
-                ctrlrData.frontTurbineDamage = rawCtrlrData.input18      -- Damage
-                -- Estimate fuel pump state based on unscaled RPM vs idle threshold
-                ctrlrData.frontFuelPumpEnabled = (ctrlrData.frontTurbineRPM > (TURBOSHAFT_IDLE_RPM * 0.9)) and 1 or 0
-            end
-        end
-        -- Ensure default numerical values (0) for any fields that might not have been set by the logic above
-        ctrlrData.turbineThrottle = ctrlrData.turbineThrottle or 0
-        ctrlrData.turbineThrust = ctrlrData.turbineThrust or 0
-        ctrlrData.turbineRPM = ctrlrData.turbineRPM or 0
-        ctrlrData.fuelPumpEnabled = ctrlrData.fuelPumpEnabled or 0
-        ctrlrData.turbineAfterburner = ctrlrData.turbineAfterburner or 0
-        ctrlrData.turbineDamage = ctrlrData.turbineDamage or 0
-        ctrlrData.leftThrottle = ctrlrData.leftThrottle or 0
-        ctrlrData.leftThrust = ctrlrData.leftThrust or 0
-        ctrlrData.leftRPM = ctrlrData.leftRPM or 0
-        ctrlrData.leftFuelPumpEnabled = ctrlrData.leftFuelPumpEnabled or 0
-        ctrlrData.leftAfterburner = ctrlrData.leftAfterburner or 0
-        ctrlrData.leftDamage = ctrlrData.leftDamage or 0
-        ctrlrData.rightThrottle = ctrlrData.rightThrottle or 0
-        ctrlrData.rightThrust = ctrlrData.rightThrust or 0
-        ctrlrData.rightRPM = ctrlrData.rightRPM or 0
-        ctrlrData.rightFuelPumpEnabled = ctrlrData.rightFuelPumpEnabled or 0
-        ctrlrData.rightAfterburner = ctrlrData.rightAfterburner or 0
-        ctrlrData.rightDamage = ctrlrData.rightDamage or 0
-        ctrlrData.frontTurbineThrottle = ctrlrData.frontTurbineThrottle or 0
-        ctrlrData.frontTurbineThrust = ctrlrData.frontTurbineThrust or 0
-        ctrlrData.frontTurbineRPM = ctrlrData.frontTurbineRPM or 0
-        ctrlrData.frontFuelPumpEnabled = ctrlrData.frontFuelPumpEnabled or 0
-        ctrlrData.frontTurbineDamage = ctrlrData.frontTurbineDamage or 0
     end
+
+    -- Populate/Overwrite with Turboshaft data if present and not masked
+    if coordsConfig.turboshaftPresent then
+        -- Rear Turboshaft (Inputs 8, 9, 10, 11, 19)
+        if not coordsConfig.turbojetType or coordsConfig.turbojetType ~= "single" then
+            ctrlrData.turbineThrottle = rawCtrlrData.input8 -- Throttle
+            ctrlrData.turbineThrust = rawCtrlrData.input9   -- Fuel Flow Ratio
+            -- Unscale RPM from physics input (input10 is RPM * scale)
+            ctrlrData.turbineRPM = (rawCtrlrData.input10 ~= 0 and TURBOSHAFT_PHYSICS_RPM_SCALE ~= 0) and (rawCtrlrData.input10 / TURBOSHAFT_PHYSICS_RPM_SCALE) or 0
+            ctrlrData.turbineAfterburner = rawCtrlrData.input11 -- Read actual afterburner from physics
+            ctrlrData.turbineDamage = rawCtrlrData.input19      -- Damage
+            -- Estimate fuel pump state based on unscaled RPM vs idle threshold
+            ctrlrData.fuelPumpEnabled = (ctrlrData.turbineRPM > (TURBOSHAFT_IDLE_RPM * 0.9)) and 1 or 0
+        end
+        -- Front Turboshaft (Inputs 13, 14, 15, 16, 18)
+        if coordsConfig.turbojetType ~= "dual" then
+            ctrlrData.frontTurbineThrottle = rawCtrlrData.input13 -- Throttle
+            ctrlrData.frontTurbineThrust = rawCtrlrData.input14   -- Fuel Flow Ratio
+            -- Unscale RPM from physics input (input15 is RPM * scale)
+            ctrlrData.frontTurbineRPM = (rawCtrlrData.input15 ~= 0 and TURBOSHAFT_PHYSICS_RPM_SCALE ~= 0) and (rawCtrlrData.input15 / TURBOSHAFT_PHYSICS_RPM_SCALE) or 0
+            ctrlrData.frontTurbineAfterburner = rawCtrlrData.input16 -- Read actual afterburner from physics
+            ctrlrData.frontTurbineDamage = rawCtrlrData.input18      -- Damage
+            -- Estimate fuel pump state based on unscaled RPM vs idle threshold
+            ctrlrData.frontFuelPumpEnabled = (ctrlrData.frontTurbineRPM > (TURBOSHAFT_IDLE_RPM * 0.9)) and 1 or 0
+        end
+    end
+
+    -- Ensure default numerical values (0) for any fields that might not have been set by the logic above
+    ctrlrData.turbineThrottle = ctrlrData.turbineThrottle or 0
+    ctrlrData.turbineThrust = ctrlrData.turbineThrust or 0
+    ctrlrData.turbineRPM = ctrlrData.turbineRPM or 0
+    ctrlrData.fuelPumpEnabled = ctrlrData.fuelPumpEnabled or 0
+    ctrlrData.turbineAfterburner = ctrlrData.turbineAfterburner or 0
+    ctrlrData.turbineDamage = ctrlrData.turbineDamage or 0
+    ctrlrData.leftThrottle = ctrlrData.leftThrottle or 0
+    ctrlrData.leftThrust = ctrlrData.leftThrust or 0
+    ctrlrData.leftRPM = ctrlrData.leftRPM or 0
+    ctrlrData.leftFuelPumpEnabled = ctrlrData.leftFuelPumpEnabled or 0
+    ctrlrData.leftAfterburner = ctrlrData.leftAfterburner or 0
+    ctrlrData.leftDamage = ctrlrData.leftDamage or 0
+    ctrlrData.rightThrottle = ctrlrData.rightThrottle or 0
+    ctrlrData.rightThrust = ctrlrData.rightThrust or 0
+    ctrlrData.rightRPM = ctrlrData.rightRPM or 0
+    ctrlrData.rightFuelPumpEnabled = ctrlrData.rightFuelPumpEnabled or 0
+    ctrlrData.rightAfterburner = ctrlrData.rightAfterburner or 0
+    ctrlrData.rightDamage = ctrlrData.rightDamage or 0
+    ctrlrData.frontTurbineThrottle = ctrlrData.frontTurbineThrottle or 0
+    ctrlrData.frontTurbineThrust = ctrlrData.frontTurbineThrust or 0
+    ctrlrData.frontTurbineRPM = ctrlrData.frontTurbineRPM or 0
+    ctrlrData.frontFuelPumpEnabled = ctrlrData.frontFuelPumpEnabled or 0
+    ctrlrData.frontTurbineDamage = ctrlrData.frontTurbineDamage or 0
 
     -- Ensure Audio Sources are Playing
     if not audio_engine:isPlaying() then audio_engine:start() end
@@ -638,7 +494,6 @@ function script.update(dt)
     -- Debug section
     ac.debug("Config: Turbojet Type", coordsConfig.turbojetType or "N/A")
     ac.debug("Config: Turboshaft Present", coordsConfig.turboshaftPresent and "Yes" or "No")
-    ac.debug("Mode", ac.isInReplayMode() and "Replay" or "Live")
 
     if coordsConfig.turbojetType then
         if coordsConfig.turbojetType == "single" then
