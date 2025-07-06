@@ -1,0 +1,28 @@
+{
+  "name": "T-180 Matryoshka",
+  "brand": "Krysha Korporatsiya",
+  "description": "This mod is a collaboration between Mad Agus and ohyeah2389. Mad Agus made the 3D model of the car, while ohyeah2389 made the physics and sound of the car.<br><br>It features twin rear-facing augmented turbojets and caged wheel hubs, along with small active-aero components at the rear.",
+  "tags": [
+    "awd",
+    "4ws",
+    "race",
+    "WRL",
+    "manual"
+  ],
+  "class": "race",
+  "specs": {
+    "bhp": "2029 bhp",
+    "torque": "1714 Nm",
+    "weight": "775 kg",
+    "topspeed": ">700 km/h",
+    "acceleration": "2.1 s 0-100",
+    "pwratio": "0.37 kg/hp"
+  },
+  "torqueCurve":[[0,36],[0,36],[1000,149.5],[2000,279.2],[3000,485.3],[3500,579.4],[5000,898.9],[7200,1251.1],[8000,1342],[8500,1331.2]],
+  "powerCurve":[[0,0],[0,0],[1000,21],[2000,78.4],[3000,204.5],[3500,284.8],[5000,631.2],[7200,1265],[8000,1507.7],[8500,1589]],
+  "country": "USA",
+  "author": "Mad Agus and ohyeah2389",
+  "version": null,
+  "url": null,
+  "year": 2008
+}
