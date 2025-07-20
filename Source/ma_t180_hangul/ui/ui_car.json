@@ -1,0 +1,28 @@
+{
+  "name": "T-180 Hangul",
+  "brand": "Togokhan Motors",
+  "description": "This mod is a collaboration between Mad Agus and ohyeah2389. Mad Agus made the 3D model of the car, while ohyeah2389 made the physics and sound of the car.\n\nThe Hangul is a WRL-homologated T-180 racing vehicle designed by Togokhan Motors to compete in the WRL championship racing series. The Togokhan-designed TM 9-71 hotblock uses triple-annealed impulse-reaction blades and Anisotropic-Damascus cylinder liners to reliably produce 420psi of average chamber pressure. This power is managed through deployment of Togokhan's proprietary stern-mounted 'Thermionic Recipricator' switched torque-distribution networking hardware.",
+  "tags": [
+    "awd",
+    "4ws",
+    "race",
+    "WRL",
+    "manual"
+  ],
+  "class": "race",
+  "specs": {
+    "bhp": "1998 bhp",
+    "torque": "1450 Nm",
+    "weight": "775 kg",
+    "topspeed": ">700 km/h",
+    "acceleration": "2.1 s 0-100",
+    "pwratio": "0.37 kg/hp"
+  },
+  "torqueCurve":[[0,40],[0,40],[3600,491.7],[5000,684.9],[6000,780.6],[7000,938.9],[7400,1025.8],[7600,1224],[8000,1304.7],[9000,1360.7],[10000,1417.6]],
+  "powerCurve":[[0,0],[0,0],[3600,248.6],[5000,480.9],[6000,657.7],[7000,923],[7400,1066],[7600,1306.3],[8000,1465.8],[9000,1719.7],[10000,1990.8]],
+  "country": "Japan",
+  "author": "Mad Agus and ohyeah2389 - Slip Angle Modding and Development",
+  "version": "0.7.0",
+  "url": null,
+  "year": 2025
+}
