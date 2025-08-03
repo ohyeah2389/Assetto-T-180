@@ -6,7 +6,9 @@ local config = {
     turboshaftPresent = false, -- true or false
 
     coordinates = {
-        turbineExhaust = vec3(0.0, 0.684, -2.79)
+        turbineExhausts = {
+            vec3(0.0, 0.684, -2.79)
+        }
     },
     flame = {
         color = rgbm(0.9, 0.9, 1, 1),

@@ -1,4 +1,4 @@
--- T-180 Effect Coordinates - Mach 6
+-- T-180 Effect Coordinates - Type A
 -- Authored by ohyeah2389
 
 local config = {
@@ -6,7 +6,9 @@ local config = {
     turboshaftPresent = false, -- true or false
 
     coordinates = {
-        turbineExhaust = vec3(0.0, 0.38, -2.61)
+        turbineExhausts = {
+            vec3(0.0, 0.38, -2.61)
+        }
     },
     flame = {
         color = rgbm(1, 0.8, 0.8, 1),
