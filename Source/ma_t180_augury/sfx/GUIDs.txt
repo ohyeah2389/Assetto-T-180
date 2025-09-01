@@ -33,7 +33,6 @@
 {d1f12277-fe8f-4106-9fb2-3de595d54a1c} event:/common/dirt
 {f5666b9c-c659-459c-85bd-0eff6e92f7eb} event:/common/screw
 {deae65e4-a5a7-4810-8adb-277fe4a96aa3} event:/common/unscrew
-{f12c4de3-d817-4689-8985-f3a55d2274fc} event:/showrooms/showroom
 {2cf5323a-2b34-4e01-ab6c-d0d6183d4ba7} event:/surfaces/extraturf
 {62b4885a-92af-4af5-9f6d-2a467ffa2e3f} event:/surfaces/grass
 {28e7a4ab-0e1c-4664-a7d8-b5fd89b024a0} event:/surfaces/gravel
@@ -71,5 +70,4 @@
 {a61eba16-8f14-4a39-8ffd-c573cfdc0dbd} vca:/vca_transmission
 {185673e8-d3ed-434c-acd4-61c819bb209c} vca:/vca_wind
 {0d4192f5-a888-4f1a-b0ef-c02887670d12} bank:/ma_t180_augury
-{4f6969ac-b7e1-45e5-84f1-31bc6f135357} bank:/showroom
 {47dcf37a-6a8d-4ef6-9f82-2e0398fa69f9} bank:/common
