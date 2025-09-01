@@ -546,6 +546,8 @@ def main():
     parser = argparse.ArgumentParser(description='Build car folders and optionally create release packages')
     parser.add_argument('--pack-release', action='store_true', 
                        help='Create a release zip file from the Build folder contents')
+    parser.add_argument('--only', type=str, metavar='CAR_NAME',
+                       help='Build only the specified car folder instead of all cars')
     args = parser.parse_args()
     
     # Get the directory in which the script is located
@@ -588,6 +590,17 @@ def main():
         print(f"Source directory not found: {source_dir}")
         sys.exit(1)
     
+    # If --only is specified, validate that the car exists
+    if args.only:
+        only_car_path = os.path.join(source_dir, args.only)
+        if not os.path.exists(only_car_path) or not os.path.isdir(only_car_path):
+            print(f"Error: Car folder '{args.only}' not found in Source directory")
+            sys.exit(1)
+        if args.only.lower() == "base":
+            print("Error: Cannot build the 'base' folder as it's not a car")
+            sys.exit(1)
+        print(f"Building only car: {args.only}")
+    
     # Get the global base folder from Source/base
     global_base_dir = os.path.join(source_dir, "base")
     if not os.path.exists(global_base_dir):
@@ -614,6 +627,10 @@ def main():
     for item in os.listdir(source_dir):
         item_path = os.path.join(source_dir, item)
         if os.path.isdir(item_path) and item.lower() != "base":
+            # If --only is specified, skip cars that don't match
+            if args.only and item != args.only:
+                continue
+                
             car_name = item
             print(f"\nProcessing car: {car_name}")
             # Create a new folder for the car in Build
