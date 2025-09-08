@@ -188,7 +188,15 @@ function WheelSteerCtrlr:update(dt)
 
     self.lastDriftAngle = driftAngle
 
-    local steerNormalizedInput = math.clamp(game.car_cphys.steer / ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_20").value, -1, 1)
+    local crabControlGainF = 0.6
+    local crabControlGainR = 1.0
+    local crabControlCurve = 1
+    local crabControlYawRateMult = 0
+
+    local steerNormalizedInput = math.clamp(game.car_cphys.steer / (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_20").value / 2), -1, 1)
+    local steerSigmoidInput = steerNormalizedInput / (1 + crabControlCurve * math.abs(steerNormalizedInput)) * (1 + crabControlCurve)
+    local steerSigmoidDiff = steerNormalizedInput - steerSigmoidInput
+    local crabControl = (1 - game.car_cphys.clutch)
 
     local targetYawRate = steerNormalizedInput * -15
     local actualYawRate = car.localAngularVelocity.y
@@ -207,16 +215,16 @@ function WheelSteerCtrlr:update(dt)
     self.slipAngleRL_prev = slipAngleRL
     self.slipAngleRR_prev = slipAngleRR
 
-    local slipOffsetFL = yawRateOutput * -0.5 * driftAngleMultiplier * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)
-    local slipOffsetFR = yawRateOutput * -0.5 * driftAngleMultiplier * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)
-    local slipOffsetRL = yawRateOutput * 0.5 * driftAngleMultiplier * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)
-    local slipOffsetRR = yawRateOutput * 0.5 * driftAngleMultiplier * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)
+    local slipOffsetFL = (yawRateOutput * -0.5 * driftAngleMultiplier * (1 + (crabControl * crabControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (crabControl * -steerSigmoidInput * crabControlGainF)
+    local slipOffsetFR = (yawRateOutput * -0.5 * driftAngleMultiplier * (1 + (crabControl * crabControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (crabControl * -steerSigmoidInput * crabControlGainF)
+    local slipOffsetRL = (yawRateOutput * 0.5 * driftAngleMultiplier * (1 + (crabControl * crabControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (crabControl * -steerSigmoidInput * crabControlGainR)
+    local slipOffsetRR = (yawRateOutput * 0.5 * driftAngleMultiplier * (1 + (crabControl * crabControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (crabControl * -steerSigmoidInput * crabControlGainR)
 
     -- Calculate base PID-controlled steering targets
-    local pidSteerFL = self.steerFL_PID:update(slipOffsetFL, -math.clamp(slipAngleFL, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true) * helpers.mapRange(car.gas, 0, 1, 0.7, 1, true)
-    local pidSteerFR = self.steerFR_PID:update(slipOffsetFR, -math.clamp(slipAngleFR, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true) * helpers.mapRange(car.gas, 0, 1, 0.7, 1, true)
-    local pidSteerRL = self.steerRL_PID:update(slipOffsetRL, -math.clamp(slipAngleRL, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true) * helpers.mapRange(car.gas, 0, 1, 1, 0.8, true)
-    local pidSteerRR = self.steerRR_PID:update(slipOffsetRR, -math.clamp(slipAngleRR, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true) * helpers.mapRange(car.gas, 0, 1, 1, 0.8, true)
+    local pidSteerFL = self.steerFL_PID:update(slipOffsetFL, -math.clamp(slipAngleFL, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true)-- * helpers.mapRange(car.gas, 0, 1, 0.7, 1, true)
+    local pidSteerFR = self.steerFR_PID:update(slipOffsetFR, -math.clamp(slipAngleFR, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true)-- * helpers.mapRange(car.gas, 0, 1, 0.7, 1, true)
+    local pidSteerRL = self.steerRL_PID:update(slipOffsetRL, -math.clamp(slipAngleRL, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true)-- * helpers.mapRange(car.gas, 0, 1, 1, 0.8, true)
+    local pidSteerRR = self.steerRR_PID:update(slipOffsetRR, -math.clamp(slipAngleRR, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true)-- * helpers.mapRange(car.gas, 0, 1, 1, 0.8, true)
 
     -- Update inversion blend factor
     if state.control.driftInversion then
@@ -292,6 +300,9 @@ function WheelSteerCtrlr:update(dt)
     ac.debug("steerctrl.calcSlipAngleRL", slipAngleRL)
     ac.debug("steerctrl.calcSlipAngleRR", slipAngleRR)
     ac.debug("steerctrl.driftInversion", state.control.driftInversion)
+    ac.debug("steerctrl.steerSigmoidInput", steerSigmoidInput)
+    ac.debug("steerctrl.steerSigmoidDiff", steerSigmoidDiff)
+    ac.debug("steerctrl.steerNormalizedInput", steerNormalizedInput)
     ac.debug("steerctrl.acceleration.y", car.acceleration.y)
 end
 
