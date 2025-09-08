@@ -146,7 +146,7 @@ function WheelSteerCtrlr:updateSetupValues()
     self.setupUpdateCounter = 0
 
     -- Update values
-    self.yawRatePID.kP = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_7").value or 8) / 40
+    self.yawRatePID.kP = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_7").value or 6) / 40
 
     self.steerPower = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_13").value or 9) / 10
     self.steerDamping = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_14").value or 12) / 40
