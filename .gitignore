@@ -17,3 +17,4 @@ extension/lib.lua
 *.tmp
 quickbms.exe
 /ohyeah2389_t180_beamng
+*.svg
