@@ -27,14 +27,6 @@ function turbojet:initialize(params)
         frictionCoef = config.turbojet.frictionCoef,
         staticFrictionCoef = 0
     })
-    self.throttlePID = PIDController(
-        0.0001, -- kP
-        0, -- kI
-        0.0001, -- kD
-        config.turbojet.minThrottle, -- minOutput
-        1, -- maxOutput
-        1 -- dampingFactor
-    )
     self.turbine.angularSpeed = 100
 end
 
@@ -42,7 +34,6 @@ end
 function turbojet:reset()
     self.carReversing = false
     self.turbine.angularSpeed = 0
-    self.throttlePID:reset()
     self.state.throttle = 0.0
     self.state.thrust = 0.0 -- Only relevant for single engine
     self.state.bleedBoost = 0.0 -- Only relevant for single engine
@@ -54,12 +45,6 @@ end
 
 
 function turbojet:update(dt)
-    local rpmDelta = 0
-    if self.id == 'single' then
-        -- Difference in RPM between piston engine and turbine engine
-        rpmDelta = (math.max(game.car_cphys.rpm, 0) - (self.turbine.angularSpeed * 60 / (2 * math.pi))) / config.turbojet.gearRatio
-    end
-
     -- Determine if car is traveling backwards (but not if it's in the air)
     if helpers.getWheelsOffGround() > 3 then
         self.carReversing = false
@@ -74,7 +59,7 @@ function turbojet:update(dt)
         -- Base throttle request from drift
         local baseThrottle = helpers.mapRange(game.car_cphys.gas * helpers.mapRange(math.abs(driftAngle), math.rad(config.turbojet.helperStartAngle), math.rad(config.turbojet.helperEndAngle), 0, 1, true), 0, 1, config.turbojet.minThrottle, 1, true)
         local clutchFactor = ((1 - game.car_cphys.clutch) * (car.isInPit and 0 or 1)) ^ 0.1
-        local baseThrottle = math.max(baseThrottle, clutchFactor)
+        baseThrottle = math.max(baseThrottle, clutchFactor) * (state.turbine.fuelPumpEnabled and 1 or 0)
 
         -- Throttle final calculation
         if controls.turbine.throttle:down() and state.turbine.fuelPumpEnabled then -- Full throttle override
@@ -84,12 +69,9 @@ function turbojet:update(dt)
             else
                 self.state.throttleAfterburner = math.applyLag(self.state.throttleAfterburner, 0, config.turbojet.throttleLagAfterburner, dt)
             end
-            self.throttlePID:reset()  -- Reset PID when override is active
         else
             self.state.throttleAfterburner = math.applyLag(self.state.throttleAfterburner, (clutchFactor > 0.9 and 1 or 0) * (state.turbine.fuelPumpEnabled and 1 or 0), config.turbojet.throttleLagAfterburner, dt)
-            local pidOutput = self.throttlePID:update(0, rpmDelta, dt)
-            local correctedThrottle = math.clamp(baseThrottle * (1 + pidOutput) * (state.turbine.fuelPumpEnabled and 1 or 0), config.turbojet.minThrottle, 1)
-            self.state.throttle = math.applyLag(self.state.throttle, correctedThrottle, config.turbojet.throttleLag, dt)
+            self.state.throttle = math.applyLag(self.state.throttle, baseThrottle, config.turbojet.throttleLag, dt)
         end
     else -- Dual engine: Throttle is set externally in script.lua
         -- Apply lag to the externally set throttle
@@ -148,8 +130,6 @@ function turbojet:update(dt)
     ac.debug(debugPrefix .. "thrust", self.state.thrust)
     if self.id == 'single' then
         ac.debug(debugPrefix .. "bleedBoost", self.state.bleedBoost)
-        ac.debug("turbojet.rpmDelta", rpmDelta)
-        ac.debug("baseThrottle", baseThrottle) -- Only relevant for single
     end
     ac.debug(debugPrefix .. "turbine.torque", self.turbine.torque)
     ac.debug(debugPrefix .. "turbine.angularSpeed", self.turbine.angularSpeed)

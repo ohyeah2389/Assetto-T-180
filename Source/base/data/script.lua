@@ -153,8 +153,25 @@ function script.update(dt)
 
     if config.turbojet.present then
         if config.turbojet.type == "single" then
+            state.turbine.overrideActive = controls.turbine.throttle:down()
+
+            -- Drift angle and base throttle
+            local driftAngle = math.atan(game.car_cphys.localVelocity.x / math.abs(game.car_cphys.localVelocity.z))
+            local baseThrottle = helpers.mapRange(game.car_cphys.gas * helpers.mapRange(math.abs(driftAngle), math.rad(config.turbojet.helperStartAngle), math.rad(config.turbojet.helperEndAngle), 0, 1, true), 0, 1, config.turbojet.minThrottle, 1, true)
+            local clutchFactor = ((1 - game.car_cphys.clutch) * (car.isInPit and 0 or 1)) ^ 0.1
+            baseThrottle = math.max(baseThrottle, clutchFactor)
+
+            -- Set targetThrottle based on control state
+            if state.turbine.overrideActive then
+                state.turbine.targetThrottle = 1
+                state.turbine.throttleAfterburner = math.applyLag(state.turbine.throttleAfterburner, state.turbine.throttle > 0.9 and 1 or 0, config.turbojet.throttleLagAfterburner, dt)
+            else
+                state.turbine.targetThrottle = baseThrottle
+                state.turbine.throttleAfterburner = math.applyLag(state.turbine.throttleAfterburner, (clutchFactor > 0.9 and 1 or 0) * (state.turbine.fuelPumpEnabled and 1 or 0), config.turbojet.throttleLagAfterburner, dt)
+            end
+
             turbojet:update(dt)
-            game.car_cphys.controllerInputs[8] = helpers.mapRange(state.turbine.throttle, config.turbojet.minThrottle, 1, 0, 1, true)
+            game.car_cphys.controllerInputs[8] = helpers.mapRange(state.turbine.targetThrottle, config.turbojet.minThrottle, 1, 0, 1, true)
             game.car_cphys.controllerInputs[9] = helpers.mapRange(state.turbine.thrust, 1000, 8000, 0, 1, true)
             game.car_cphys.controllerInputs[10] = state.turbine.rpm
             game.car_cphys.controllerInputs[11] = state.turbine.fuelPumpEnabled and 1 or 0
