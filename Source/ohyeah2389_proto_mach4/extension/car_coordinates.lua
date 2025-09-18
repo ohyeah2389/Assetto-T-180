@@ -1,4 +1,4 @@
--- T-180 Effect Coordinates - Mach 6
+-- T-180 Effect Coordinates - Mach 4
 -- Authored by ohyeah2389
 
 local config = {
@@ -11,11 +11,11 @@ local config = {
         }
     },
     flame = {
-        color = rgbm(0.9, 0.9, 1, 1),
-        afterburnerColor = rgbm(0.8, 0.8, 1, 1),
+        color = rgbm(1.0, 0.8, 0.75, 1),
+        afterburnerColor = rgbm(1.0, 0.9, 0.8, 1),
         size = 3.2,
-        temperatureMultiplier = 8,
-        afterburnerTemperatureMultiplier = 10,
+        temperatureMultiplier = 2,
+        afterburnerTemperatureMultiplier = 2,
         intensity = 0.9,
         afterburnerIntensity = 1
     },

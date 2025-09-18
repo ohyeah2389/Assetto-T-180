@@ -1,5 +1,6 @@
 {
     "Lua.diagnostics.disable": [
-        "deprecated"
+        "deprecated",
+        "need-check-nil"
     ]
 }

@@ -306,6 +306,7 @@ function script.update(dt)
 
     local rideHeightSensor = physics.raycastTrack(car.position + (car.up * 0.4) + (car.look * 1.0), -car.up, 1.0)
     local suctionMult = math.clamp(math.remap(rideHeightSensor, 0.5, 0.9, 1, 0), 0, 1) * (rideHeightSensor == -1 and 0 or 1)
+    local aeroForceBase = ((car.name == "ohyeah2389_proto_mach4") or (car.name == "ma_proto_uniron")) and -200 or -325
     local aeroForce = -325 * (math.abs(car.localVelocity.x) + math.abs(car.localVelocity.z)) * suctionMult
 
     ac.addForce(vec3(0, 0, 0), true, vec3(0, aeroForce, 0), true)
