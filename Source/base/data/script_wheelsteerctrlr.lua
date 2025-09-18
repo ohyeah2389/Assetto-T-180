@@ -21,6 +21,7 @@ function WheelSteerCtrlr:initialize()
     self.lastFFB = 0
     self.steerChangeHistory = {0, 0, 0, 0, 0}  -- Circular buffer for averaging
     self.historyIndex = 1
+    self.maxSteer = 180
 
     self.yawRatePID = PIDController(0.2, 0, 0, -1, 1, 1) -- power overridden by setup
 
@@ -70,8 +71,8 @@ function WheelSteerCtrlr:calculateFFB(dt)
         return 0
     end
 
-    local maxSteer = 90 * ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_20").value
-    local steerOverLimitDelta = math.max(0, math.abs(car.steer) - maxSteer)
+    self.maxSteer = 90 * ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_20").value
+    local steerOverLimitDelta = math.max(0, math.abs(car.steer) - self.maxSteer)
 
     local steerChange = (game.car_cphys.steer - self.steerInputLast) / dt
     self.steerInputLast = game.car_cphys.steer
@@ -125,7 +126,7 @@ function WheelSteerCtrlr:calculateFFB(dt)
     avgSteerChange = avgSteerChange / #self.steerChangeHistory
 
     -- Calculate new FFB with exponential smoothing
-    local targetFFB = (game.car_cphys.steer or 0) + (avgSteerChange * 0.03)
+    local targetFFB = (game.car_cphys.steer * 0.2 or 0) + (avgSteerChange * 0.03)
     local smoothedFFB = self.lastFFB * self.ffbSmoothing + targetFFB * (1 - self.ffbSmoothing)
 
     -- Final safety check before returning
@@ -146,9 +147,9 @@ function WheelSteerCtrlr:updateSetupValues()
     self.setupUpdateCounter = 0
 
     -- Update values
-    self.yawRatePID.kP = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_7").value or 6) / 40
+    self.yawRatePID.kP = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_7").value or 6) / 150
 
-    self.steerPower = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_13").value or 9) / 10
+    self.steerPower = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_13").value or 9) / 12
     self.steerDamping = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_14").value or 12) / 40
 
     self.steerFL_PID.kP = self.steerPower
@@ -174,10 +175,10 @@ function WheelSteerCtrlr:update(dt)
     -- Check for drift angle inversion (crossing +/-pi boundary)
     local angleDiff = driftAngle - self.lastDriftAngle
     if angleDiff > math.pi then
-        -- Crossed from +π to -π
+        -- Crossed from +pi to -pi
         state.control.driftInversion = true
     elseif angleDiff < -math.pi then
-        -- Crossed from -π to +π
+        -- Crossed from -pi to +pi
         state.control.driftInversion = true
     end
 
@@ -188,15 +189,25 @@ function WheelSteerCtrlr:update(dt)
 
     self.lastDriftAngle = driftAngle
 
-    local crabControlGainF = 0.6
-    local crabControlGainR = 1.0
-    local crabControlCurve = 1
-    local crabControlYawRateMult = 0
+    local cornerControl = (1 - game.car_cphys.clutch)
+    local cornerControlGainF = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_10").value or 5) / 20
+    local cornerControlGainR = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_11").value or 8) / 20
+    local cornerControlCurve = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_12").value or 1)
+    local cornerControlYawRateMult = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_15").value or 0) / 2
 
-    local steerNormalizedInput = math.clamp(game.car_cphys.steer / (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_20").value / 2), -1, 1)
-    local steerSigmoidInput = steerNormalizedInput / (1 + crabControlCurve * math.abs(steerNormalizedInput)) * (1 + crabControlCurve)
+    local steerNormalizedInput = math.clamp(game.car_cphys.steer / (self.maxSteer / 180), -1, 1)
+    local steerSigmoidInput
+    if cornerControlCurve < 0 then
+        -- Inverted sigmoid
+        steerSigmoidInput = steerNormalizedInput * (1 + math.abs(cornerControlCurve) * math.abs(steerNormalizedInput)) / (1 + math.abs(cornerControlCurve))
+    elseif cornerControlCurve > 0 then
+        -- Normal sigmoid
+        steerSigmoidInput = steerNormalizedInput / (1 + cornerControlCurve * math.abs(steerNormalizedInput)) * (1 + cornerControlCurve)
+    else
+        -- Linear
+        steerSigmoidInput = steerNormalizedInput
+    end
     local steerSigmoidDiff = steerNormalizedInput - steerSigmoidInput
-    local crabControl = (1 - game.car_cphys.clutch)
 
     local targetYawRate = steerNormalizedInput * -15
     local actualYawRate = car.localAngularVelocity.y
@@ -215,16 +226,16 @@ function WheelSteerCtrlr:update(dt)
     self.slipAngleRL_prev = slipAngleRL
     self.slipAngleRR_prev = slipAngleRR
 
-    local slipOffsetFL = (yawRateOutput * -0.5 * driftAngleMultiplier * (1 + (crabControl * crabControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (crabControl * -steerSigmoidInput * crabControlGainF)
-    local slipOffsetFR = (yawRateOutput * -0.5 * driftAngleMultiplier * (1 + (crabControl * crabControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (crabControl * -steerSigmoidInput * crabControlGainF)
-    local slipOffsetRL = (yawRateOutput * 0.5 * driftAngleMultiplier * (1 + (crabControl * crabControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (crabControl * -steerSigmoidInput * crabControlGainR)
-    local slipOffsetRR = (yawRateOutput * 0.5 * driftAngleMultiplier * (1 + (crabControl * crabControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (crabControl * -steerSigmoidInput * crabControlGainR)
+    local slipOffsetFL = (yawRateOutput * -0.5 * driftAngleMultiplier * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainF)
+    local slipOffsetFR = (yawRateOutput * -0.5 * driftAngleMultiplier * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainF)
+    local slipOffsetRL = (yawRateOutput * 0.5 * driftAngleMultiplier * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainR)
+    local slipOffsetRR = (yawRateOutput * 0.5 * driftAngleMultiplier * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainR)
 
     -- Calculate base PID-controlled steering targets
-    local pidSteerFL = self.steerFL_PID:update(slipOffsetFL, -math.clamp(slipAngleFL, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true)-- * helpers.mapRange(car.gas, 0, 1, 0.7, 1, true)
-    local pidSteerFR = self.steerFR_PID:update(slipOffsetFR, -math.clamp(slipAngleFR, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true)-- * helpers.mapRange(car.gas, 0, 1, 0.7, 1, true)
-    local pidSteerRL = self.steerRL_PID:update(slipOffsetRL, -math.clamp(slipAngleRL, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true)-- * helpers.mapRange(car.gas, 0, 1, 1, 0.8, true)
-    local pidSteerRR = self.steerRR_PID:update(slipOffsetRR, -math.clamp(slipAngleRR, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true)-- * helpers.mapRange(car.gas, 0, 1, 1, 0.8, true)
+    local pidSteerFL = self.steerFL_PID:update(slipOffsetFL, -math.clamp(slipAngleFL, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true)
+    local pidSteerFR = self.steerFR_PID:update(slipOffsetFR, -math.clamp(slipAngleFR, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true)
+    local pidSteerRL = self.steerRL_PID:update(slipOffsetRL, -math.clamp(slipAngleRL, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true)
+    local pidSteerRR = self.steerRR_PID:update(slipOffsetRR, -math.clamp(slipAngleRR, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true)
 
     -- Update inversion blend factor
     if state.control.driftInversion then
@@ -304,6 +315,7 @@ function WheelSteerCtrlr:update(dt)
     ac.debug("steerctrl.steerSigmoidDiff", steerSigmoidDiff)
     ac.debug("steerctrl.steerNormalizedInput", steerNormalizedInput)
     ac.debug("steerctrl.acceleration.y", car.acceleration.y)
+    ac.debug("steerctrl.cornerControl", cornerControl)
 end
 
 
