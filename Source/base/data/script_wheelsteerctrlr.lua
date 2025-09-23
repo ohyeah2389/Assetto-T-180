@@ -209,7 +209,7 @@ function WheelSteerCtrlr:update(dt)
     end
     local steerSigmoidDiff = steerNormalizedInput - steerSigmoidInput
 
-    local targetYawRate = steerNormalizedInput * -15
+    local targetYawRate = steerNormalizedInput * -12
     local actualYawRate = car.localAngularVelocity.y
 
     local yawRateOutput = self.yawRatePID:update(targetYawRate, actualYawRate, dt)
