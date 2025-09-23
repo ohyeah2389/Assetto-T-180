@@ -53,6 +53,7 @@ function WheelSteerCtrlr:initialize()
     self.isReversing = false
 
     self.inversionBlendSpeed = 3.0 -- The time it takes for the wheels to move to their drift inversion position
+    self.inversionEnabled = true
 
     self.lastDriftAngle = 0
     self.inversionBlendState = 0
@@ -152,6 +153,15 @@ function WheelSteerCtrlr:updateSetupValues()
     self.steerPower = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_13").value or 9) / 12
     self.steerDamping = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_14").value or 12) / 40
 
+    local servoLimit = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_16").value or 2)
+
+    self.steerFL_PID.minOutput, self.steerFL_PID.maxOutput = -servoLimit, servoLimit
+    self.steerFR_PID.minOutput, self.steerFR_PID.maxOutput = -servoLimit, servoLimit
+    self.steerRL_PID.minOutput, self.steerRL_PID.maxOutput = -servoLimit, servoLimit
+    self.steerRR_PID.minOutput, self.steerRR_PID.maxOutput = -servoLimit, servoLimit
+
+    self.inversionEnabled = ((ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_17").value or 1) == 1 and true or false)
+
     self.steerFL_PID.kP = self.steerPower
     self.steerFR_PID.kP = self.steerPower
     self.steerRL_PID.kP = self.steerPower
@@ -238,7 +248,7 @@ function WheelSteerCtrlr:update(dt)
     local pidSteerRR = self.steerRR_PID:update(slipOffsetRR, -math.clamp(slipAngleRR, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true)
 
     -- Update inversion blend factor
-    if state.control.driftInversion then
+    if state.control.driftInversion and self.inversionEnabled then
         self.inversionBlendState = math.min(self.inversionBlendState + dt * self.inversionBlendSpeed, 1)
     else
         self.inversionBlendState = math.max(self.inversionBlendState - dt * self.inversionBlendSpeed, 0)
