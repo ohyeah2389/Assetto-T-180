@@ -58,7 +58,7 @@ if coordsConfig.turbojetType and coordsConfig.coordinates.turbineExhausts then
             centerPos = centerPos + pos
         end
         centerPos = centerPos / #coordsConfig.coordinates.turbineExhausts
-        
+
         audio_turbine_rear = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/turbine", true, true)
         audio_turbine_rear.cameraInteriorMultiplier = 0.5
         audio_turbine_rear.volume = 0.8
@@ -75,7 +75,7 @@ if coordsConfig.turbojetType and coordsConfig.coordinates.turbineExhausts then
         -- For dual turbojet, automatically find left and right positions
         local leftPos = nil
         local rightPos = nil
-        
+
         for _, pos in ipairs(coordsConfig.coordinates.turbineExhausts) do
             if pos.x < 0 then
                 -- Left side (negative x)
@@ -96,7 +96,7 @@ if coordsConfig.turbojetType and coordsConfig.coordinates.turbineExhausts then
             end
             -- Skip center positions (x == 0) for dual setup
         end
-        
+
         -- Create left turbine audio if left position exists
         if leftPos then
             audio_turbine_left = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/turbine", true, true)
@@ -112,7 +112,7 @@ if coordsConfig.turbojetType and coordsConfig.coordinates.turbineExhausts then
                 vec3(leftPos.x, leftPos.y - 0.07, leftPos.z + 1.3), vec3(0, 0, 1), vec3(0, 1, 0))
             audio_turbine_fuelpump_left:start()
         end
-        
+
         -- Create right turbine audio if right position exists
         if rightPos then
             audio_turbine_right = ac.AudioEvent("/cars/" .. ac.getCarID(0) .. "/turbine", true, true)
@@ -181,13 +181,9 @@ local leftFuelPumpFadeoutState = 0
 local rightFuelPumpFadeoutState = 0
 local frontFuelPumpFadeoutState = 0
 
--- Define estimated RPM ranges (adjust if necessary)
-local TURBOJET_IDLE_RPM = 4000
-local TURBOJET_MAX_RPM = 18000
-local TURBOJET_AB_RPM_BOOST = 2000
+-- Define estimated RPM ranges
 local TURBOSHAFT_IDLE_RPM = 5000
-local TURBOSHAFT_MAX_RPM = 45000
-local TURBOSHAFT_PHYSICS_RPM_SCALE = (20000 / 45000) -- Scale used in physics script controller output
+local TURBOSHAFT_PHYSICS_RPM_SCALE = (20000 / 45000)
 
 -- math helper function, like Map Range in Blender
 local function mapRange(n, start, stop, newStart, newStop, withinBounds)
@@ -414,33 +410,31 @@ function script.update(dt)
         end
     end
 
+    local flameVector = coordsConfig.vector or vec3(0, 0, -3)
+    local carVelComponent = car.localVelocity * vec3(-0.34, -0.36, -0.32)
+
     -- Emit turbojet particle effects
     if coordsConfig.turbojetType then
         local scale = mapRange(car.speedKmh, 0, 400, 1, 0.1, true)
-        
+
         if coordsConfig.turbojetType == "single" then
             -- For single turbojet, emit flames at all exhaust positions
             for _, pos in ipairs(coordsConfig.coordinates.turbineExhausts) do
-                local baseVel = vec3(0, 0, -3) + (car.localVelocity * -0.35)
-                local afterburnerBaseEjectionVel = vec3(0, 0, -3 * 0.5)
-                local afterburnerVel = afterburnerBaseEjectionVel + (car.localVelocity * -0.35)
-                local particlePos = vec3(pos.x + car.localVelocity.x * 0.012, pos.y, pos.z + car.localVelocity.z * 0.01)
-                
+                local particlePos = vec3(pos.x + car.localVelocity.x * 0.015, pos.y, pos.z + car.localVelocity.z * 0.01)
+                local baseVel = flameVector:clone():mul(vec3((pos.x < 0.0 and -1 or 1), 1, 1))
+                baseVel = baseVel + carVelComponent
+
                 flameBoost:emit(particlePos, baseVel, mapRange(ctrlrData.turbineThrottle, 0.9, 1, 0, 1, true) * mapRange(car.speedKmh, 0, 400, 0.5, 0.1, true))
-                flameTurbo:emit(particlePos, afterburnerVel, ctrlrData.turbineAfterburner * scale * 0.6)
+                flameTurbo:emit(particlePos, baseVel, ctrlrData.turbineAfterburner * scale * 0.6)
                 exhaustSmoke:emit(particlePos, baseVel * mapRange(ctrlrData.turbineThrottle, 0, 1, 10, 20, true), mapRange(ctrlrData.turbineThrottle, 0, 1, 0.05, 0.2, true) * (1 + ctrlrData.turbineAfterburner))
             end
         elseif coordsConfig.turbojetType == "dual" then
-            -- Calculate common components first
-            local afterburnerBaseEjectionVel = vec3(0, 0, -3 * 0.5)
-            local carVelComponent = car.localVelocity * -0.35
-            
             -- Iterate through all exhaust positions
             for _, pos in ipairs(coordsConfig.coordinates.turbineExhausts) do
-                local particlePos = vec3(pos.x + car.localVelocity.x * 0.012, pos.y, pos.z + car.localVelocity.z * 0.01)
-                local baseVel = vec3(0, 0, -3) + carVelComponent
-                local afterburnerVel = afterburnerBaseEjectionVel + carVelComponent
-                
+                local particlePos = vec3(pos.x + car.localVelocity.x * 0.015, pos.y, pos.z + car.localVelocity.z * 0.01)
+                local baseVel = flameVector:clone():mul(vec3((pos.x < 0.0 and -1 or 1), 1, 1))
+                baseVel = baseVel + carVelComponent
+
                 -- Determine which engine's parameters to use based on x-coordinate
                 local throttle, afterburner
                 if pos.x > 0 then
@@ -456,9 +450,9 @@ function script.update(dt)
                     throttle = (ctrlrData.leftThrottle + ctrlrData.rightThrottle) / 2
                     afterburner = (ctrlrData.leftAfterburner + ctrlrData.rightAfterburner) / 2
                 end
-                
+
                 flameBoost:emit(particlePos, baseVel, mapRange(throttle, 0.9, 1, 0, 1, true) * mapRange(car.speedKmh, 0, 400, 0.5, 0.1, true))
-                flameTurbo:emit(particlePos, afterburnerVel, afterburner * scale * 0.6)
+                flameTurbo:emit(particlePos, baseVel, afterburner * scale * 0.6)
                 exhaustSmoke:emit(particlePos, baseVel * mapRange(throttle, 0, 1, 10, 20, true), mapRange(throttle, 0, 1, 0.05, 0.2, true) * (1 + afterburner))
             end
         end
@@ -467,18 +461,15 @@ function script.update(dt)
     -- Add turboshaft flame effects
     if coordsConfig.turboshaftPresent then
         local scale = mapRange(car.speedKmh, 0, 400, 1, 0.1, true)
-        local afterburnerBaseEjectionVel = vec3(0, 0, -3 * 0.5)
-        local carVelComponent = car.localVelocity * -0.35
-        local baseVel = vec3(0, 0, -3) + carVelComponent
-        local afterburnerVel = afterburnerBaseEjectionVel + carVelComponent
+        local baseVel = flameVector + carVelComponent
 
         -- Rear turboshaft flames (if not single turbojet config)
         if not coordsConfig.turbojetType or coordsConfig.turbojetType ~= "single" then
             for _, pos in ipairs(coordsConfig.coordinates.turbineExhausts) do
                 local particlePos = vec3(pos.x + car.localVelocity.x * 0.012, pos.y, pos.z + car.localVelocity.z * 0.01)
-                
+
                 flameBoost:emit(particlePos, baseVel, mapRange(ctrlrData.turbineThrottle, 0.9, 1, 0, 1, true) * mapRange(car.speedKmh, 0, 400, 0.5, 0.1, true))
-                flameTurbo:emit(particlePos, afterburnerVel, (ctrlrData.turbineAfterburner or 0) * scale * 0.6)
+                flameTurbo:emit(particlePos, baseVel, (ctrlrData.turbineAfterburner or 0) * scale * 0.6)
                 exhaustSmoke:emit(particlePos, baseVel * mapRange(ctrlrData.turbineThrottle, 0, 1, 10, 20, true), mapRange(ctrlrData.turbineThrottle, 0, 1, 0.05, 0.2, true) * (1 + (ctrlrData.turbineAfterburner or 0)))
             end
         end
