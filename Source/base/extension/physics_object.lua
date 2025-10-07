@@ -25,6 +25,9 @@ function physics:initialize(params)
     self.rotary = params.rotary or false
     self.dampingCoef = params.dampingCoef or 0.05  -- Linear damping coefficient
 
+    self.debug = params.debug or false
+    self.debugName = params.debugName or "physicsObject"
+
     if self.rotary then
         self.angle = params.initialAngle or 0 -- Current angle in radians
         self.angularSpeed = params.angularSpeed or 0                 -- Angular speed in radians per second
@@ -65,7 +68,7 @@ function physics:step(force, dt)
         -- Modulo angle to (0, 2π)
         self.angle = self.angle % (2 * math.pi)
     else
-        -- Linear motion calculations (updated with similar friction model)
+        -- Linear motion calculations
         local distanceFromCenter = self.position - self.center
         self.force = math.clamp(force, -self.forceMax, self.forceMax) + (distanceFromCenter * -self.springCoef) + self.constantForce
 
@@ -106,6 +109,21 @@ function physics:step(force, dt)
             self.force = math.clamp(self.force + endstopForce, -self.forceMax, self.forceMax)
             self.position = self.posMin
             self.speed = 0
+        end
+    end
+
+    if self.debug then
+        if self.rotary then
+            ac.debug((self.debugName or "physicsObject") .. ".torque", self.torque)
+            ac.debug((self.debugName or "physicsObject") .. ".angle", self.angle)
+            ac.debug((self.debugName or "physicsObject") .. ".angularSpeed", self.angularSpeed)
+            ac.debug((self.debugName or "physicsObject") .. ".angularAccel", self.angularAccel)
+        else
+            ac.debug((self.debugName or "physicsObject") .. ".force", self.force)
+            ac.debug((self.debugName or "physicsObject") .. ".speed", self.speed)
+            ac.debug((self.debugName or "physicsObject") .. ".accel", self.accel)
+            ac.debug((self.debugName or "physicsObject") .. ".feltForce", self.feltForce)
+            ac.debug((self.debugName or "physicsObject") .. ".position", self.position)
         end
     end
 end
