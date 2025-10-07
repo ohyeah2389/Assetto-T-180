@@ -1,4 +1,16 @@
 {
+    "Lua.workspace.library": [
+        "G:\\SteamLibrary\\steamapps\\common\\assettocorsa\\extension\\internal\\lua-sdk\\ac_car_scriptable_display",
+        "G:\\SteamLibrary\\steamapps\\common\\assettocorsa\\extension\\internal\\lua-sdk\\ac_car_cphys",
+    ],
+    "Lua.workspace.preloadFileSize": 2000,
+    "Lua.workspace.checkThirdParty": false,
+    "Lua.runtime.version": "LuaJIT",
+    "Lua.runtime.builtin": {},
+    "Lua.runtime.path": [
+        "?.lua",
+        "?/init.lua",
+    ],
     "Lua.diagnostics.disable": [
         "deprecated",
         "need-check-nil"
