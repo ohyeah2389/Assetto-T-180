@@ -2,14 +2,24 @@
 -- Authored by ohyeah2389
 
 local config = {
-    turbojetType = "single", -- "single" or "dual" or nil if not present
-    turboshaftPresent = false, -- true or false
+    turbojetType = "single",
+    turboshaftPresent = false,
 
-    coordinates = {
-        turbineExhausts = {
+    turbines = {
+        rear = {
+            position = vec3(0.0, 0.684, -2.79),
+            fuelPumpOffset = vec3(0, -0.07, 1.3),
+            volume = 0.8,
+            fuelPumpVolume = 0.45
+        }
+    },
+
+    exhausts = {
+        rear = {
             vec3(0.0, 0.684, -2.79)
         }
     },
+    
     flame = {
         color = rgbm(1.0, 0.8, 0.75, 1),
         afterburnerColor = rgbm(1.0, 0.9, 0.8, 1),
