@@ -411,7 +411,7 @@ function script.update(dt)
     end
 
     local flameVector = coordsConfig.vector or vec3(0, 0, -3)
-    local carVelComponent = car.localVelocity * vec3(-0.34, -0.36, -0.32)
+    local carVelComponent = car.localVelocity * -0.35
 
     -- Emit turbojet particle effects
     if coordsConfig.turbojetType then
@@ -420,7 +420,7 @@ function script.update(dt)
         if coordsConfig.turbojetType == "single" then
             -- For single turbojet, emit flames at all exhaust positions
             for _, pos in ipairs(coordsConfig.coordinates.turbineExhausts) do
-                local particlePos = vec3(pos.x + car.localVelocity.x * 0.015, pos.y, pos.z + car.localVelocity.z * 0.01)
+                local particlePos = vec3(pos.x + car.localVelocity.x * 0.012, pos.y, pos.z + car.localVelocity.z * 0.01)
                 local baseVel = flameVector:clone():mul(vec3((pos.x < 0.0 and -1 or 1), 1, 1))
                 baseVel = baseVel + carVelComponent
 
@@ -431,7 +431,7 @@ function script.update(dt)
         elseif coordsConfig.turbojetType == "dual" then
             -- Iterate through all exhaust positions
             for _, pos in ipairs(coordsConfig.coordinates.turbineExhausts) do
-                local particlePos = vec3(pos.x + car.localVelocity.x * 0.015, pos.y, pos.z + car.localVelocity.z * 0.01)
+                local particlePos = vec3(pos.x + car.localVelocity.x * 0.012, pos.y, pos.z + car.localVelocity.z * 0.01)
                 local baseVel = flameVector:clone():mul(vec3((pos.x < 0.0 and -1 or 1), 1, 1))
                 baseVel = baseVel + carVelComponent
 
