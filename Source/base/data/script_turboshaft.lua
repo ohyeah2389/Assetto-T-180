@@ -121,8 +121,7 @@ function Turboshaft:update(dt)
     }
 
     -- Update and get FADEC-commanded fuel flow
-    self.fuelSystem.commandedFuelFlow = state.turbine[self.turbineId].fuelPumpEnabled and
-    self.fadec:update(dt, self.sensors, controls, self.maxNG, self.maxTIT) or 0
+    self.fuelSystem.commandedFuelFlow = state.turbine[self.turbineId].fuelPumpEnabled and self.fadec:update(dt, self.sensors, controls, self.maxNG, self.maxTIT) or 0
 
     -- Afterburner control logic
     local throttleLevel = car.extraB and 1 or (1 - game.car_cphys.clutch) * (car.isInPit and 0 or 1)
@@ -135,48 +134,64 @@ function Turboshaft:update(dt)
 
     -- Apply fuel system lag
     local fuelFlowDelta = self.fuelSystem.commandedFuelFlow - self.fuelSystem.actualFuelFlow
-    self.fuelSystem.actualFuelFlow = self.fuelSystem.actualFuelFlow +
-        (fuelFlowDelta * dt / self.fuelSystem.timeConstant)
+    self.fuelSystem.actualFuelFlow = self.fuelSystem.actualFuelFlow + (fuelFlowDelta * dt / self.fuelSystem.timeConstant)
+
+    -- Calculate ram air effects at inlet
+    local speedOfSound = math.sqrt(self.specificHeatRatio * 287 * self.ambientTemp) -- m/s, R=287 J/(kg·K) for air
+    local machNumber = game.car_cphys.localVelocity:length() / speedOfSound
+
+    -- Inlet pressure recovery (simple inlet model with transonic effects)
+    -- Subsonic: near-perfect recovery, Transonic: shock losses, Supersonic: normal shock losses
+    local inletPressureRecovery = 1.0
+    if machNumber < 1.0 then
+        -- Subsonic: minimal losses
+        inletPressureRecovery = 1.0 - 0.01 * machNumber -- ~1% loss at M=1.0
+    else
+        -- Supersonic: normal shock losses increase with Mach number
+        -- Simplified normal shock relation
+        local machSquared = machNumber * machNumber
+        inletPressureRecovery = math.pow(
+            ((self.specificHeatRatio + 1) * machSquared) / (2 + (self.specificHeatRatio - 1) * machSquared),
+            self.specificHeatRatio / (self.specificHeatRatio - 1)
+        ) * math.pow(
+            (self.specificHeatRatio + 1) / (2 * self.specificHeatRatio * machSquared - (self.specificHeatRatio - 1)),
+            1 / (self.specificHeatRatio - 1)
+        )
+    end
+
+    -- Calculate total (stagnation) pressure and temperature at inlet
+    local ramPressureRatio = math.pow(
+        1 + ((self.specificHeatRatio - 1) / 2) * machNumber * machNumber,
+        self.specificHeatRatio / (self.specificHeatRatio - 1)
+    )
+    local inletPressure = self.ambientPressure * ramPressureRatio * inletPressureRecovery
+
+    -- Ram temperature rise (total temperature)
+    local inletTemp = self.ambientTemp * (1 + ((self.specificHeatRatio - 1) / 2) * machNumber * machNumber)
 
     -- Calculate speed and pressure ratios
     self.speedRatio = (self.gasTurbine.angularSpeed * 60 / (2 * math.pi)) / config.turboshaft.designMaxNGRPM
     self.state.pressureRatio = 1 + config.turboshaft.pressureRatio * (self.speedRatio * self.speedRatio)
 
-    -- Air mass flow (simplified estimation)
-    self.state.massFlowAir = self.speedRatio * self.massFlowAirCoefficient *
-        self.damageCompressorDerateCurve:get(self.state.damageCompressorBlades)
-
-    -- Combustion stability and flameout check
-    --if self.fuelSystem.actualFuelFlow < self.minimumStableFuelFlow then
-    --    self.state.flameoutTimer = self.state.flameoutTimer + dt
-    --    if self.state.flameoutTimer >= self.flameoutDelay then
-    --        self.state.combustionActive = false
-    --    end
-    --else
-    --    self.state.flameoutTimer = 0
-    --end
+    -- Air mass flow (corrected for inlet pressure and temperature)
+    -- Corrected flow: actual flow scaled by inlet conditions
+    local pressureCorrection = inletPressure / self.ambientPressure
+    local tempCorrection = math.sqrt(self.ambientTemp / inletTemp)
+    self.state.massFlowAir = self.speedRatio * self.massFlowAirCoefficient * self.damageCompressorDerateCurve:get(self.state.damageCompressorBlades) * pressureCorrection * tempCorrection
 
     -- Calculate compressor discharge temperature using "isentropic relation", whatever that means
-    local inletTemp = self.ambientTemp *
-        (self.state.pressureRatio ^ ((self.specificHeatRatio - 1) / self.specificHeatRatio))
+    local compressorDischargeTemp = inletTemp * (self.state.pressureRatio ^ ((self.specificHeatRatio - 1) / self.specificHeatRatio))
 
     -- Compressor torque calculations
-    local powerRequired = self.state.massFlowAir * self.specificHeatCapacity * (inletTemp - self.ambientTemp) /
-        config.turboshaft.compressorEfficiency
-    -- Convert power from Watts to kilowatts for better numerical stability
-    powerRequired = powerRequired / 1000
-
-    local compressorTorque = -powerRequired * 1000 / math.max(self.gasTurbine.angularSpeed, 1) /
-        self.damageCompressorDerateCurve:get(self.state.damageCompressorBlades)
+    local powerRequired = self.state.massFlowAir * self.specificHeatCapacity * (compressorDischargeTemp - inletTemp) / config.turboshaft.compressorEfficiency
+    local compressorTorque = -powerRequired / math.max(self.gasTurbine.angularSpeed, 1) / self.damageCompressorDerateCurve:get(self.state.damageCompressorBlades)
 
     -- Combustion calculations
     local fuelAirRatio = self.fuelSystem.actualFuelFlow / math.max(self.state.massFlowAir, 0.001)
-    local combustionHeatAdded = self.fuelSystem.actualFuelFlow * config.turboshaft.fuelLHV *
-        config.turboshaft.combustionEfficiency
+    local combustionHeatAdded = self.fuelSystem.actualFuelFlow * config.turboshaft.fuelLHV * config.turboshaft.combustionEfficiency
     local totalMassFlow = self.state.massFlowAir + self.fuelSystem.actualFuelFlow
-    local combustionExitTemp = inletTemp +
-        (combustionHeatAdded / math.max(totalMassFlow, 0.001)) / self.specificHeatCapacity
-    local combustionExitPressure = self.ambientPressure * self.state.pressureRatio * (1 - self.combustorPressureLoss)
+    local combustionExitTemp = compressorDischargeTemp + (combustionHeatAdded / math.max(totalMassFlow, 0.001)) / self.specificHeatCapacity
+    local combustionExitPressure = inletPressure * self.state.pressureRatio * (1 - self.combustorPressureLoss)
 
     -- Implement "thermal mass" for TIT using lag
     self.state.tit = self.state.tit + dt * (combustionExitTemp - self.state.tit) / self.TITLag
@@ -184,11 +199,11 @@ function Turboshaft:update(dt)
     -- Update sensor readings
     self.sensors.ngRPM = self.gasTurbine.angularSpeed * 60 / (2 * math.pi)
     self.sensors.turbineInletTemp = self.state.tit
-    self.sensors.compressorDischargePressure = self.ambientPressure * self.state.pressureRatio
+    self.sensors.compressorDischargePressure = combustionExitPressure / (1 - self.combustorPressureLoss)
     self.sensors.fuelFlow = self.fuelSystem.actualFuelFlow
 
     -- Turbine torque calculations
-    local deltaTemp = combustionExitTemp - inletTemp
+    local deltaTemp = combustionExitTemp - compressorDischargeTemp
     local turbineTorque = 0
 
     if deltaTemp > 0 and self.state.combustionActive then
@@ -228,6 +243,11 @@ function Turboshaft:update(dt)
     ac.debug("turboshaft." .. self.turbineId .. ".damageTurbineBlades", self.state.damageTurbineBlades)
     ac.debug("turboshaft." .. self.turbineId .. ".damageCompressorBlades", self.state.damageCompressorBlades)
     ac.debug("turboshaft." .. self.turbineId .. ".finalNGTorque", finalNGTorque)
+    ac.debug("turboshaft." .. self.turbineId .. ".machNumber", machNumber)
+    ac.debug("turboshaft." .. self.turbineId .. ".inletPressure", inletPressure)
+    ac.debug("turboshaft." .. self.turbineId .. ".inletTemp", inletTemp)
+    ac.debug("turboshaft." .. self.turbineId .. ".inletPressureRecovery", inletPressureRecovery)
+    ac.debug("turboshaft." .. self.turbineId .. ".ramPressureRatio", ramPressureRatio)
 
     -- Damage calculations
 
