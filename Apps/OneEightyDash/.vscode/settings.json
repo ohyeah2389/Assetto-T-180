@@ -1,0 +1,18 @@
+{
+    "Lua.workspace.library": [
+        "G:\\SteamLibrary\\steamapps\\common\\assettocorsa\\extension\\internal\\lua-sdk\\ac_apps",
+    ],
+    "Lua.workspace.preloadFileSize": 2000,
+    "Lua.workspace.checkThirdParty": false,
+    "Lua.runtime.version": "LuaJIT",
+    "Lua.runtime.builtin": {},
+    "Lua.runtime.path": [
+        "?.lua",
+        "?/init.lua",
+        "c:\\Steam\\steamapps\\common\\assettocorsa/extension/internal/lua-?.lua"
+    ],
+    "Lua.diagnostics.disable": [
+        "deprecated",
+        "need-check-nil"
+    ]
+}
