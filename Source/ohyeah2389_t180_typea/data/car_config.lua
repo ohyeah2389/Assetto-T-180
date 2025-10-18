@@ -27,10 +27,6 @@ local config = {
         boostSpeedFactor = 0.0011, -- Multiplier on turbine angular speed to form bleed air boost speed component (thrust component is added to this for total bleed air boost value)
         maximumEffectiveIntakeSpeed = 2000, -- kmh - Maximum effective intake speed of the turbine (used to calculate effective intake speed for thrust fadeout)
         thrustFadeoutExponent = 1.2, -- Exponent for the thrust fadeout curve (used to calculate effective intake speed for thrust fadeout)
-        fuelTankCapacity = 100, -- Litres - Capacity of the fuel tank
-        fuelConsThrottleFactor = 1.0, -- Throttle position fuel consumption multiplier
-        fuelConsSpeedFactor = 0.0001, -- Angular speed fuel consumption multiplier
-        fuelConsThrustFactor = 0.000125, -- Developed thrust fuel consumption multiplier
     },
     turboshaft = {
         present = false

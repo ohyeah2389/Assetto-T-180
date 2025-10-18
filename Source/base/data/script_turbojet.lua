@@ -37,7 +37,6 @@ function turbojet:reset()
     self.state.throttle = 0.0
     self.state.thrust = 0.0 -- Only relevant for single engine
     self.state.bleedBoost = 0.0 -- Only relevant for single engine
-    self.state.fuelConsumption = 0.0
     self.turbine.angularSpeed = 100
     self.state.throttleAfterburner = 0.0
     self.state.rpm = 0.0
@@ -110,16 +109,6 @@ function turbojet:update(dt)
         self.turbine.angularSpeed = 0
     end
 
-    -- Calculate fuel consumption based on throttle, RPM and thrust (common logic)
-    self.state.fuelConsumption = (self.state.throttle * config.turbojet.fuelConsThrottleFactor) -- Throttle factor
-        * (self.turbine.angularSpeed * config.turbojet.fuelConsSpeedFactor) -- RPM factor
-        * (self.state.thrust * config.turbojet.fuelConsThrustFactor) -- Thrust factor
-        * dt -- Time factor
-
-    -- Take the fuel out of the turbine fuel tank
-    -- Assume a shared fuel tank for now. This might need adjustment if separate tanks are desired.
-    state.turbine.fuelLevel = state.turbine.fuelLevel - self.state.fuelConsumption
-
     -- Update turbine RPM status for readouts and sync and stuff
     self.state.rpm = self.turbine.angularSpeed * 60 / (2 * math.pi)
 
@@ -134,8 +123,6 @@ function turbojet:update(dt)
     ac.debug(debugPrefix .. "turbine.torque", self.turbine.torque)
     ac.debug(debugPrefix .. "turbine.angularSpeed", self.turbine.angularSpeed)
     ac.debug(debugPrefix .. "turbine.RPM", self.state.rpm)
-    ac.debug(debugPrefix .. "fuelConsumption", self.state.fuelConsumption)
-    ac.debug(debugPrefix .. "fuelLevel", state.turbine.fuelLevel) -- Shared fuel level
     ac.debug(debugPrefix .. "fuelPumpEnabled", self.state.fuelPumpEnabled)
 end
 
