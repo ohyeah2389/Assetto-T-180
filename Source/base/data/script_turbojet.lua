@@ -80,7 +80,21 @@ function turbojet:update(dt)
 
 
     -- Turbine thrust calculation (common for both)
-    local currentThrust = self.turbine.angularSpeed * config.turbojet.thrustMultiplier * self.state.throttle * (helpers.mapRange(car.speedKmh, 0, config.turbojet.maximumEffectiveIntakeSpeed, 1, 0, true) ^ config.turbojet.thrustFadeoutExponent) * (self.state.fuelPumpEnabled and 1 or 0)
+    -- Calculate speed in Mach number (assuming speed of sound = 1225 km/h at sea level)
+    local machNumber = game.car_cphys.speedKmh / 1225
+
+    -- Calculate speed-based thrust multiplier
+    local speedThrustMultiplier
+    if machNumber <= 1.0 then
+        -- Subsonic: apply power curve based on thrust curve parameters
+        -- Base is 1.0, then modified by thrustCurveLevel with the configured exponent
+        speedThrustMultiplier = 1.0 + (config.turbojet.thrustCurveLevel * (machNumber ^ config.turbojet.thrustCurveExponent))
+    else
+        -- Supersonic: apply derate factor due to shock intake effects
+        speedThrustMultiplier = (1.0 + config.turbojet.thrustCurveLevel) * config.turbojet.supersonicDeratingFactor
+    end
+
+    local currentThrust = self.turbine.angularSpeed * config.turbojet.thrustMultiplier * self.state.throttle * speedThrustMultiplier * (self.state.fuelPumpEnabled and 1 or 0)
     ac.addForce(self.thrustApplicationPoint, true, vec3(0, 0, currentThrust), true)
     self.state.thrust = currentThrust -- Store thrust for potential external use/display
 
@@ -100,7 +114,8 @@ function turbojet:update(dt)
 
     if self.id == 'single' then
         -- Bleed pressure from turbine engine (only for single engine interacting with piston engine)
-        self.state.bleedBoost = self.state.thrust * config.turbojet.boostThrustFactor + self.turbine.angularSpeed * config.turbojet.boostSpeedFactor
+        local baseBoost = self.state.thrust * config.turbojet.boostThrustFactor + self.turbine.angularSpeed * config.turbojet.boostSpeedFactor
+        self.state.bleedBoost = math.remap(baseBoost, 0, 2.0, 1.0, 2.0)
         ac.overrideTurboBoost(0, self.state.bleedBoost, self.state.bleedBoost)
     end
 
@@ -124,6 +139,8 @@ function turbojet:update(dt)
     ac.debug(debugPrefix .. "turbine.angularSpeed", self.turbine.angularSpeed)
     ac.debug(debugPrefix .. "turbine.RPM", self.state.rpm)
     ac.debug(debugPrefix .. "fuelPumpEnabled", self.state.fuelPumpEnabled)
+    ac.debug(debugPrefix .. "machNumber", machNumber)
+    ac.debug(debugPrefix .. "speedThrustMultiplier", speedThrustMultiplier)
 end
 
 

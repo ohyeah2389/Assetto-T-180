@@ -27,8 +27,9 @@ local config = {
         thrustMultiplier = 0.9, -- Multiplier on turbine output thrust
         boostThrustFactor = 0.000012, -- Multiplier on turbine output thrust to form bleed air boost thrust component (speed component is added to this for total bleed air boost value)
         boostSpeedFactor = 0.0011, -- Multiplier on turbine angular speed to form bleed air boost speed component (thrust component is added to this for total bleed air boost value)
-        maximumEffectiveIntakeSpeed = 2000, -- kmh - Maximum effective intake speed of the turbine (used to calculate effective intake speed for thrust fadeout)
-        thrustFadeoutExponent = 1.2, -- Exponent for the thrust fadeout curve (used to calculate effective intake speed for thrust fadeout)
+        thrustCurveExponent = 0.75, -- Exponent for the thrust curve from 0 to Mach 1.0 (higher = more aggressive increase)
+        thrustCurveLevel = 0.3, -- Level of thrust increase/decrease with speed: >0 increases thrust, <0 decreases thrust, 0 is neutral
+        supersonicDeratingFactor = 0.7, -- Multiplier for thrust above Mach 1.0 due to shock intake effects (0-1, where 1 = no derate)
     },
     turboshaft = {
         present = false
