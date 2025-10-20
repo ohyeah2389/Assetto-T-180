@@ -3,7 +3,6 @@
 
 
 local config = require('car_config')
-local controls = require('script_controls')
 local game = require('script_acConnection')
 local helpers = require('script_helpers')
 local physics = require('script_physics')
@@ -16,13 +15,13 @@ function turbojet:initialize(params)
 
     self.throttle = 0.0
     self.throttleAfterburner = 0.0
+    self.targetThrottle = 0.0
+    self.targetThrottleAfterburner = 0.0
     self.thrust = 0.0
     self.rpm = 0.0
     self.fuelPumpEnabled = true
     self.bleedBoost = 0.0
-    self.targetThrottle = 0.0 -- For dual engine mode
 
-    self.carReversing = false
     self.thrustApplicationPoint = params.thrustApplicationPoint or config.turbojet.thrustApplicationPoint or vec3(0.0, 0.77, -2)
     self.turbine = physics({
         rotary = true,
@@ -35,52 +34,20 @@ function turbojet:initialize(params)
 end
 
 function turbojet:reset()
-    self.carReversing = false
-    self.turbine.angularSpeed = 0
+    self.turbine.angularSpeed = 100
     self.throttle = 0.0
+    self.throttleAfterburner = 0.0
+    self.targetThrottle = 0.0
+    self.targetThrottleAfterburner = 0.0
     self.thrust = 0.0
     self.bleedBoost = 0.0
-    self.turbine.angularSpeed = 100
-    self.throttleAfterburner = 0.0
     self.rpm = 0.0
 end
 
 function turbojet:update(dt)
-    -- Determine if car is traveling backwards (but not if it's in the air)
-    if helpers.getWheelsOffGround() > 3 then
-        self.carReversing = false
-    else
-        self.carReversing = game.car_cphys.localVelocity.z < 0
-    end
+    self.throttle = math.applyLag(self.throttle, self.targetThrottle, config.turbojet.throttleLag, dt)
+    self.throttleAfterburner = math.applyLag(self.throttleAfterburner, self.targetThrottleAfterburner, config.turbojet.throttleLagAfterburner, dt)
 
-    -- Throttle logic
-    if self.id == 'single' then
-        -- Drift angle from velocities
-        local driftAngle = math.atan(game.car_cphys.localVelocity.x / math.abs(game.car_cphys.localVelocity.z))
-        -- Base throttle request from drift
-        local baseThrottle = helpers.mapRange(game.car_cphys.gas * helpers.mapRange(math.abs(driftAngle), math.rad(config.turbojet.helperStartAngle), math.rad(config.turbojet.helperEndAngle), 0, 1, true), 0, 1, config.turbojet.minThrottle, 1, true)
-        local clutchFactor = ((1 - game.car_cphys.clutch) * (car.isInPit and 0 or 1)) ^ 0.1
-        baseThrottle = math.max(baseThrottle, clutchFactor) * (self.fuelPumpEnabled and 1 or 0)
-
-        -- Throttle final calculation
-        if controls.turbine.throttle:down() and self.fuelPumpEnabled then -- Full throttle override
-            self.throttle = math.applyLag(self.throttle, 1, config.turbojet.throttleLag, dt)
-            if self.throttle > 0.9 then
-                self.throttleAfterburner = math.applyLag(self.throttleAfterburner, 1, config.turbojet.throttleLagAfterburner, dt)
-            else
-                self.throttleAfterburner = math.applyLag(self.throttleAfterburner, 0, config.turbojet.throttleLagAfterburner, dt)
-            end
-        else
-            self.throttleAfterburner = math.applyLag(self.throttleAfterburner, (clutchFactor > 0.9 and 1 or 0) * (self.fuelPumpEnabled and 1 or 0), config.turbojet.throttleLagAfterburner, dt)
-            self.throttle = math.applyLag(self.throttle, baseThrottle, config.turbojet.throttleLag, dt)
-        end
-    else -- Dual engine: Throttle is set externally via targetThrottle property
-        -- Apply lag to the externally set target throttle
-        self.throttle = math.applyLag(self.throttle, self.targetThrottle, config.turbojet.throttleLag, dt)
-    end
-
-
-    -- Turbine thrust calculation (common for both)
     -- Calculate speed in Mach number (assuming speed of sound = 1225 km/h at sea level)
     local machNumber = game.car_cphys.speedKmh / 1225
 

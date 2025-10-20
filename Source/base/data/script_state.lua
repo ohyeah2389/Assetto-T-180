@@ -11,7 +11,6 @@ local state = {
         spinMode = false,       -- Whether spin mode is engaged
         driftInversion = false, -- True when the car is sliding backwards in a 360 spin
     },
-    electricSystem = nil,
     jumpJackSystem = {
         jackFL = {
             active = false,
