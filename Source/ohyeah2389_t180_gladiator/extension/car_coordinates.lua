@@ -4,7 +4,6 @@
 local config = {
     turbojetType = "single",
     turboshaftPresent = false,
-
     turbines = {
         rear = {
             position = vec3(0.0, 0.321, -2.2),
@@ -13,13 +12,11 @@ local config = {
             fuelPumpVolume = 0.45
         }
     },
-
     exhausts = {
         rear = {
             vec3(0.0, 0.321, -2.2)
         }
     },
-    
     flame = {
         color = rgbm(1, 0.8, 0.7, 1),
         afterburnerColor = rgbm(1, 1, 1, 1),
@@ -28,7 +25,8 @@ local config = {
         afterburnerTemperatureMultiplier = 1.5,
         intensity = 0.9,
         afterburnerIntensity = 1
-    }
+    },
+    turbineDamageGlowMesh = "GladiatorTurbine_SUB0"
 }
 
 return config

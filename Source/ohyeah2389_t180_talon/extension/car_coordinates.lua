@@ -4,7 +4,6 @@
 local config = {
     turbojetType = "dual",
     turboshaftPresent = false,
-
     turbines = {
         left = {
             position = vec3(-0.268, 0.618, -1.665),
@@ -19,7 +18,6 @@ local config = {
             fuelPumpVolume = 0.40
         }
     },
-
     exhausts = {
         left = {
             vec3(-0.268, 0.618, -1.665)
@@ -28,7 +26,6 @@ local config = {
             vec3(0.268, 0.618, -1.665)
         }
     },
-    
     flame = {
         color = rgbm(1, 0.8, 0.8, 1),
         afterburnerColor = rgbm(1, 0.9, 0.9, 1),
@@ -37,7 +34,8 @@ local config = {
         afterburnerTemperatureMultiplier = 1.2,
         intensity = 0.5,
         afterburnerIntensity = 1.0
-    }
+    },
+    turbineDamageGlowMesh = "TalonEngines_SUB0"
 }
 
 return config

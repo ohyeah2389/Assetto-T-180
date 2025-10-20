@@ -7,6 +7,7 @@ local car_phys = ac.getCarPhysics(0)
 
 local fuelPumpRPMLUT = ac.DataLUT11():add(0, 4000):add(6000, 5000):add(18000, 4500)
 local turbineExhaustGlow = ac.findMeshes(config.turbineExhaustGlowMesh)
+local turbineDamageGlow = ac.findMeshes(config.turbineDamageGlowMesh):ensureUniqueMaterials()
 
 
 -- MARK: Helper Functions
@@ -124,58 +125,57 @@ function script.update(dt)
     ac.boostFrameRate()
 
     -- Parse turbine data from physics
-    local inputs = car_phys.scriptControllerInputs
     local turbineData = { rear = {}, left = {}, right = {}, front = {} }
 
     if config.turbojetType == "single" then
         turbineData.rear = {
-            throttle = inputs[8] or 0,
-            thrust = inputs[9] or 0,
-            rpm = inputs[10] or 0,
-            fuelPumpEnabled = inputs[11] or 0,
-            afterburner = inputs[12] or 0,
-            damage = 0
+            throttle = car_phys.scriptControllerInputs[8] or 0,
+            thrust = car_phys.scriptControllerInputs[9] or 0,
+            rpm = car_phys.scriptControllerInputs[10] or 0,
+            fuelPumpEnabled = car_phys.scriptControllerInputs[11] or 0,
+            afterburner = car_phys.scriptControllerInputs[12] or 0,
+            damage = car_phys.scriptControllerInputs[18] or 0
         }
     elseif config.turbojetType == "dual" then
         turbineData.left = {
-            throttle = inputs[8] or 0,
-            thrust = inputs[9] or 0,
-            rpm = inputs[10] or 0,
-            fuelPumpEnabled = inputs[11] or 0,
-            afterburner = inputs[12] or 0,
-            damage = 0
+            throttle = car_phys.scriptControllerInputs[8] or 0,
+            thrust = car_phys.scriptControllerInputs[9] or 0,
+            rpm = car_phys.scriptControllerInputs[10] or 0,
+            fuelPumpEnabled = car_phys.scriptControllerInputs[11] or 0,
+            afterburner = car_phys.scriptControllerInputs[12] or 0,
+            damage = car_phys.scriptControllerInputs[18] or 0
         }
         turbineData.right = {
-            throttle = inputs[13] or 0,
-            thrust = inputs[14] or 0,
-            rpm = inputs[15] or 0,
-            fuelPumpEnabled = inputs[16] or 0,
-            afterburner = inputs[17] or 0,
-            damage = 0
+            throttle = car_phys.scriptControllerInputs[13] or 0,
+            thrust = car_phys.scriptControllerInputs[14] or 0,
+            rpm = car_phys.scriptControllerInputs[15] or 0,
+            fuelPumpEnabled = car_phys.scriptControllerInputs[16] or 0,
+            afterburner = car_phys.scriptControllerInputs[17] or 0,
+            damage = car_phys.scriptControllerInputs[19] or 0
         }
     end
 
     if config.turboshaftPresent then
         if config.turbojetType ~= "single" then
-            local rpm = (inputs[10] or 0) * 2.25
+            local rpm = (car_phys.scriptControllerInputs[10] or 0) * 2.25
             turbineData.rear = {
-                throttle = inputs[8] or 0,
-                thrust = inputs[9] or 0,
+                throttle = car_phys.scriptControllerInputs[8] or 0,
+                thrust = car_phys.scriptControllerInputs[9] or 0,
                 rpm = rpm,
-                fuelPumpEnabled = (rpm > 4500) and 1 or 0,
-                afterburner = inputs[11] or 0,
-                damage = inputs[19] or 0
+                fuelPumpEnabled = car_phys.scriptControllerInputs[11] or 0,
+                afterburner = car_phys.scriptControllerInputs[12] or 0,
+                damage = car_phys.scriptControllerInputs[19] or 0
             }
         end
         if config.turbojetType ~= "dual" then
-            local rpm = (inputs[15] or 0) * 2.25
+            local rpm = (car_phys.scriptControllerInputs[15] or 0) * 2.25
             turbineData.front = {
-                throttle = inputs[13] or 0,
-                thrust = inputs[14] or 0,
+                throttle = car_phys.scriptControllerInputs[13] or 0,
+                thrust = car_phys.scriptControllerInputs[14] or 0,
                 rpm = rpm,
-                fuelPumpEnabled = (rpm > 4500) and 1 or 0,
-                afterburner = inputs[16] or 0,
-                damage = inputs[18] or 0
+                fuelPumpEnabled = car_phys.scriptControllerInputs[16] or 0,
+                afterburner = car_phys.scriptControllerInputs[17] or 0,
+                damage = car_phys.scriptControllerInputs[18] or 0
             }
         end
     end
@@ -216,7 +216,9 @@ function script.update(dt)
     -- Exhaust glow
     local glowThrottle = turbineData.rear.throttle or 0
     local glowAfterburner = turbineData.rear.afterburner or 0
+    local glowDamage = (turbineData.rear.damage or 0) ^ 1.5
     turbineExhaustGlow:setMaterialProperty("ksEmissive", (vec3(2, 2, 4) * glowThrottle * 10) + (vec3(1, 1, 1) * glowAfterburner * 20))
+    turbineDamageGlow:setMaterialProperty("ksEmissive", rgb(300, 75, 0) * glowDamage / 10)
 
     -- Headlights
     lighting.fadeout = math.lerp(lighting.fadeout, car.headlightsActive and 1 or 0, dt * 15)

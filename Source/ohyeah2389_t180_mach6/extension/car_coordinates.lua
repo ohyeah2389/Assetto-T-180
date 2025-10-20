@@ -4,7 +4,6 @@
 local config = {
     turbojetType = "single",
     turboshaftPresent = false,
-
     turbines = {
         rear = {
             position = vec3(0.0, 0.494, -1.91),
@@ -13,13 +12,11 @@ local config = {
             fuelPumpVolume = 0.45
         }
     },
-
     exhausts = {
         rear = {
             vec3(0.0, 0.494, -1.91)
         }
     },
-    
     flame = {
         color = rgbm(1, 1, 1, 1),
         afterburnerColor = rgbm(1, 1, 1, 1),
@@ -29,7 +26,8 @@ local config = {
         intensity = 0.9,
         afterburnerIntensity = 1
     },
-    turbineExhaustGlowMesh = "Mach6Turbine_SUB3"
+    turbineExhaustGlowMesh = "Mach6Turbine_SUB3",
+    turbineDamageGlowMesh = "Mach6Turbine_SUB0"
 }
 
 return config

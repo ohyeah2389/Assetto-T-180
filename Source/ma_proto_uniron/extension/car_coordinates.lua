@@ -4,7 +4,6 @@
 local config = {
     turbojetType = nil,
     turboshaftPresent = false,
-    
     flame = {
         color = rgbm(1, 1, 1, 1),
         afterburnerColor = rgbm(1, 1, 1, 1),
@@ -14,7 +13,7 @@ local config = {
         intensity = 0.9,
         afterburnerIntensity = 1
     },
-    turbineExhaustGlowMesh = "Mach6Turbine_SUB3"
+    turbineDamageGlowMesh = "grille"
 }
 
 return config
