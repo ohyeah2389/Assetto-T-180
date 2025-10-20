@@ -191,7 +191,7 @@ function script.update(dt)
             -- Set controller channels
             game.car_cphys.controllerInputs[8] = helpers.mapRange(turbojetCenter.throttle, config.turbojet.minThrottle, 1, 0, 1, true)
             game.car_cphys.controllerInputs[9] = helpers.mapRange(turbojetCenter.thrust, 1000, 8000, 0, 1, true)
-            game.car_cphys.controllerInputs[10] = turbojetCenter.rpm
+            game.car_cphys.controllerInputs[10] = turbojetCenter.shaft.angularSpeed * 60 / (2 * math.pi)
             game.car_cphys.controllerInputs[11] = turbojetCenter.fuelPumpEnabled and 1 or 0
             game.car_cphys.controllerInputs[12] = turbojetCenter.throttleAfterburner
         elseif config.turbojet.type == "dual" and turbojetLeft and turbojetRight then
@@ -206,12 +206,12 @@ function script.update(dt)
             -- Set controller channels
             game.car_cphys.controllerInputs[8] = helpers.mapRange(turbojetLeft.throttle, config.turbojet.minThrottle, 1, 0, 1, true)
             game.car_cphys.controllerInputs[9] = helpers.mapRange(turbojetLeft.thrust, 1000, 8000, 0, 1, true)
-            game.car_cphys.controllerInputs[10] = turbojetLeft.rpm
+            game.car_cphys.controllerInputs[10] = turbojetLeft.shaft.angularSpeed * 60 / (2 * math.pi)
             game.car_cphys.controllerInputs[11] = turbojetLeft.fuelPumpEnabled and 1 or 0
             game.car_cphys.controllerInputs[12] = turbojetLeft.throttleAfterburner
             game.car_cphys.controllerInputs[13] = helpers.mapRange(turbojetRight.throttle, config.turbojet.minThrottle, 1, 0, 1, true)
             game.car_cphys.controllerInputs[14] = helpers.mapRange(turbojetRight.thrust, 1000, 8000, 0, 1, true)
-            game.car_cphys.controllerInputs[15] = turbojetRight.rpm
+            game.car_cphys.controllerInputs[15] = turbojetRight.shaft.angularSpeed * 60 / (2 * math.pi)
             game.car_cphys.controllerInputs[16] = turbojetRight.fuelPumpEnabled and 1 or 0
             game.car_cphys.controllerInputs[17] = turbojetRight.throttleAfterburner
 

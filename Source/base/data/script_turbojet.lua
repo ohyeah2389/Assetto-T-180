@@ -18,30 +18,28 @@ function turbojet:initialize(params)
     self.targetThrottle = 0.0
     self.targetThrottleAfterburner = 0.0
     self.thrust = 0.0
-    self.rpm = 0.0
     self.fuelPumpEnabled = true
     self.bleedBoost = 0.0
 
     self.thrustApplicationPoint = params.thrustApplicationPoint or config.turbojet.thrustApplicationPoint or vec3(0.0, 0.77, -2)
-    self.turbine = physics({
+    self.shaft = physics({
         rotary = true,
         inertia = config.turbojet.inertia,
         forceMax = 10000,
         frictionCoef = config.turbojet.frictionCoef,
         staticFrictionCoef = 0
     })
-    self.turbine.angularSpeed = 100
+    self.shaft.angularSpeed = 850
 end
 
 function turbojet:reset()
-    self.turbine.angularSpeed = 100
+    self.shaft.angularSpeed = 850
     self.throttle = 0.0
     self.throttleAfterburner = 0.0
     self.targetThrottle = 0.0
     self.targetThrottleAfterburner = 0.0
     self.thrust = 0.0
     self.bleedBoost = 0.0
-    self.rpm = 0.0
 end
 
 function turbojet:update(dt)
@@ -62,12 +60,12 @@ function turbojet:update(dt)
         speedThrustMultiplier = (1.0 + config.turbojet.thrustCurveLevel) * config.turbojet.supersonicDeratingFactor
     end
 
-    local currentThrust = self.turbine.angularSpeed * config.turbojet.thrustMultiplier * self.throttle * speedThrustMultiplier * (self.fuelPumpEnabled and 1 or 0)
+    local currentThrust = self.shaft.angularSpeed * config.turbojet.thrustMultiplier * self.throttle * speedThrustMultiplier * (self.fuelPumpEnabled and 1 or 0)
     ac.addForce(self.thrustApplicationPoint, true, vec3(0, 0, currentThrust), true)
     self.thrust = currentThrust -- Store thrust for external use/display
 
     -- Turbine torque from itself
-    self.turbine:step((self.fuelPumpEnabled and self.thrust * (helpers.mapRange(self.turbine.angularSpeed, 0, 2000, 1, 0, true) ^ 1.2) or 0), dt)
+    self.shaft:step((self.fuelPumpEnabled and self.thrust * (helpers.mapRange(self.shaft.angularSpeed, 0, 2000, 1, 0, true) ^ 1.2) or 0), dt)
 
     -- Turbine afterburner extra thrust
     local thrustMagnitude = helpers.mapRange(self.throttleAfterburner, 0, 1, 0, 2500, true)
@@ -82,18 +80,15 @@ function turbojet:update(dt)
 
     if self.id == 'single' then
         -- Bleed pressure from turbine engine (only for single engine interacting with piston engine)
-        local baseBoost = self.thrust * config.turbojet.boostThrustFactor + self.turbine.angularSpeed * config.turbojet.boostSpeedFactor
+        local baseBoost = self.thrust * config.turbojet.boostThrustFactor + self.shaft.angularSpeed * config.turbojet.boostSpeedFactor
         self.bleedBoost = math.remap(baseBoost, 0, 2.0, 1.0, 2.0)
         ac.overrideTurboBoost(0, self.bleedBoost, self.bleedBoost)
     end
 
     -- Clamp the turbine speed to a minimum of 0 RPM to prevent reversing weirdness
-    if self.turbine.angularSpeed < 0 then
-        self.turbine.angularSpeed = 0
+    if self.shaft.angularSpeed < 0 then
+        self.shaft.angularSpeed = 0
     end
-
-    -- Update turbine RPM status for readouts and sync and stuff
-    self.rpm = self.turbine.angularSpeed * 60 / (2 * math.pi)
 
     -- Debug outputs (conditional on ID to avoid spamming)
     local debugPrefix = "turbojet." .. self.id .. "."
@@ -103,9 +98,9 @@ function turbojet:update(dt)
     if self.id == 'single' then
         ac.debug(debugPrefix .. "bleedBoost", self.bleedBoost)
     end
-    ac.debug(debugPrefix .. "turbine.torque", self.turbine.torque)
-    ac.debug(debugPrefix .. "turbine.angularSpeed", self.turbine.angularSpeed)
-    ac.debug(debugPrefix .. "turbine.RPM", self.rpm)
+    ac.debug(debugPrefix .. "turbine.torque", self.shaft.torque)
+    ac.debug(debugPrefix .. "turbine.angularSpeed", self.shaft.angularSpeed)
+    ac.debug(debugPrefix .. "turbine.RPM", self.shaft.angularSpeed * 60 / (2 * math.pi))
     ac.debug(debugPrefix .. "fuelPumpEnabled", self.fuelPumpEnabled)
     ac.debug(debugPrefix .. "machNumber", machNumber)
     ac.debug(debugPrefix .. "speedThrustMultiplier", speedThrustMultiplier)
