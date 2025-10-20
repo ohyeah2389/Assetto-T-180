@@ -193,7 +193,7 @@ function script.update(dt)
             game.car_cphys.controllerInputs[9] = helpers.mapRange(turbojetCenter.thrust, 1000, 8000, 0, 1, true)
             game.car_cphys.controllerInputs[10] = turbojetCenter.shaft.angularSpeed * 60 / (2 * math.pi)
             game.car_cphys.controllerInputs[11] = turbojetCenter.fuelPumpEnabled and 1 or 0
-            game.car_cphys.controllerInputs[12] = turbojetCenter.throttleAfterburner
+            game.car_cphys.controllerInputs[12] = helpers.mapRange(turbojetCenter.thrustAfterburner, 0, 2000, 0, 1, true)
         elseif config.turbojet.type == "dual" and turbojetLeft and turbojetRight then
             -- Set throttles
             turbojetLeft.targetThrottle = math.clamp(game.car_cphys.gas + helpers.mapRange(game.car_cphys.steer, 0, 0.4, 0, 0.5, true) - helpers.mapRange(game.car_cphys.steer, -0.4, 0, 0.5, 0, true), config.turbojet.minThrottle, 1)
@@ -208,12 +208,12 @@ function script.update(dt)
             game.car_cphys.controllerInputs[9] = helpers.mapRange(turbojetLeft.thrust, 1000, 8000, 0, 1, true)
             game.car_cphys.controllerInputs[10] = turbojetLeft.shaft.angularSpeed * 60 / (2 * math.pi)
             game.car_cphys.controllerInputs[11] = turbojetLeft.fuelPumpEnabled and 1 or 0
-            game.car_cphys.controllerInputs[12] = turbojetLeft.throttleAfterburner
+            game.car_cphys.controllerInputs[12] = helpers.mapRange(turbojetLeft.thrustAfterburner, 0, 2000, 0, 1, true)
             game.car_cphys.controllerInputs[13] = helpers.mapRange(turbojetRight.throttle, config.turbojet.minThrottle, 1, 0, 1, true)
             game.car_cphys.controllerInputs[14] = helpers.mapRange(turbojetRight.thrust, 1000, 8000, 0, 1, true)
             game.car_cphys.controllerInputs[15] = turbojetRight.shaft.angularSpeed * 60 / (2 * math.pi)
             game.car_cphys.controllerInputs[16] = turbojetRight.fuelPumpEnabled and 1 or 0
-            game.car_cphys.controllerInputs[17] = turbojetRight.throttleAfterburner
+            game.car_cphys.controllerInputs[17] = helpers.mapRange(turbojetRight.thrustAfterburner, 0, 2000, 0, 1, true)
 
             -- Common updates
             ac.overrideTurboBoost(0, 0, 0)

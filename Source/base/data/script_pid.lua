@@ -1,3 +1,7 @@
+-- PID Controller
+-- Authored by ohyeah2389
+
+
 local PIDController = class("PIDController")
 
 
