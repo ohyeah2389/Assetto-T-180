@@ -11,21 +11,21 @@ local PIDController = require('script_pid')
 local thrustHeatCoefCore = 0.05
 local burnerHeatCoefCore = 0.02
 
-local thrustHeatCoefChassis = 0.001
-local burnerHeatCoefChassis = 0.05
+local thrustHeatCoefFrame = 0.001
+local burnerHeatCoefFrame = 0.05
 
-local coreTransferChassis = 0.005
-local chassisTransferCore = 0.005
+local coreTransferToFrame = 0.01
+local frameTransferToCore = 0.01
 
 local shaftSpeedCoolCoefCore = 0.05
 local airSpeedCoolCoefCore = 0.025
 local staticCoolCoefCore = 0.008
 
-local bleedCoolCoefChassis = 50.0
-local airSpeedCoolCoefChassis = 0.04
-local staticCoolCoefChassis = 0.04
+local bleedCoolCoefFrame = 50.0
+local airSpeedCoolCoefFrame = 0.04
+local staticCoolCoefFrame = 0.04
 
-local chassisTempLimit = 1000
+local frameTempLimit = 1000
 local coreTempLimit = 1800
 local bleedRedirectThreshold = 850
 
@@ -43,12 +43,12 @@ function turbojet:initialize(params)
     self.thrustAfterburner = 0.0
     self.fuelPumpEnabled = true
     self.bleedBoost = 0.0
-    self.heatChassis = game.sim.ambientTemperature + 273.15
+    self.heatFrame = game.sim.ambientTemperature + 273.15
     self.heatCore = game.sim.ambientTemperature + 273.15
 
     self.pidDerateHeatCore = PIDController(0.001, 0, 0, 0, 1)
-    self.pidDerateHeatChassis = PIDController(0.04, 0, 0, 0, 1)
-    self.pidValveCoolChassis = PIDController(0.01, 0, 0, 0, 1)
+    self.pidDerateHeatFrame = PIDController(0.04, 0, 0, 0, 1)
+    self.pidValveCoolFrame = PIDController(0.01, 0, 0, 0, 1)
 
     self.thrustApplicationPoint = params.thrustApplicationPoint or config.turbojet.thrustApplicationPoint or vec3(0.0, 0.77, -2)
     self.shaft = physics({
@@ -70,14 +70,14 @@ function turbojet:reset()
     self.thrust = 0.0
     self.thrustAfterburner = 0.0
     self.bleedBoost = 0.0
-    self.heatChassis = game.sim.ambientTemperature + 273.15
+    self.heatFrame = game.sim.ambientTemperature + 273.15
     self.heatCore = game.sim.ambientTemperature + 273.15
 end
 
 function turbojet:update(dt)
     -- Update heat derating PIDs (inverted: output 1 when cool, reduce when over limit)
     local throttleDerate = 1 - self.pidDerateHeatCore:update(self.heatCore, coreTempLimit, dt)
-    local burnerDerate = 1 - self.pidDerateHeatChassis:update(self.heatChassis, chassisTempLimit, dt)
+    local burnerDerate = 1 - self.pidDerateHeatFrame:update(self.heatFrame, frameTempLimit, dt)
 
     -- Apply throttle values with lag
     self.throttle = math.applyLag(self.throttle, self.targetThrottle * throttleDerate, config.turbojet.throttleLag, dt)
@@ -119,11 +119,11 @@ function turbojet:update(dt)
     ac.addForce(self.thrustApplicationPoint, true, thrustVector * (self.fuelPumpEnabled and 1 or 0), true)
 
     -- Bleed pressure from turbine engine (only for single engine interacting with piston engine)
-    local bleedCoolingChassis = 0
+    local bleedCoolingFrame = 0
     if self.id == 'single' then
         local baseBoost = self.thrust * config.turbojet.boostThrustFactor + self.shaft.angularSpeed * config.turbojet.boostSpeedFactor
-        bleedCoolingChassis = baseBoost * self.pidValveCoolChassis:update(self.heatChassis, bleedRedirectThreshold, dt)
-        local remainingBoost = baseBoost - bleedCoolingChassis
+        bleedCoolingFrame = baseBoost * self.pidValveCoolFrame:update(self.heatFrame, bleedRedirectThreshold, dt)
+        local remainingBoost = baseBoost - bleedCoolingFrame
         self.bleedBoost = math.remap(remainingBoost, 0, 2.0, 1.0, 2.0)
         ac.overrideTurboBoost(0, self.bleedBoost, self.bleedBoost)
     end
@@ -133,16 +133,16 @@ function turbojet:update(dt)
         self.shaft.angularSpeed = 0.1
     end
 
-    local heatTransferCoreToChassisRate = (self.heatCore - self.heatChassis) * coreTransferChassis
-    local heatTransferChassisToCoreRate = (self.heatChassis - self.heatCore) * chassisTransferCore
+    local heatTransferCoreToFrameRate = (self.heatCore - self.heatFrame) * coreTransferToFrame
+    local heatTransferFrameToCoreRate = (self.heatFrame - self.heatCore) * frameTransferToCore
 
     local coreHeating = (coreThrust * thrustHeatCoefCore) + (self.thrustAfterburner * burnerHeatCoefCore)
     local coreCooling = (game.car_cphys.speedKmh * airSpeedCoolCoefCore) + (self.shaft.angularSpeed * shaftSpeedCoolCoefCore) + staticCoolCoefCore
-    self.heatCore = math.max(self.heatCore + ((coreHeating - coreCooling - heatTransferCoreToChassisRate + heatTransferChassisToCoreRate) * dt), game.sim.ambientTemperature + 273.15)
+    self.heatCore = math.max(self.heatCore + ((coreHeating - coreCooling - heatTransferCoreToFrameRate + heatTransferFrameToCoreRate) * dt), game.sim.ambientTemperature + 273.15)
 
-    local chassisHeating = (coreThrust * thrustHeatCoefChassis) + (self.thrustAfterburner * burnerHeatCoefChassis)
-    local chassisCooling = (game.car_cphys.speedKmh * airSpeedCoolCoefChassis) + (bleedCoolingChassis * bleedCoolCoefChassis) + staticCoolCoefChassis
-    self.heatChassis = math.max(self.heatChassis + ((chassisHeating - chassisCooling + heatTransferCoreToChassisRate - heatTransferChassisToCoreRate) * dt), game.sim.ambientTemperature + 273.15)
+    local frameHeating = (coreThrust * thrustHeatCoefFrame) + (self.thrustAfterburner * burnerHeatCoefFrame)
+    local frameCooling = (game.car_cphys.speedKmh * airSpeedCoolCoefFrame) + (bleedCoolingFrame * bleedCoolCoefFrame) + staticCoolCoefFrame
+    self.heatFrame = math.max(self.heatFrame + ((frameHeating - frameCooling + heatTransferCoreToFrameRate - heatTransferFrameToCoreRate) * dt), game.sim.ambientTemperature + 273.15)
 
     -- Debug outputs (conditional on ID to avoid spamming)
     local debugPrefix = "turbojet." .. self.id .. "."
@@ -161,13 +161,13 @@ function turbojet:update(dt)
     ac.debug(debugPrefix .. "speedThrustMultiplier", speedThrustMultiplier)
     ac.debug(debugPrefix .. "coreHeating", coreHeating, 0, 400, 3)
     ac.debug(debugPrefix .. "coreCooling", coreCooling, 0, 400, 3)
-    ac.debug(debugPrefix .. "chassisHeating", chassisHeating, 0, 400, 3)
-    ac.debug(debugPrefix .. "chassisCooling", chassisCooling, 0, 400, 3)
-    ac.debug(debugPrefix .. "heatChassis", self.heatChassis, 0, 1000, 3)
+    ac.debug(debugPrefix .. "frameHeating", frameHeating, 0, 400, 3)
+    ac.debug(debugPrefix .. "frameCooling", frameCooling, 0, 400, 3)
+    ac.debug(debugPrefix .. "heatFrame", self.heatFrame, 0, 1000, 3)
     ac.debug(debugPrefix .. "heatCore", self.heatCore, 0, 2000, 3)
     ac.debug(debugPrefix .. "pidDerateHeatCore.previousOutput", self.pidDerateHeatCore.previousOutput)
-    ac.debug(debugPrefix .. "pidValveCoolChassis.previousOutput", self.pidValveCoolChassis.previousOutput)
-    ac.debug(debugPrefix .. "pidDerateHeatChassis.previousOutput", self.pidDerateHeatChassis.previousOutput)
+    ac.debug(debugPrefix .. "pidValveCoolFrame.previousOutput", self.pidValveCoolFrame.previousOutput)
+    ac.debug(debugPrefix .. "pidDerateHeatFrame.previousOutput", self.pidDerateHeatFrame.previousOutput)
     ac.debug(debugPrefix .. "throttleDerate", throttleDerate)
     ac.debug(debugPrefix .. "burnerDerate", burnerDerate)
 end
