@@ -125,7 +125,7 @@ function script.update(dt)
     ac.boostFrameRate()
 
     -- Parse turbine data from physics
-    local turbineData = { rear = {}, left = {}, right = {}, front = {} }
+    local turbineData = {}
 
     if config.turbojetType == "single" then
         turbineData.rear = {
@@ -189,7 +189,7 @@ function script.update(dt)
         local data = turbineData[name]
         if turbine.main and not turbine.main:isPlaying() then turbine.main:start() end
         if turbine.fuelPump and not turbine.fuelPump:isPlaying() then turbine.fuelPump:start() end
-        if data and data.rpm then
+        if data and data.rpm and data.rpm > 0 then
             updateTurbineAudio(turbine, data.rpm, data.throttle, data.afterburner, data.damage, data.fuelPumpEnabled, dt)
         end
     end
@@ -214,9 +214,32 @@ function script.update(dt)
     end
 
     -- Exhaust glow
-    local glowThrottle = turbineData.rear.throttle or 0
-    local glowAfterburner = turbineData.rear.afterburner or 0
-    local glowDamage = (turbineData.rear.damage or 0) ^ 1.5
+    local glowThrottle = 0
+    local glowAfterburner = 0
+    local glowDamage = 0
+
+    if config.turbojetType == "single" then
+        glowThrottle = turbineData.rear.throttle or 0
+        glowAfterburner = turbineData.rear.afterburner or 0
+        glowDamage = (turbineData.rear.damage or 0) ^ 1.5
+    elseif config.turbojetType == "dual" then
+        -- Use max of both engines for glow effect
+        local leftThrottle = turbineData.left.throttle or 0
+        local rightThrottle = turbineData.right.throttle or 0
+        local leftAfterburner = turbineData.left.afterburner or 0
+        local rightAfterburner = turbineData.right.afterburner or 0
+        local leftDamage = (turbineData.left.damage or 0) ^ 1.5
+        local rightDamage = (turbineData.right.damage or 0) ^ 1.5
+
+        glowThrottle = math.max(leftThrottle, rightThrottle)
+        glowAfterburner = math.max(leftAfterburner, rightAfterburner)
+        glowDamage = math.max(leftDamage, rightDamage)
+    elseif config.turboshaftPresent then
+        glowThrottle = turbineData.rear.throttle or 0
+        glowAfterburner = turbineData.rear.afterburner or 0
+        glowDamage = (turbineData.rear.damage or 0) ^ 1.5
+    end
+
     turbineExhaustGlow:setMaterialProperty("ksEmissive", (vec3(2, 2, 4) * glowThrottle * 10) + (vec3(1, 1, 1) * glowAfterburner * 20))
     turbineDamageGlow:setMaterialProperty("ksEmissive", rgb(300, 75, 0) * glowDamage / 10)
 

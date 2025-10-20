@@ -199,22 +199,30 @@ function script.update(dt)
             -- Set throttles
             turbojetLeft.targetThrottle = math.clamp(game.car_cphys.gas + helpers.mapRange(game.car_cphys.steer, 0, 0.4, 0, 0.5, true) - helpers.mapRange(game.car_cphys.steer, -0.4, 0, 0.5, 0, true), config.turbojet.minThrottle, 1)
             turbojetRight.targetThrottle = math.clamp(game.car_cphys.gas + helpers.mapRange(game.car_cphys.steer, -0.4, 0, 0.5, 0, true) - helpers.mapRange(game.car_cphys.steer, 0, 0.4, 0, 0.5, true), config.turbojet.minThrottle, 1)
+            turbojetLeft.targetThrottleAfterburner = helpers.mapRange(turbojetLeft.targetThrottle, 0.5, 1.0, 0.0, 1.0, true)
+            turbojetRight.targetThrottleAfterburner = helpers.mapRange(turbojetRight.targetThrottle, 0.5, 1.0, 0.0, 1.0, true)
 
             -- Update turbines
             turbojetLeft:update(dt)
             turbojetRight:update(dt)
 
+            -- Clear their temperature
+            turbojetLeft.heatChassis = 0
+            turbojetLeft.heatCore = 0
+            turbojetRight.heatChassis = 0
+            turbojetRight.heatCore = 0
+
             -- Set controller channels
-            game.car_cphys.controllerInputs[8] = helpers.mapRange(turbojetLeft.throttle, config.turbojet.minThrottle, 1, 0, 1, true)            -- throttle
-            game.car_cphys.controllerInputs[9] = helpers.mapRange(turbojetLeft.thrust, 1000, 8000, 0, 1, true)                                  -- thrust
-            game.car_cphys.controllerInputs[10] = helpers.mapRange(turbojetLeft.shaft.angularSpeed * 60 / (2 * math.pi), 0, 18000, 0, 1, true)  -- rpm
-            game.car_cphys.controllerInputs[11] = turbojetLeft.fuelPumpEnabled and 1 or 0                                                       -- fuel pump enabled
-            game.car_cphys.controllerInputs[12] = helpers.mapRange(turbojetLeft.thrustAfterburner, 0, 2000, 0, 1, true)                         -- burner throttle
-            game.car_cphys.controllerInputs[13] = helpers.mapRange(turbojetRight.throttle, config.turbojet.minThrottle, 1, 0, 1, true)          -- secondary throttle
-            game.car_cphys.controllerInputs[14] = helpers.mapRange(turbojetRight.thrust, 1000, 8000, 0, 1, true)                                -- secondary thrust
-            game.car_cphys.controllerInputs[15] = helpers.mapRange(turbojetRight.shaft.angularSpeed * 60 / (2 * math.pi), 0, 20000, 0, 1, true) -- secondary rpm
-            game.car_cphys.controllerInputs[16] = turbojetRight.fuelPumpEnabled and 1 or 0                                                      -- secondary fuel pump enabled
-            game.car_cphys.controllerInputs[17] = helpers.mapRange(turbojetRight.thrustAfterburner, 0, 2000, 0, 1, true)                        -- secondary burner throttle
+            game.car_cphys.controllerInputs[8] = helpers.mapRange(turbojetLeft.throttle, config.turbojet.minThrottle, 1, 0, 1, true)   -- throttle
+            game.car_cphys.controllerInputs[9] = helpers.mapRange(turbojetLeft.thrust, 1000, 8000, 0, 1, true)                         -- thrust
+            game.car_cphys.controllerInputs[10] = turbojetLeft.shaft.angularSpeed * 60 / (2 * math.pi)                                 -- rpm
+            game.car_cphys.controllerInputs[11] = turbojetLeft.fuelPumpEnabled and 1 or 0                                              -- fuel pump enabled
+            game.car_cphys.controllerInputs[12] = helpers.mapRange(turbojetLeft.thrustAfterburner, 0, 2000, 0, 1, true)                -- burner throttle
+            game.car_cphys.controllerInputs[13] = helpers.mapRange(turbojetRight.throttle, config.turbojet.minThrottle, 1, 0, 1, true) -- secondary throttle
+            game.car_cphys.controllerInputs[14] = helpers.mapRange(turbojetRight.thrust, 1000, 8000, 0, 1, true)                       -- secondary thrust
+            game.car_cphys.controllerInputs[15] = turbojetRight.shaft.angularSpeed * 60 / (2 * math.pi)                                -- secondary rpm
+            game.car_cphys.controllerInputs[16] = turbojetRight.fuelPumpEnabled and 1 or 0                                             -- secondary fuel pump enabled
+            game.car_cphys.controllerInputs[17] = helpers.mapRange(turbojetRight.thrustAfterburner, 0, 2000, 0, 1, true)               -- secondary burner throttle
 
             -- Set controller channels for damage
             game.car_cphys.controllerInputs[18] = helpers.mapRange(math.max(turbojetLeft.heatChassis, turbojetLeft.heatCore / 2), 700, 1000, 0, 1, true)   -- damage
@@ -247,18 +255,25 @@ function script.update(dt)
             turboshaftFront.throttle = math.clamp(game.car_cphys.gas + (ac.isControllerGearUpPressed() and 0.75 or 0) - overLimitFront, 0, 1)
             turboshaftRear.throttle = math.clamp(game.car_cphys.gas + (ac.isControllerGearDownPressed() and 0.75 or 0) - overLimitRear, 0, 1)
 
-            -- Update controller channels
+            -- Update turbines and get damage values
+            local frontDamage = turboshaftFront:update(dt)
+            local rearDamage = turboshaftRear:update(dt)
+
+            -- Update controller channels for front turbine
             game.car_cphys.controllerInputs[13] = helpers.mapRange(turboshaftFront.throttle, config.turbojet.minThrottle, 1, 0, 1, true)
             game.car_cphys.controllerInputs[14] = turboshaftFront.fuelSystem.actualFuelFlow / turboshaftFront.fadec.maxFuelFlow
             game.car_cphys.controllerInputs[15] = ((turboshaftFront.gasTurbine.angularSpeed * 60 / (2 * math.pi)) or 0) * (10000 / 45000)
-            game.car_cphys.controllerInputs[16] = turboshaftFront.afterburner.throttleAfterburner
-            game.car_cphys.controllerInputs[18] = turboshaftFront:update(dt)
+            game.car_cphys.controllerInputs[16] = turboshaftFront.fuelSystem.pumpEnabled and 1 or 0
+            game.car_cphys.controllerInputs[17] = turboshaftFront.afterburner.throttleAfterburner
+            game.car_cphys.controllerInputs[18] = frontDamage
 
+            -- Update controller channels for rear turbine
             game.car_cphys.controllerInputs[8] = helpers.mapRange(turboshaftRear.throttle, config.turbojet.minThrottle, 1, 0, 1, true)
             game.car_cphys.controllerInputs[9] = turboshaftRear.fuelSystem.actualFuelFlow / turboshaftRear.fadec.maxFuelFlow
             game.car_cphys.controllerInputs[10] = ((turboshaftRear.gasTurbine.angularSpeed * 60 / (2 * math.pi)) or 0) * (10000 / 45000)
-            game.car_cphys.controllerInputs[11] = turboshaftRear.afterburner.throttleAfterburner
-            game.car_cphys.controllerInputs[19] = turboshaftRear:update(dt)
+            game.car_cphys.controllerInputs[11] = turboshaftRear.fuelSystem.pumpEnabled and 1 or 0
+            game.car_cphys.controllerInputs[12] = turboshaftRear.afterburner.throttleAfterburner
+            game.car_cphys.controllerInputs[19] = rearDamage
 
             -- Collect warnings and cautions
             local allWarnings = {}
