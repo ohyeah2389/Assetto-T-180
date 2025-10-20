@@ -5,20 +5,22 @@
 -- Data is recorded at 2 Hz (every 0.5 seconds) during each lap.
 -- At lap completion, all data is printed to the log in CSV format.
 
-local state = require('script_state')
 local config = require('car_config')
 local helpers = require('script_helpers')
 
 
 local perfTracker = class("perfTracker")
 
-function perfTracker:initialize()
+function perfTracker:initialize(turbineInstances)
     self.perfData = {}
     self.lapData = {}
     self.recordTimer = 0
     self.recordInterval = 0.5 -- 2 Hz = 0.5 second interval
     self.currentLap = 0
     self.lastLapCount = 0
+
+    -- Store references to turbine instances
+    self.turbines = turbineInstances or {}
 end
 
 function perfTracker:reset()
@@ -137,25 +139,25 @@ function perfTracker:update(dt)
 
     -- Calculate thrust forces from turbojets
     if config.turbojet.present then
-        if config.turbojet.type == "single" then
-            totalThrustForce = state.turbine.thrust or 0
+        if config.turbojet.type == "single" and self.turbines.center then
+            totalThrustForce = self.turbines.center.thrust or 0
             -- Afterburner calculation for turbojet (matches script_turbojet.lua logic)
-            local afterburnerThrust = helpers.mapRange(state.turbine.throttleAfterburner or 0, 0, 1, 0, 2500, true) *
-                (state.turbine.fuelPumpEnabled and 1 or 0)
+            local afterburnerThrust = helpers.mapRange(self.turbines.center.throttleAfterburner or 0, 0, 1, 0, 2500, true) *
+                (self.turbines.center.fuelPumpEnabled and 1 or 0)
             totalAfterburnerForce = afterburnerThrust
 
             ac.debug("perfTracker_turbojet_single_force", totalThrustForce)
             ac.debug("perfTracker_turbojet_single_afterburner", afterburnerThrust)
-        elseif config.turbojet.type == "dual" then
-            local leftThrust = state.turbine.left.thrust or 0
-            local rightThrust = state.turbine.right.thrust or 0
+        elseif config.turbojet.type == "dual" and self.turbines.left and self.turbines.right then
+            local leftThrust = self.turbines.left.thrust or 0
+            local rightThrust = self.turbines.right.thrust or 0
             totalThrustForce = leftThrust + rightThrust
 
             -- Afterburner for dual turbojets
-            local leftAfterburner = helpers.mapRange(state.turbine.left.throttleAfterburner or 0, 0, 1, 0, 2500, true) *
-                (state.turbine.left.fuelPumpEnabled and 1 or 0)
-            local rightAfterburner = helpers.mapRange(state.turbine.right.throttleAfterburner or 0, 0, 1, 0, 2500, true) *
-                (state.turbine.right.fuelPumpEnabled and 1 or 0)
+            local leftAfterburner = helpers.mapRange(self.turbines.left.throttleAfterburner or 0, 0, 1, 0, 2500, true) *
+                (self.turbines.left.fuelPumpEnabled and 1 or 0)
+            local rightAfterburner = helpers.mapRange(self.turbines.right.throttleAfterburner or 0, 0, 1, 0, 2500, true) *
+                (self.turbines.right.fuelPumpEnabled and 1 or 0)
             totalAfterburnerForce = leftAfterburner + rightAfterburner
 
             ac.debug("perfTracker_turbojet_left_force", leftThrust)
@@ -185,10 +187,10 @@ function perfTracker:update(dt)
 
     -- Calculate torque forces from turboshafts (convert torque to force)
     if config.turboshaft.present then
-        if config.turboshaft.type == "dual" then
+        if config.turboshaft.type == "dual" and self.turbines.front and self.turbines.rear then
             -- Dual turboshaft system with separate front/rear
-            local frontTorque = state.turbine.front.outputTorque or 0
-            local rearTorque = state.turbine.rear.outputTorque or 0
+            local frontTorque = self.turbines.front.outputTorque or 0
+            local rearTorque = self.turbines.rear.outputTorque or 0
 
             local frontForce = frontTorque / wheelRadius
             local rearForce = rearTorque / wheelRadius
@@ -201,9 +203,9 @@ function perfTracker:update(dt)
 
             totalWheelForce = frontForce + rearForce
 
-            -- Read afterburner thrust directly from state (calculated by turboshaft module)
-            local frontAfterburner = state.turbine.front.afterburnerThrust or 0
-            local rearAfterburner = state.turbine.rear.afterburnerThrust or 0
+            -- Read afterburner thrust directly from turbine instances
+            local frontAfterburner = self.turbines.front.afterburnerThrust or 0
+            local rearAfterburner = self.turbines.rear.afterburnerThrust or 0
             totalAfterburnerForce = frontAfterburner + rearAfterburner
 
             ac.debug("perfTracker_turboshaft_front_torque", frontTorque)
@@ -213,9 +215,9 @@ function perfTracker:update(dt)
             ac.debug("perfTracker_turboshaft_front_afterburner", frontAfterburner)
             ac.debug("perfTracker_turboshaft_rear_afterburner", rearAfterburner)
             ac.debug("perfTracker_turboshaft_total_afterburner", totalAfterburnerForce)
-        else
+        elseif self.turbines.front then
             -- Single turboshaft system
-            local totalTorque = state.turbine.outputTorque or 0
+            local totalTorque = self.turbines.front.outputTorque or 0
             totalWheelForce = totalTorque / wheelRadius
 
             -- Distribute to all four wheels equally (AWD)
@@ -225,8 +227,8 @@ function perfTracker:update(dt)
             wheelForces.rearLeft = forcePerWheel
             wheelForces.rearRight = forcePerWheel
 
-            -- Read afterburner thrust directly from state (calculated by turboshaft module)
-            totalAfterburnerForce = state.turbine.afterburnerThrust or 0
+            -- Read afterburner thrust directly from turbine instance
+            totalAfterburnerForce = self.turbines.front.afterburnerThrust or 0
 
             ac.debug("perfTracker_turboshaft_total_torque", totalTorque)
             ac.debug("perfTracker_turboshaft_total_force", totalWheelForce)
