@@ -19,7 +19,7 @@ local config = {
             vec3(0, 0.77, -2.5)
         }
     },
-    
+
     flame = {
         color = rgbm(1, 0.8, 0.8, 1),
         afterburnerColor = rgbm(1, 1, 1, 1),

@@ -11,11 +11,11 @@ local PIDController = require('script_pid')
 local thrustHeatCoefCore = 0.05
 local burnerHeatCoefCore = 0.02
 
-local thrustHeatCoefChassis = 0.004
+local thrustHeatCoefChassis = 0.001
 local burnerHeatCoefChassis = 0.05
 
-local coreTransferChassis = 0.025
-local chassisTransferCore = 0.025
+local coreTransferChassis = 0.005
+local chassisTransferCore = 0.005
 
 local shaftSpeedCoolCoefCore = 0.05
 local airSpeedCoolCoefCore = 0.025
@@ -23,7 +23,7 @@ local staticCoolCoefCore = 0.008
 
 local bleedCoolCoefChassis = 50.0
 local airSpeedCoolCoefChassis = 0.04
-local staticCoolCoefChassis = 0.02
+local staticCoolCoefChassis = 0.04
 
 local chassisTempLimit = 1000
 local coreTempLimit = 1800
