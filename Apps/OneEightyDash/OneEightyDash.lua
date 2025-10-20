@@ -2,6 +2,7 @@
 -- Authored by ohyeah2389
 
 local car = ac.getCar(0)
+local physics = ac.getCarPhysics(0)
 local sim = ac.getSim()
 Font_whiteRabbit = ui.DWriteFont("fonts/whitrabt.ttf")
 
@@ -15,6 +16,14 @@ Config = {
         wheelCornerRadius = 12,
         middleLateralOffset = 0,
         bottomVerticalOffset = 0.8,
+    },
+    heat = {
+        width = 400,
+        height = 60,
+        spacing = 2,
+        rounding = 4,
+        middleLateralOffset = 0,
+        bottomVerticalOffset = 0.9,
     }
 }
 
@@ -30,6 +39,53 @@ SlipAngleArrowColors = {
     {
         color = rgbm(1, 0, 0, 1),
         startAngleDeg = 25
+    }
+}
+
+HeatBarColors = {
+    core = {
+        {
+            pos = 300,
+            color = rgbm(0.2, 0.4, 1, 0.8),
+        },
+        {
+            pos = 1000,
+            color = rgbm(0.2, 1, 0.2, 0.8),
+        },
+        {
+            pos = 1500,
+            color = rgbm(1, 1, 0.2, 0.8),
+        },
+        {
+            pos = 1800,
+            color = rgbm(1, 0.2, 0.2, 0.8),
+        },
+        {
+            pos = 2000,
+            color = rgbm(0.5, 0.0, 0.0, 0.9),
+        },
+    },
+    frame = {
+        {
+            pos = 300,
+            color = rgbm(0.2, 0.4, 1, 0.8),
+        },
+        {
+            pos = 600,
+            color = rgbm(0.2, 1, 0.2, 0.8),
+        },
+        {
+            pos = 800,
+            color = rgbm(1, 1, 0.2, 0.8),
+        },
+        {
+            pos = 850,
+            color = rgbm(1, 0.2, 0.2, 0.8),
+        },
+        {
+            pos = 1000,
+            color = rgbm(0.5, 0.0, 0.0, 0.9),
+        },
     }
 }
 
@@ -162,6 +218,56 @@ local function drawWheel(x, y, width, height, steerDeg, slipAngleDeg, wheelConta
     ui.endPivotRotation(steerDeg - 90, vec2(centerX, centerY))
 end
 
+local function drawBar(x, y, width, height, input, min, max, spacing, rounding, colors)
+    -- Draw background
+    ui.drawRectFilled(vec2(x, y), vec2(x + width, y + height), rgbm(0, 0, 0, 0.25), rounding, ui.CornerFlags.All)
+
+    -- Calculate inner dimensions with spacing
+    local innerX = x + spacing
+    local innerY = y + spacing
+    local innerWidth = width - (spacing * 2)
+    local innerHeight = height - (spacing * 2)
+
+    -- Draw bar background
+    ui.drawRectFilled(vec2(innerX, innerY),
+        vec2(innerX + innerWidth, innerY + innerHeight),
+        rgbm(0.2, 0.2, 0.2, 0.9), rounding)
+
+    -- Calculate progress
+    local normalizedValue = math.clamp((input - min) / (max - min), 0, 1)
+    local progressWidth = innerWidth * normalizedValue
+
+    -- Determine color based on input value and color stops
+    local barColor = colors[1].color
+
+    for i = 1, #colors - 1 do
+        local currentStop = colors[i]
+        local nextStop = colors[i + 1]
+
+        if input >= currentStop.pos and input < nextStop.pos then
+            -- Interpolate between current and next color
+            local t = (input - currentStop.pos) / (nextStop.pos - currentStop.pos)
+            barColor = rgbm(
+                currentStop.color.r + (nextStop.color.r - currentStop.color.r) * t,
+                currentStop.color.g + (nextStop.color.g - currentStop.color.g) * t,
+                currentStop.color.b + (nextStop.color.b - currentStop.color.b) * t,
+                currentStop.color.mult + (nextStop.color.mult - currentStop.color.mult) * t
+            )
+            break
+        elseif input >= nextStop.pos then
+            -- Use next color if we're at or beyond it
+            barColor = nextStop.color
+        end
+    end
+
+    -- Draw progress bar with color
+    if progressWidth > 0 then
+        ui.drawRectFilled(vec2(innerX, innerY),
+            vec2(innerX + progressWidth, innerY + innerHeight),
+            barColor, rounding)
+    end
+end
+
 local displays = {}
 
 function displays.drawWheels()
@@ -207,22 +313,46 @@ function displays.drawWheels()
     drawWheel(wheelWidth + spacing, wheelHeight + spacing, wheelWidth, wheelHeight, wheelRRsteer, wheelRRSlipAngle, wheelRR_contact, wheelRR_slip)
 end
 
-function script.windowMain(dt)
+function displays.drawHeatBars()
+    ui.pushDWriteFont(Font_whiteRabbit)
+
+    local barHeight = (Config.heat.height - Config.heat.spacing) / 2
+
+    local coreTemp = physics.scriptControllerInputs[21]
+    local frameTemp = physics.scriptControllerInputs[22]
+
+    drawBar(0, 0, Config.heat.width, barHeight, coreTemp, 273.15, 1800, Config.heat.spacing, Config.heat.rounding, HeatBarColors.core)
+    drawBar(0, barHeight + Config.heat.spacing, Config.heat.width, barHeight, frameTemp, 273.15, 1000, Config.heat.spacing, Config.heat.rounding, HeatBarColors.frame)
+
+    ui.beginOutline()
+    ui.dwriteDrawTextClipped("Core Temp", 20, vec2(Config.heat.spacing * 2, 0), vec2(Config.heat.width / 2, barHeight), ui.Alignment.Start, ui.Alignment.Center, false, rgbm(1, 1, 1, 0.8))
+    ui.dwriteDrawTextClipped(string.format("%.0f K", coreTemp), 20, vec2(Config.heat.width / 2, 0), vec2(Config.heat.width - Config.heat.spacing * 2, barHeight), ui.Alignment.End, ui.Alignment.Center, false, rgbm(1, 1, 1, 0.8))
+    ui.dwriteDrawTextClipped("Frame Temp", 20, vec2(Config.heat.spacing * 2, barHeight + Config.heat.spacing), vec2(Config.heat.width / 2, barHeight + barHeight + Config.heat.spacing), ui.Alignment.Start, ui.Alignment.Center, false, rgbm(1, 1, 1, 0.8))
+    ui.dwriteDrawTextClipped(string.format("%.0f K", frameTemp), 20, vec2(Config.heat.width / 2, barHeight + Config.heat.spacing), vec2(Config.heat.width - Config.heat.spacing * 2, barHeight + barHeight + Config.heat.spacing), ui.Alignment.End, ui.Alignment.Center, false, rgbm(1, 1, 1, 0.8))
+    ui.endOutline(rgbm(0, 0, 0, 0.3), 1.25)
+
+    ui.popDWriteFont()
+end
+
+function script.windowWheels(dt)
     if not ac.isInReplayMode() then
-        -- Calculate base position (centered)
         local baseX = (sim.windowWidth / 2) - (Config.wheels.width / 2)
         local baseY = (sim.windowHeight / 2) - (Config.wheels.height / 2)
-
-        -- Scale offsets by the maximum possible offset to stay on screen
-        -- At 1.0/-1.0, the display will be at the edge; at 0.9, it's 90% of the way to the edge
-        local lateralOffsetPixels = -Config.wheels.middleLateralOffset * baseX
-        local verticalOffsetPixels = Config.wheels.bottomVerticalOffset * baseY
-
-        -- Apply offsets
-        local finalX = baseX - lateralOffsetPixels
-        local finalY = baseY - verticalOffsetPixels
+        local finalX = baseX - (-Config.wheels.middleLateralOffset * baseX)
+        local finalY = baseY - (Config.wheels.bottomVerticalOffset * baseY)
 
         ui.transparentWindow("OneEightyDash_Wheels", vec2(finalX, finalY), vec2(Config.wheels.width, Config.wheels.height), true, true, function() displays.drawWheels() end)
+    end
+end
+
+function script.windowHeat(dt)
+    if not ac.isInReplayMode() then
+        local baseX = (sim.windowWidth / 2) - (Config.heat.width / 2)
+        local baseY = (sim.windowHeight / 2) - (Config.heat.height / 2)
+        local finalX = baseX - (-Config.heat.middleLateralOffset * baseX)
+        local finalY = baseY - (Config.heat.bottomVerticalOffset * baseY)
+
+        ui.transparentWindow("OneEightyDash_Heat", vec2(finalX, finalY), vec2(Config.heat.width, Config.heat.height), true, true, function() displays.drawHeatBars() end)
     end
 end
 
