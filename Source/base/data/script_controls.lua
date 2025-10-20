@@ -12,7 +12,7 @@ local controls = {
         all = ac.ControlButton("__EXT_LIGHT_A")
     },
     turbine = {
-        throttle = ac.ControlButton("__EXT_LIGHT_B"),
+        burner = ac.ControlButton("__EXT_LIGHT_B"),
         fuelPump = ac.ControlButton("__EXT_LIGHT_TURBINE_FUELPUMP"),
     },
     steeringModes = {

@@ -173,7 +173,7 @@ function script.update(dt)
             baseThrottle = math.max(baseThrottle, clutchFactor) * (turbojetCenter.fuelPumpEnabled and 1 or 0)
 
             -- Set throttles
-            if controls.turbine.throttle:down() and turbojetCenter.fuelPumpEnabled then
+            if controls.turbine.burner:down() and turbojetCenter.fuelPumpEnabled then
                 turbojetCenter.targetThrottle = 1
                 if turbojetCenter.throttle > 0.9 then
                     turbojetCenter.targetThrottleAfterburner = 1
