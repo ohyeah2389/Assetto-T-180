@@ -48,10 +48,8 @@ function physics:step(force, dt)
         if math.abs(self.torque) < staticFrictionTorque and self.angularSpeed == 0 then
             self.angularAccel = 0
         else
-            -- Kinetic friction with speed-dependent component
-            local frictionTorque = self.frictionCoef *
-                (math.abs(self.angularSpeed) ^ self.expFrictionCoef) *
-                math.sign(self.angularSpeed)
+            -- Kinetic friction
+            local frictionTorque = self.frictionCoef * (math.abs(self.angularSpeed) ^ self.expFrictionCoef) * math.sign(self.angularSpeed)
             self.angularAccel = (self.torque - frictionTorque) / self.inertia
         end
 
@@ -65,7 +63,7 @@ function physics:step(force, dt)
 
         self.angle = self.angle + self.angularSpeed * dt
 
-        -- Modulo angle to (0, 2π)
+        -- Modulo angle to (0, 2pi)
         self.angle = self.angle % (2 * math.pi)
     else
         -- Linear motion calculations
@@ -78,10 +76,8 @@ function physics:step(force, dt)
         if math.abs(self.force) < staticFrictionForce and self.speed == 0 then
             self.accel = 0
         else
-            -- Kinetic friction with linear damping
-            local coulombFriction = self.frictionCoef * self.mass * math.sign(self.speed)
-            local linearDamping = self.dampingCoef * self.speed  -- Proportional to velocity
-            frictionForce = coulombFriction + linearDamping
+            -- Kinetic friction
+            frictionForce = (self.frictionCoef * self.mass * math.sign(self.speed)) + (self.dampingCoef * self.speed)
             self.accel = (self.force - frictionForce) / self.mass
         end
 
@@ -93,10 +89,13 @@ function physics:step(force, dt)
             self.speed = 0
         end
 
+        -- Update felt force
         self.feltForce = self.force - frictionForce
 
         -- Update position after all forces are calculated
         self.position = self.position + (self.speed * dt)
+
+        -- Handle boundary overshoots
         if self.position > self.posMax then
             local overshoot = self.position - self.posMax
             local endstopForce = overshoot * self.endstopRate
@@ -112,6 +111,7 @@ function physics:step(force, dt)
         end
     end
 
+    -- Display debug info if requested
     if self.debug then
         if self.rotary then
             ac.debug((self.debugName or "physicsObject") .. ".torque", self.torque)
