@@ -8,26 +8,26 @@ local helpers = require('script_helpers')
 local physics = require('script_physics')
 local PIDController = require('script_pid')
 
-local thrustHeatCoefCore = 0.05
+local thrustHeatCoefCore = 0.065
 local burnerHeatCoefCore = 0.02
 
 local thrustHeatCoefFrame = 0.001
-local burnerHeatCoefFrame = 0.05
+local burnerHeatCoefFrame = 0.04
 
 local coreTransferToFrame = 0.01
 local frameTransferToCore = 0.01
 
 local shaftSpeedCoolCoefCore = 0.05
-local airSpeedCoolCoefCore = 0.025
-local staticCoolCoefCore = 0.008
+local airSpeedCoolCoefCore = 0.035
+local staticCoolCoefCore = 0.01
 
 local bleedCoolCoefFrame = 50.0
-local airSpeedCoolCoefFrame = 0.04
-local staticCoolCoefFrame = 0.04
+local airSpeedCoolCoefFrame = 0.06
+local staticCoolCoefFrame = 0.08
 
 local frameTempLimit = 1000
 local coreTempLimit = 1800
-local bleedRedirectThreshold = 850
+local bleedRedirectThreshold = 800
 
 
 local turbojet = class("turbojet")
@@ -46,7 +46,7 @@ function turbojet:initialize(params)
     self.heatFrame = game.sim.ambientTemperature + 273.15
     self.heatCore = game.sim.ambientTemperature + 273.15
 
-    self.pidDerateHeatCore = PIDController(0.001, 0, 0, 0, 1)
+    self.pidDerateHeatCore = PIDController(0.01, 0, 0, 0, 1)
     self.pidDerateHeatFrame = PIDController(0.04, 0, 0, 0, 1)
     self.pidValveCoolFrame = PIDController(0.01, 0, 0, 0, 1)
 

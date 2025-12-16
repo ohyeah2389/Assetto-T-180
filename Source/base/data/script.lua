@@ -17,6 +17,7 @@ local Turbojet = require('script_turbojet')
 local CustomDrivetrain = require('script_customDrivetrain')
 local PerfTracker = require('script_perfTracker')
 
+local linkageRatioSetup = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_9")
 
 local lastDebugTime = os.clock()
 local function showDebugValues(dt)
@@ -170,7 +171,8 @@ function script.update(dt)
             local driftAngle = math.atan(game.car_cphys.localVelocity.x / math.abs(game.car_cphys.localVelocity.z))
             local baseThrottle = helpers.mapRange(game.car_cphys.gas * helpers.mapRange(math.abs(driftAngle), math.rad(config.turbojet.helperStartAngle), math.rad(config.turbojet.helperEndAngle), 0, 1, true), 0, 1, config.turbojet.minThrottle, 1, true)
             local clutchFactor = ((1 - game.car_cphys.clutch) * (car.isInPit and 0 or 1)) ^ 0.1
-            baseThrottle = math.max(baseThrottle, clutchFactor) * (turbojetCenter.fuelPumpEnabled and 1 or 0)
+            local gasFactor = game.car_cphys.gas * 0.4
+            baseThrottle = math.min(math.max(baseThrottle, clutchFactor, gasFactor), 1) * (turbojetCenter.fuelPumpEnabled and 1 or 0)
 
             -- Set throttles
             if controls.turbine.burner:down() and turbojetCenter.fuelPumpEnabled then
@@ -201,8 +203,8 @@ function script.update(dt)
             game.car_cphys.controllerInputs[22] = turbojetCenter.heatFrame
         elseif config.turbojet.type == "dual" and turbojetLeft and turbojetRight then
             -- Set throttles
-            turbojetLeft.targetThrottle = math.clamp(game.car_cphys.gas + helpers.mapRange(game.car_cphys.steer, 0, 0.4, 0, 0.5, true) - helpers.mapRange(game.car_cphys.steer, -0.4, 0, 0.5, 0, true), config.turbojet.minThrottle, 1)
-            turbojetRight.targetThrottle = math.clamp(game.car_cphys.gas + helpers.mapRange(game.car_cphys.steer, -0.4, 0, 0.5, 0, true) - helpers.mapRange(game.car_cphys.steer, 0, 0.4, 0, 0.5, true), config.turbojet.minThrottle, 1)
+            turbojetLeft.targetThrottle = math.clamp(game.car_cphys.gas + helpers.mapRange(game.car_cphys.steer, 0, 0.4, 0, 0.5, true) - helpers.mapRange(game.car_cphys.steer, -0.4, 0, 0.25, 0, true), config.turbojet.minThrottle, 1)
+            turbojetRight.targetThrottle = math.clamp(game.car_cphys.gas + helpers.mapRange(game.car_cphys.steer, -0.4, 0, 0.5, 0, true) - helpers.mapRange(game.car_cphys.steer, 0, 0.4, 0, 0.25, true), config.turbojet.minThrottle, 1)
             turbojetLeft.targetThrottleAfterburner = helpers.mapRange(turbojetLeft.targetThrottle, 0.5, 1.0, 0.0, 1.0, true)
             turbojetRight.targetThrottleAfterburner = helpers.mapRange(turbojetRight.targetThrottle, 0.5, 1.0, 0.0, 1.0, true)
 
@@ -354,11 +356,6 @@ function script.update(dt)
         rearRight = state.jumpJackSystem.jackRR.active
     }, dt)
 
-    state.jumpJackSystem.jackFL.position = jumpJackSystem.jacks.frontLeft.physicsObject.position
-    state.jumpJackSystem.jackFR.position = jumpJackSystem.jacks.frontRight.physicsObject.position
-    state.jumpJackSystem.jackRL.position = jumpJackSystem.jacks.rearLeft.physicsObject.position
-    state.jumpJackSystem.jackRR.position = jumpJackSystem.jacks.rearRight.physicsObject.position
-
     if wheelSteerCtrlr then
         local ffb = wheelSteerCtrlr:calculateFFB(dt)
         if ffb and ffb == ffb then -- Check if value exists and is not NaN
@@ -366,9 +363,8 @@ function script.update(dt)
         end
     end
 
-    if ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_9") then
-        local rearSteerLinkageRatio = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_9").value or 0
-        game.car_cphys.controllerInputs[20] = rearSteerLinkageRatio
+    if linkageRatioSetup then
+        game.car_cphys.controllerInputs[20] = linkageRatioSetup.value
     end
 
     if perfTracker then perfTracker:update(dt) end
@@ -376,7 +372,11 @@ function script.update(dt)
     local rideHeightSensor = physics.raycastTrack(car.position + (car.up * 0.4) + (car.look * 1.0), -car.up, 1.0)
     local suctionMult = math.clamp(math.remap(rideHeightSensor, 0.5, 0.9, 1, 0), 0, 1) * (rideHeightSensor == -1 and 0 or 1)
     local aeroForceBase = ((car.name == "ohyeah2389_proto_mach4") or (car.name == "ma_proto_uniron")) and -160 or -200
-    local aeroForce = aeroForceBase * (math.abs(car.localVelocity.x) + math.abs(car.localVelocity.z)) * suctionMult
+    local velocityMagnitude = math.sqrt(car.localVelocity.x * car.localVelocity.x + car.localVelocity.z * car.localVelocity.z)
+    local forwardAngle = math.atan2(car.localVelocity.x, car.localVelocity.z)
+    local directionalDropoff = 1.0 -- How much force remains at 90 degrees (0.0 = full dropoff, 1.0 = no dropoff)
+    local cosineDropoff = math.lerp(directionalDropoff, 1.0, math.abs(math.cos(forwardAngle)))
+    local aeroForce = aeroForceBase * velocityMagnitude * cosineDropoff * suctionMult
 
     ac.addForce(vec3(0, 0, 0), true, vec3(0, aeroForce, 0), true)
 
