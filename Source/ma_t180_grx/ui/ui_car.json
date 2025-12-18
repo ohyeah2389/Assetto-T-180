@@ -1,7 +1,7 @@
 {
   "name": "T-180 GRX",
   "brand": "Royalton",
-  "description": "This mod is a collaboration between Mad Agus and ohyeah2389. Mad Agus made the 3D model of the car, while ohyeah2389 made the physics and sound of the car.\n\nThe GRX is a WRL-homologated T-180 racing vehicle designed by Royalton Industries to compete in the WRL championship racing series. It uses a highly advanced inter-positive longitudinal transponder for networked torque management and delivery, eight heat-exchange ports which generate directed thrust, and twenty-four ground effect elements to glue it to any racing surface.",
+  "description": "This car is a collaboration between Mad Agus and ohyeah2389. Mad Agus made the 3D model of the car, while ohyeah2389 made the physics and sound of the car.<br><br>The GRX is a WRL-homologated T-180 racing vehicle designed by Royalton Industries to compete in the WRL championship racing series. It uses a highly advanced inter-positive longitudinal transponder for networked torque management and delivery, eight heat-exchange ports which generate directed thrust, and twenty-four ground effect elements to glue it to any racing surface.",
   "tags": [
     "awd",
     "4ws",
