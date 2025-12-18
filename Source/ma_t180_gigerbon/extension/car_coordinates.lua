@@ -1,0 +1,33 @@
+-- T-180 Effect Coordinates - Gigerbon/TypeC
+-- Authored by ohyeah2389
+
+local config = {
+    turbojetType = "single",
+    turboshaftPresent = false,
+    turbines = {
+        rear = {
+            position = vec3(0, 0.9, -2.15),
+            fuelPumpOffset = vec3(0, -0.07, 1.3),
+            volume = 0.8,
+            fuelPumpVolume = 0.45
+        }
+    },
+    exhausts = {
+        rear = {
+            vec3(0.349, 0.757, -2.42),
+            vec3(-0.349, 0.757, -2.42),
+        }
+    },
+    flame = {
+        color = rgbm(0.6, 0.2, 1.0, 1),
+        afterburnerColor = rgbm(0.6, 0.2, 1.0, 1),
+        size = 3.2,
+        temperatureMultiplier = 1,
+        afterburnerTemperatureMultiplier = 1.2,
+        intensity = 0.9,
+        afterburnerIntensity = 1
+    },
+    turbineDamageGlowMesh = "Cilindro.013"
+}
+
+return config
