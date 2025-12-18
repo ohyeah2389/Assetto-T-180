@@ -1,9 +1,10 @@
 {
-  "name": "Uniron Proto",
-  "brand": "Uniron",
-  "description": "This car is a collaboration between Mad Agus and ohyeah2389. Mad Agus made the 3D model of the car, while ohyeah2389 made the physics and sound of the car.<br><br>This is Uniron's proto car fielded by the Uniron team to compete in the WRL championship racing series. It is powered by a large V10 engine with no thrust-producing facilities, as those were not common at the time. It is not a T-180, as it existed before the technology was developed, but it does feature reinforced rear suspension components that would later be developed into the T-180 platform. It uses conventional front wheel steering and is a rear-biased all-wheel drive vehicle.",
+  "name": "T-180 Godelian Autonomics",
+  "brand": "Godelian Autonomics",
+  "description": "This car is a collaboration between Mad Agus and ohyeah2389. Mad Agus made the 3D model of the car, while ohyeah2389 made the physics and sound of the car.<br><br>Designed and manufactured by G&#246;delian Autonomics, this WRL-homologated T-180 racing vehicle has clearly been optimized for its price-to-performance ratio, allowing new teams a low barrier-to-entry into the top level of WRL competition. <br><br>G&#246;delian is known for their innovative, logical, and well-researched engineering concepts, and this design is nothing but their finest work. Among its unconventional but clever features are its fiberplate-core aerodynamic wheel covers, a set of computationally-optimized aerodynamic elements, forged-titanium friction-damped control arms, and an interlocking heave/sway compensator system for the four-stage higher-multipole-accelerated hadron injection drive, which reliably provides crosscoupled boost-effect from the jet thrusters to the bespoke long-throw V12. The system is suprisingly reliable, and while it doesn&#39;t provide championship-sweeping levels of performance, it is fuel-efficient, easy to repair, and cheap to replace (if your competition is a bit too bone-headed).",
   "tags": [
-    "rwd",
+    "awd",
+    "4ws",
     "race",
     "WRL",
     "manual"
@@ -14,7 +15,7 @@
     "torque": "966 Nm",
     "weight": "775 kg",
     "topspeed": ">700 km/h",
-    "acceleration": "2.1 s 0–100",
+    "acceleration": "2.1 s 0-100",
     "pwratio": "0.32 kg/hp"
   },
   "torqueCurve": [
@@ -829,9 +830,9 @@
       1887.4
     ]
   ],
-  "country": "USA",
-  "author": "ohyeah2389 - Slip Angle Modding and Development",
-  "version": "0.7.0",
+  "country": "Germany",
+  "author": "Mad Agus and ohyeah2389",
+  "version": "0.12.0",
   "url": null,
   "year": 2025
 }
