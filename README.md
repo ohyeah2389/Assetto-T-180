@@ -2,6 +2,7 @@
 ![T180 vehicle spread](https://github.com/ohyeah2389/Assetto-T-180/blob/main/Renders/render25.png?raw=true)
 
 Release builds are also available at [overtake.gg](https://www.overtake.gg/downloads/t-180-platform.75150/).
+Join the community on the official Discord server: [https://discord.gg/X2mDJfhKAA](https://discord.gg/X2mDJfhKAA)
 
 ## Introduction
 The Assetto T-180 is a modular vehicle platform designed to replicate, and to the furthest extent reasonable, simulate the T-180 racing vehicles from the 2008 Speed Racer movie. The cars using this platform are intended for use in the vehicle simulation game Assetto Corsa with Custom Shaders Patch's physics extensions, which they rely on to a high level.
