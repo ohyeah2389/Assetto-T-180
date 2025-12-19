@@ -8,11 +8,11 @@ local helpers = require('script_helpers')
 local physics = require('script_physics')
 local PIDController = require('script_pid')
 
-local thrustHeatCoefCore = 0.065
+local thrustHeatCoefCore = 0.0625
 local burnerHeatCoefCore = 0.02
 
-local thrustHeatCoefFrame = 0.001
-local burnerHeatCoefFrame = 0.04
+local thrustHeatCoefFrame = 0.0005
+local burnerHeatCoefFrame = 0.045
 
 local coreTransferToFrame = 0.01
 local frameTransferToCore = 0.01
