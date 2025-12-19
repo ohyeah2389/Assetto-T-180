@@ -1,7 +1,7 @@
 {
   "name": "T-180 Mach 6",
   "brand": "Racer Motors",
-  "description": "The Mach 6 is a WRL-homologated T-180 racing vehicle designed by Pops Racer and built by the Racer family to compete in the WRL championship racing series. It is outfitted with a Bernoulli convergenator for direct rearward thrust as well as pressure application to a V8 engine routed through a manually shifted mechanical drivetrain for combined, easy-to-operate thrust and torque instead of the state-of-the-art generator-transponder-thruster setup.",
+  "description": "The Mach 6 is a WRL-homologated T-180 racing vehicle designed by Pops Racer and built by the Racer family to compete in the WRL championship racing series. It is outfitted with a Bernoulli convergenator for direct rearward thrust as well as pressure application to a V8 engine routed through a manually shifted mechanical drivetrain for combined, easy-to-operate thrust and torque instead of the state-of-the-art generator-transponder-thruster setup. A hand-laid carbon composite tub forms the core of the chassis, with a framework of welded titanium tubes supporting the plain fiberglass exterior shell, forming one of the few remaining closed-wheel T-180 designs. Engineered wood can even be found in some weight-sensitive areas of the car, along with bio-derived lubricants and oils used in the hydraulic system powering the steering servos and the jump jacks.",
   "tags": [
     "awd",
     "4ws",
@@ -11,8 +11,8 @@
   ],
   "class": "race",
   "specs": {
-    "bhp": "2066 bhp",
-    "torque": "1735 Nm",
+    "bhp": "1797 bhp",
+    "torque": "1510 Nm",
     "weight": "775 kg",
     "topspeed": ">700 km/h",
     "acceleration": "2.1 s 0-100",
