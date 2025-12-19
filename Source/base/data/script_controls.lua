@@ -9,6 +9,8 @@ local controls = {
     jumpJack = {
         left = ac.ControlButton("__EXT_LIGHT_JUMPJACK_LEFT"),
         right = ac.ControlButton("__EXT_LIGHT_JUMPJACK_RIGHT"),
+        front = ac.ControlButton("__EXT_LIGHT_JUMPJACK_FRONT"),
+        rear = ac.ControlButton("__EXT_LIGHT_JUMPJACK_REAR"),
         all = ac.ControlButton("__EXT_LIGHT_A")
     },
     turbine = {
@@ -37,10 +39,10 @@ controls.steeringModes.lockFronts:onPressed(function()
 end)
 
 function controls.update()
-    state.jumpJackSystem.jackFL.active = controls.jumpJack.right:down() or controls.jumpJack.all:down()
-    state.jumpJackSystem.jackFR.active = controls.jumpJack.left:down() or controls.jumpJack.all:down()
-    state.jumpJackSystem.jackRL.active = controls.jumpJack.right:down() or controls.jumpJack.all:down()
-    state.jumpJackSystem.jackRR.active = controls.jumpJack.left:down() or controls.jumpJack.all:down()
+    state.jumpJackSystem.jackFL.active = controls.jumpJack.front:down() or controls.jumpJack.right:down() or controls.jumpJack.all:down()
+    state.jumpJackSystem.jackFR.active = controls.jumpJack.front:down() or controls.jumpJack.left:down() or controls.jumpJack.all:down()
+    state.jumpJackSystem.jackRL.active = controls.jumpJack.rear:down() or controls.jumpJack.right:down() or controls.jumpJack.all:down()
+    state.jumpJackSystem.jackRR.active = controls.jumpJack.rear:down() or controls.jumpJack.left:down() or controls.jumpJack.all:down()
 end
 
 
