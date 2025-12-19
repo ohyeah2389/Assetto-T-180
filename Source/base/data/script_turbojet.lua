@@ -18,11 +18,11 @@ local coreTransferToFrame = 0.01
 local frameTransferToCore = 0.01
 
 local shaftSpeedCoolCoefCore = 0.05
-local airSpeedCoolCoefCore = 0.035
-local staticCoolCoefCore = 0.01
+local airSpeedCoolCoefCore = 0.05
+local staticCoolCoefCore = 0.02
 
 local bleedCoolCoefFrame = 50.0
-local airSpeedCoolCoefFrame = 0.06
+local airSpeedCoolCoefFrame = 0.08
 local staticCoolCoefFrame = 0.08
 
 local frameTempLimit = 1000
