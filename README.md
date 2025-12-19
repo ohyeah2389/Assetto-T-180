@@ -1,3 +1,6 @@
+![T180 project logo](https://github.com/ohyeah2389/Assetto-T-180/blob/main/project_logo.png?raw=true)
+![T180 vehicle spread](https://github.com/ohyeah2389/Assetto-T-180/blob/main/Renders/render25.png?raw=true)
+
 Release builds are also available at [overtake.gg](https://www.overtake.gg/downloads/t-180-platform.75150/).
 
 ## Introduction
@@ -16,7 +19,14 @@ This car is designed for use with a wheel, but you can use it with a gamepad/con
 
 ## Credits
 - [Mectreno](https://sketchfab.com/Mectren0) for the base of the Mach 6 3D model
-- Mad Agus for the Augury model
+- Mad Agus for modeling and providing the following car 3D assets:
+  - Augury
+  - Gigerbon/Type C
+  - Godelian
+  - GRX
+  - Hangul
+  - Matryoshka
+  - Uniron protocar
 
 ## Requirements
 - A legal and activated copy of Assetto Corsa for personal computers
