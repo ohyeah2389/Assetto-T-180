@@ -1,5 +1,4 @@
 *.ksanim
-*.png
 *.kn5
 *.dds
 *.jpg
@@ -10,7 +9,7 @@
 extension/lib.lua
 *.kn5
 /Art/
-/Renders/
+/Graphics/
 /ohyeah2389_t180/
 /Build/
 *.code-workspace
@@ -20,3 +19,6 @@ quickbms.exe
 *.svg
 *.csv
 *.pdf
+*.blend
+*.blend1
+*.mkv
