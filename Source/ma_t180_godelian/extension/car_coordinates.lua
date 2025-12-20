@@ -14,7 +14,8 @@ local config = {
     },
     exhausts = {
         rear = {
-            vec3(0.0, 0.321, -2.2)
+            vec3(0.2155, 0.4925, -2.29),
+            vec3(-0.2155, 0.4925, -2.29)
         }
     },
     flame = {
@@ -26,7 +27,7 @@ local config = {
         intensity = 0.9,
         afterburnerIntensity = 1
     },
-    turbineDamageGlowMesh = "GladiatorTurbine_SUB0"
+    turbineDamageGlowMesh = "exhausts"
 }
 
 return config
