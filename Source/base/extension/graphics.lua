@@ -60,11 +60,17 @@ local particles = {
 local jumpJack = {
     left = sound("jumpjack", vec3(0, 0, 0), nil, nil, 2.5, nil, false),
     right = sound("jumpjack", vec3(0, 0, 0), nil, nil, 2.5, nil, false),
+    front = sound("jumpjack", vec3(0, 0, 0), nil, nil, 2.5, nil, false),
+    rear = sound("jumpjack", vec3(0, 0, 0), nil, nil, 2.5, nil, false),
     all = sound("jumpjack", vec3(0, 0, 0), nil, nil, 2.5, nil, false),
     chargeL = sound("jumpjack_charge", vec3(0, 0, 0), nil, nil, 0.5, nil, false),
     chargeR = sound("jumpjack_charge", vec3(0, 0, 0), nil, nil, 0.5, nil, false),
+    chargeFr = sound("jumpjack_charge", vec3(0, 0, 0), nil, nil, 0.5, nil, false),
+    chargeRe = sound("jumpjack_charge", vec3(0, 0, 0), nil, nil, 0.5, nil, false),
     leftLast = false,
     rightLast = false,
+    frontLast = false,
+    rearLast = false,
     extraALast = false
 }
 
@@ -268,6 +274,8 @@ function script.update(dt)
     -- Jump jack logic
     local jumpJackLeft = ac.ControlButton("__EXT_LIGHT_JUMPJACK_LEFT"):down()
     local jumpJackRight = ac.ControlButton("__EXT_LIGHT_JUMPJACK_RIGHT"):down()
+    local jumpJackFront = ac.ControlButton("__EXT_LIGHT_JUMPJACK_FRONT"):down()
+    local jumpJackRear = ac.ControlButton("__EXT_LIGHT_JUMPJACK_REAR"):down()
 
     if car.extraA and not jumpJack.extraALast then
         jumpJack.chargeL:start()
@@ -292,9 +300,25 @@ function script.update(dt)
         jumpJack.left:start()
     end
 
+    if jumpJackFront and not jumpJack.frontLast then
+        jumpJack.chargeFr:start()
+    elseif not jumpJackFront and jumpJack.frontLast then
+        jumpJack.chargeFr:stop()
+        jumpJack.front:start()
+    end
+
+    if jumpJackRear and not jumpJack.rearLast then
+        jumpJack.chargeRe:start()
+    elseif not jumpJackRear and jumpJack.rearLast then
+        jumpJack.chargeRe:stop()
+        jumpJack.rear:start()
+    end
+
     jumpJack.extraALast = car.extraA
     jumpJack.leftLast = jumpJackLeft
     jumpJack.rightLast = jumpJackRight
+    jumpJack.frontLast = jumpJackFront
+    jumpJack.rearLast = jumpJackRear
 
     -- Debug output
     ac.debug("Config: Turbojet Type", config.turbojetType or "N/A")
