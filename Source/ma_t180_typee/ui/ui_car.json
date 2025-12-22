@@ -1,0 +1,28 @@
+{
+  "name": "T-180 Type E",
+  "brand": "Prince Kabala Motors",
+  "description": "This car is a collaboration between Mad Agus and ohyeah2389. Mad Agus made the 3D model of the car, while ohyeah2389 made the physics and sound of the car.<br><br>The Type E is Prince Kabala Motors' WRL-homologated T-180 racing vehicle designed to compete in the WRL championship racing series. Similar to the Type A, it is the generic, customer-racing version of the company's flagship T-180, Kabala's Gigerbon. It uses a V10 hotblock design licensed and further developed from the legacy Uniron powerplant seen often in the previous generation of top-level WRL racing vehicles. Despite its age, the design is reliable and performant, though it does not integrate well with the somewhat standard axial-flow single-stage twin turbojet thrusters mounted on either side of it. For torque distribution, the vehicle makes use of a Royalton-forged wireless induction transponder, the license fees for which make up the bulk of the vehicle's higher-than-standard purchase price.",
+  "tags": [
+    "awd",
+    "4ws",
+    "race",
+    "WRL",
+    "manual"
+  ],
+  "class": "race",
+  "specs": {
+    "bhp": "1991 bhp",
+    "torque": "1418 Nm",
+    "weight": "775 kg",
+    "topspeed": ">700 km/h",
+    "acceleration": "2.1 s 0-100",
+    "pwratio": "0.32 kg/hp"
+  },
+  "torqueCurve":[[0,40],[0,40],[3600,491.7],[5000,684.9],[6000,780.6],[7000,938.9],[7400,1025.8],[7600,1224],[8000,1304.7],[9000,1360.7],[10000,1417.6]],
+  "powerCurve":[[0,0],[0,0],[3600,248.6],[5000,480.9],[6000,657.7],[7000,923],[7400,1066],[7600,1306.3],[8000,1465.8],[9000,1719.7],[10000,1990.8]],
+  "country": "Republic of Kapetapek",
+  "author": "Mad Agus and ohyeah2389",
+  "version": null,
+  "url": null,
+  "year": 2025
+}
