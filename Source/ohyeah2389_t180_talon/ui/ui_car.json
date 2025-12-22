@@ -1,7 +1,7 @@
 {
   "name": "T-180 Talon",
   "brand": "SAMD",
-  "description": "The Talon is a thrust-only car, using its twin turbine engines for direct thrust generation.",
+  "description": "Looking like it would prefer to be on the QRA ready ramp at Dreamland or escorting Megafortresses over the Indian Ocean, the Talon brings next-generation air supremacy down to your nearest WRL-sanctioned racetrack. The car has foregone the traditional prime mover for a pair of absurdly oversized jet turbines lifted straight from the military-industrial complex's latest aerial dominance project. No expense has been spared in the design and construction of this experiment on wheels: kev-light-fiber body panels, micro-polished ceramic bushings, a quintuple-redundant control computer, radar-absorbent paint, and divertless supersonic inlets. I'd share more info, but you don't have the security clearance to know about it. All you need to know is if you see one of these roll off the trailer at the track, you better ensure you stand well clear of any windows...",
   "tags": [
     "awd",
     "4ws",
