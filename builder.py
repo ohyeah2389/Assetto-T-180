@@ -34,6 +34,12 @@ import tempfile
 import argparse
 import zipfile
 
+class CaseConfigParser(configparser.ConfigParser):
+    """ConfigParser that leaves option keys untouched."""
+
+    def optionxform(self, optionstr: str) -> str:
+        return optionstr
+
 try:
     import tomllib
 except ImportError:
@@ -222,13 +228,9 @@ def merge_ini_files(base_ini_path, addon_ini_path, output_path):
     the entire section will be removed from the base INI.
     """
     try:
-        # Create parsers for both files
-        base_config = configparser.ConfigParser()
-        addon_config = configparser.ConfigParser()
-        
-        # Preserve case sensitivity and allow duplicate keys
-        base_config.optionxform = str
-        addon_config.optionxform = str
+        # Create parsers that preserve option case
+        base_config = CaseConfigParser()
+        addon_config = CaseConfigParser()
         
         # Read the base INI file
         base_config.read(base_ini_path, encoding='utf-8')
