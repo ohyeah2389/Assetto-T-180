@@ -19,13 +19,13 @@ local config = {
         }
     },
     flame = {
-        color = rgbm(1, 0.8, 0.8, 1),
-        afterburnerColor = rgbm(1, 1, 1, 1),
+        color = rgbm(0.8, 0.3, 1.0, 1),
+        afterburnerColor = rgbm(0.8, 0.3, 1.0, 1),
         size = 3.2,
         temperatureMultiplier = 1,
-        afterburnerTemperatureMultiplier = 2,
-        intensity = 0.9,
-        afterburnerIntensity = 1
+        afterburnerTemperatureMultiplier = 1.2,
+        intensity = 0.8,
+        afterburnerIntensity = 0.9
     },
     turbineDamageGlowMesh = "turbina"
 }

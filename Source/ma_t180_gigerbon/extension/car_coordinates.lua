@@ -24,8 +24,8 @@ local config = {
         size = 3.2,
         temperatureMultiplier = 1,
         afterburnerTemperatureMultiplier = 1.2,
-        intensity = 0.9,
-        afterburnerIntensity = 1
+        intensity = 0.8,
+        afterburnerIntensity = 0.9
     },
     turbineDamageGlowMesh = "Cilindro.013"
 }
