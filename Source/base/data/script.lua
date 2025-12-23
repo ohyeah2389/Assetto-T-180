@@ -188,6 +188,7 @@ function script.update(dt)
             end
 
             -- Update turbine
+            turbojetCenter.fuelPumpEnabled = state.turbine.fuelPumpEnabled
             turbojetCenter:update(dt)
 
             -- Set controller channels
@@ -209,6 +210,8 @@ function script.update(dt)
             turbojetRight.targetThrottleAfterburner = helpers.mapRange(turbojetRight.targetThrottle, 0.5, 1.0, 0.0, 1.0, true)
 
             -- Update turbines
+            turbojetLeft.fuelPumpEnabled = state.turbine.fuelPumpEnabled
+            turbojetRight.fuelPumpEnabled = state.turbine.fuelPumpEnabled
             turbojetLeft:update(dt)
             turbojetRight:update(dt)
 
@@ -366,6 +369,8 @@ function script.update(dt)
     if linkageRatioSetup then
         game.car_cphys.controllerInputs[20] = linkageRatioSetup.value
     end
+
+    
 
     if perfTracker then perfTracker:update(dt) end
 

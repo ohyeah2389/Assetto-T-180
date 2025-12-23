@@ -28,6 +28,9 @@ local state = {
             active = false,
             position = 0.0,
         },
+    },
+    turbine = {
+        fuelPumpEnabled = true,
     }
 }
 
