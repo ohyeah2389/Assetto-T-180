@@ -33,9 +33,7 @@ This car is designed for use with a wheel, but you can use it with a gamepad/con
 ## Requirements
 - A legal and activated copy of Assetto Corsa for personal computers
 - Custom Shaders Patch public version v0.2.8 or preview version v0.2.9p1 or higher
-- Custom Shaders Patch
-- Virtual Racing Cars' Extended Controls app
-- Extended Controls
+- Extended Controls, an app available from the in-game app "App Shelf" installed with CSP
 
 # Development
 
