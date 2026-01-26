@@ -13,9 +13,11 @@ if not config.misc.traditionalSteering then
     WheelSteerController = require('script_wheelsteerctrlr')
 end
 local JumpJack = require('script_jumpjack')
-local Turbojet = require('script_turbojet')
 local CustomDrivetrain = require('script_customDrivetrain')
 local PerfTracker = require('script_perfTracker')
+local Opponent = require('script_opponent')
+
+local aiDriver = Opponent({})
 
 local linkageRatioSetup = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_9")
 
@@ -155,6 +157,11 @@ ac.onCarJumped(0, script.reset)
 -- Run by game every physics tick (~333 Hz)
 ---@diagnostic disable-next-line: duplicate-set-field
 function script.update(dt)
+    if car.index ~= 0 then
+        aiDriver:update(dt)
+        return
+    end
+
     ac.awakeCarPhysics()
 
     brakeAutoHold()
@@ -369,8 +376,6 @@ function script.update(dt)
     if linkageRatioSetup then
         game.car_cphys.controllerInputs[20] = linkageRatioSetup.value
     end
-
-    
 
     if perfTracker then perfTracker:update(dt) end
 
