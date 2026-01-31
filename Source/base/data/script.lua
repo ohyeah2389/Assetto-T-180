@@ -177,7 +177,7 @@ function script.update(dt)
             -- Determine throttle
             local driftAngle = math.atan(game.car_cphys.localVelocity.x / math.abs(game.car_cphys.localVelocity.z))
             local baseThrottle = helpers.mapRange(game.car_cphys.gas * helpers.mapRange(math.abs(driftAngle), math.rad(config.turbojet.helperStartAngle), math.rad(config.turbojet.helperEndAngle), 0, 1, true), 0, 1, config.turbojet.minThrottle, 1, true)
-            local clutchFactor = ((1 - game.car_cphys.clutch) * (car.isInPit and 0 or 1)) ^ 0.1
+            local clutchFactor = ((1 - game.car_cphys.clutch) * ((car.isInPit or game.sim.isInMainMenu) and 0 or 1)) ^ 0.1
             local gasFactor = game.car_cphys.gas * 0.4
             baseThrottle = math.min(math.max(baseThrottle, clutchFactor, gasFactor), 1) * (turbojetCenter.fuelPumpEnabled and 1 or 0)
 
@@ -199,11 +199,11 @@ function script.update(dt)
             turbojetCenter:update(dt)
 
             -- Set controller channels
-            game.car_cphys.controllerInputs[8] = helpers.mapRange(turbojetCenter.throttle, config.turbojet.minThrottle, 1, 0, 1, true)                       -- throttle
-            game.car_cphys.controllerInputs[9] = helpers.mapRange(turbojetCenter.thrust, 1000, 8000, 0, 1, true)                                             -- thrust
-            game.car_cphys.controllerInputs[10] = turbojetCenter.shaft.angularSpeed * 60 / (2 * math.pi)                                                     -- rpm
-            game.car_cphys.controllerInputs[11] = turbojetCenter.fuelPumpEnabled and 1 or 0                                                                  -- fuel pump enabled
-            game.car_cphys.controllerInputs[12] = helpers.mapRange(turbojetCenter.thrustAfterburner, 0, 2000, 0, 1, true)                                    -- burner throttle
+            game.car_cphys.controllerInputs[8] = helpers.mapRange(turbojetCenter.throttle, config.turbojet.minThrottle, 1, 0, 1, true)                     -- throttle
+            game.car_cphys.controllerInputs[9] = helpers.mapRange(turbojetCenter.thrust, 1000, 8000, 0, 1, true)                                           -- thrust
+            game.car_cphys.controllerInputs[10] = turbojetCenter.shaft.angularSpeed * 60 / (2 * math.pi)                                                   -- rpm
+            game.car_cphys.controllerInputs[11] = turbojetCenter.fuelPumpEnabled and 1 or 0                                                                -- fuel pump enabled
+            game.car_cphys.controllerInputs[12] = helpers.mapRange(turbojetCenter.thrustAfterburner, 0, 2000, 0, 1, true)                                  -- burner throttle
             game.car_cphys.controllerInputs[18] = helpers.mapRange(math.max(turbojetCenter.heatFrame, turbojetCenter.heatCore / 2), 700, 1000, 0, 1, true) -- damage
 
             -- Set heat controller channels
