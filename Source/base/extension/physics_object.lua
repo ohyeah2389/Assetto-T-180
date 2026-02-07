@@ -6,22 +6,26 @@ local physics = class("Physics")
 
 
 function physics:initialize(params)
-    self.posMax = params.posMax or 1
-    self.posMin = params.posMin or 0
+    self.params = params or {}
+    self.posMax = params.posMax or 1.0
+    self.posMin = params.posMin or 0.0
     self.center = params.center or 0.5
     self.position = params.position or self.center
-    self.speed = 0     -- meters per second (m/s)
-    self.force = 0     -- Newtons (N)
-    self.feltForce = 0 -- Newtons (N)
-    self.accel = 0     -- meters per second squared (m/s^2)
+    self.speed = 0.0     -- meters per second (m/s)
+    self.force = 0.0     -- Newtons (N)
+    self.feltForce = 0.0 -- Newtons (N)
+    self.accel = 0.0     -- meters per second squared (m/s^2)
     self.frictionCoef = params.frictionCoef or 0.1
     self.staticFrictionCoef = params.staticFrictionCoef or 1.5
     self.expFrictionCoef = params.expFrictionCoef or 1.0
-    self.mass = params.mass or 1             -- kilograms (kg)
-    self.springCoef = params.springCoef or 0 -- Newtons per meter (N/m)
+    self.mass = params.mass or 1.0             -- kilograms (kg)
+    self.springCoef = params.springCoef or 0.0 -- Newtons per meter (N/m)
     self.forceMax = params.forceMax or 10000
-    self.constantForce = params.constantForce or 0
-    self.endstopRate = params.endstopRate or 1
+    self.constantForce = params.constantForce or 0.0
+    self.softEndstopMode = params.softEndstopMode or false
+    self.endstopRate = params.endstopRate or 1.0
+    self.endstopDamping = params.endstopDamping or 0.3
+    self.endstopPenetrationLimit = params.endstopPenetrationLimit or 0.5
     self.rotary = params.rotary or false
     self.dampingCoef = params.dampingCoef or 0.05  -- Linear damping coefficient
 
@@ -34,6 +38,20 @@ function physics:initialize(params)
         self.inertia = params.inertia or 1    -- Moment of inertia in kg*m^2
         self.torque = 0                       -- Applied torque in Nm
         self.angularAccel = 0                 -- Angular acceleration in rad/s^2
+    end
+end
+
+function physics:reset()
+    self.position = self.params.position or self.center
+    self.speed = 0.0
+    self.force = 0.0
+    self.accel = 0.0
+
+    if self.rotary then
+        self.angle = self.params.initialAngle or 0.0
+        self.angularSpeed = self.params.angularSpeed or 0.0
+        self.torque = 0.0
+        self.angularAccel = 0.0
     end
 end
 
@@ -99,15 +117,55 @@ function physics:step(force, dt)
         if self.position > self.posMax then
             local overshoot = self.position - self.posMax
             local endstopForce = overshoot * self.endstopRate
-            self.force = math.clamp(self.force - endstopForce, -self.forceMax, self.forceMax)
-            self.position = self.posMax
-            self.speed = 0
+            if self.softEndstopMode then
+                local maxPos = self.posMax + self.endstopPenetrationLimit
+                local outwardSpeed = math.max(self.speed, 0)
+                local dampingForce = self.endstopDamping * outwardSpeed
+                local totalEndstop = endstopForce + dampingForce
+                self.force = math.clamp(self.force - totalEndstop, -self.forceMax, self.forceMax)
+                if self.speed > 0 then
+                    self.speed = self.speed - (totalEndstop / self.mass) * dt
+                    if self.speed < 0 then
+                        self.speed = 0
+                    end
+                end
+                if self.position > maxPos then
+                    self.position = maxPos
+                    if self.speed > 0 then
+                        self.speed = 0
+                    end
+                end
+            else
+                self.force = math.clamp(self.force - endstopForce, -self.forceMax, self.forceMax)
+                self.position = self.posMax
+                self.speed = 0
+            end
         elseif self.position < self.posMin then
             local overshoot = self.posMin - self.position
             local endstopForce = overshoot * self.endstopRate
-            self.force = math.clamp(self.force + endstopForce, -self.forceMax, self.forceMax)
-            self.position = self.posMin
-            self.speed = 0
+            if self.softEndstopMode then
+                local minPos = self.posMin - self.endstopPenetrationLimit
+                local outwardSpeed = math.min(self.speed, 0)
+                local dampingForce = self.endstopDamping * math.abs(outwardSpeed)
+                local totalEndstop = endstopForce + dampingForce
+                self.force = math.clamp(self.force + totalEndstop, -self.forceMax, self.forceMax)
+                if self.speed < 0 then
+                    self.speed = self.speed + (totalEndstop / self.mass) * dt
+                    if self.speed > 0 then
+                        self.speed = 0
+                    end
+                end
+                if self.position < minPos then
+                    self.position = minPos
+                    if self.speed < 0 then
+                        self.speed = 0
+                    end
+                end
+            else
+                self.force = math.clamp(self.force + endstopForce, -self.forceMax, self.forceMax)
+                self.position = self.posMin
+                self.speed = 0
+            end
         end
     end
 
