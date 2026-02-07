@@ -2,17 +2,26 @@
 -- Authored by ohyeah2389
 
 local steerGainAtSpeed = ac.DataLUT11():add(0, 10):add(400, 10):add(800, 10)
-local frontMultAtSpeed = ac.DataLUT11():add(0, -0.5):add(300, -0.5):add(800, -0.5)
+local frontMultAtSpeed = ac.DataLUT11():add(0, -1.5):add(300, -1.5):add(800, -1.5)
 local rearMultAtSpeed = ac.DataLUT11():add(0, 1):add(200, 1):add(600, 1)
 
 local data = ac.accessCarPhysics()
+local carphys = ac.getCarPhysics(0)
 local PIDController = require("script_pid")
+
+-- Settings
+local aiSteerRateLimit = 600
+local aiSteerDampingHz = 60
+local accelRiseHz = 30
+local accelFallHz = 30
+local speedRiseHz = 1
+local speedFallHz = 15
 
 local Wheel = class("Wheel")
 
 function Wheel:initialize(wheelIndex)
     self.wheelIndex = wheelIndex
-    self.liftPID = PIDController(50000.0, 0.0, 0.15, 0.0, 80000.0)
+    self.liftPID = PIDController(200000.0, 0.0, 0.15, 0.0, 80000.0)
 end
 
 function Wheel:update(dt, steeringAngle, inputGas, inputBrake)
@@ -66,24 +75,17 @@ end
 
 local lastSteer = 0.0
 local filteredAiSteer = 0.0
-local aiSteerRateLimit = 400
-local aiSteerDampingHz = 40
 local filteredAccelWant = 0
 local filteredSpeedWant = 0
 
-local accelRiseHz = 30
-local accelFallHz = 30
-
-local speedRiseHz = 1
-local speedFallHz = 15
 
 local lastAngleSum = 0
 local lookaheadConfig = {
     {distance = 30},
-    {distance = 50},
+    {distance = 45},
     {distance = 60},
-    {distance = 90},
-    {distance = 120},
+    {distance = 100},
+    {distance = 150},
 }
 local lookaheadPoints = {}
 
@@ -201,7 +203,12 @@ local function runCustomAIControl(dt)
 
     local minSpeedTerm = math.clamp(math.remap(car.speedKmh, 0, 100, 3, 0), 0, 3)
 
-    local speedWant = math.clamp(450.0 + (bendChangeNorm * 0) - ((absAngleSum ^ 2.0) * 80) - (math.abs(rawSteer) * 300), 100, 1000)
+    local baseSpeed = 550.0
+    local bendChangerateMod = bendChangeNorm * 0
+    local bendMod = ((absAngleSum / 2) ^ 1.5) * 200
+    local steerMod = (math.abs(rawSteer) ^ 1.2) * 300
+
+    local speedWant = math.clamp(baseSpeed - bendChangerateMod - bendMod - steerMod, 100, 1000)
     local speedRateHz = speedWant < filteredSpeedWant and speedFallHz or speedRiseHz
     local speedDamping = 1 - math.exp(-dt * speedRateHz)
     filteredSpeedWant = filteredSpeedWant + (speedWant - filteredSpeedWant) * speedDamping
@@ -245,20 +252,10 @@ function Opponent:update(dt)
     local height_RL, strength_RL = self.wheel_RL:update(dt, steeringAngleRear, autoGas, autoBrake)
     local height_RR, strength_RR = self.wheel_RR:update(dt, steeringAngleRear, autoGas, autoBrake)
 
-    local rideHeightSensor = physics.raycastTrack(car.position + (car.up * 0.4) + (car.look * 1.0), -car.up, 1.0)
-    local suctionMult = math.clamp(math.remap(rideHeightSensor, 0.5, 1.5, 1, 0), 0, 1) * (rideHeightSensor == -1 and 0 or 1)
-    local aeroForceBase = ((car.name == "ohyeah2389_proto_mach4") or (car.name == "ma_proto_uniron")) and -160 or -200
-    local velocityMagnitude = math.sqrt(car.localVelocity.x * car.localVelocity.x + car.localVelocity.z * car.localVelocity.z)
-    local forwardAngle = math.atan2(car.localVelocity.x, car.localVelocity.z)
-    local directionalDropoff = 1.0 -- How much force remains at 90 degrees (0.0 = full dropoff, 1.0 = no dropoff)
-    local cosineDropoff = math.lerp(directionalDropoff, 1.0, math.abs(math.cos(forwardAngle)))
-    local aeroForce = aeroForceBase * velocityMagnitude * cosineDropoff * suctionMult
+    local averageWheelSpeed = (data.wheels[0].angularSpeed + data.wheels[1].angularSpeed + data.wheels[2].angularSpeed + data.wheels[3].angularSpeed) / 4
+    local drivetrainSpeed = averageWheelSpeed * carphys.finalRatio * carphys.gearRatios[7]
 
-    ac.addForce(vec3(0, 0, 0), true, vec3(0, aeroForce, 0), true)
-
-    ac.debug("aeroForce", aeroForce)
-    ac.debug("suctionMult", suctionMult)
-    ac.debug("rideHeightSensor", rideHeightSensor)
+    ac.setEngineRPM(drivetrainSpeed * (60/(2*math.pi)))
 
     ac.debug("height_FL", height_FL)
     ac.debug("height_FR", height_FR)
