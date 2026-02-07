@@ -159,18 +159,25 @@ ac.onCarJumped(0, script.reset)
 function script.update(dt)
     if car.index ~= 0 then
         aiDriver:update(dt)
-        return
+    else
+        ac.awakeCarPhysics()
+        brakeAutoHold()
+        controls.update()
+        if wheelSteerCtrlr then wheelSteerCtrlr:update(dt) end
+        jumpJackSystem:update({
+            frontLeft = state.jumpJackSystem.jackFL.active,
+            frontRight = state.jumpJackSystem.jackFR.active,
+            rearLeft = state.jumpJackSystem.jackRL.active,
+            rearRight = state.jumpJackSystem.jackRR.active
+        }, dt)
+        if wheelSteerCtrlr then
+            local ffb = wheelSteerCtrlr:calculateFFB(dt)
+            if ffb and ffb == ffb then -- Check if value exists and is not NaN
+                ac.setSteeringFFB(ffb)
+            end
+        end
     end
 
-    ac.awakeCarPhysics()
-
-    brakeAutoHold()
-
-    controls.update()
-
-    --sharedData.update()
-
-    if wheelSteerCtrlr then wheelSteerCtrlr:update(dt) end
 
     if config.turbojet.present then
         if config.turbojet.type == "single" and turbojetCenter then
@@ -358,20 +365,6 @@ function script.update(dt)
     end
 
     if state.control.driftInversion then game.car_cphys.clutch = 0 end
-
-    jumpJackSystem:update({
-        frontLeft = state.jumpJackSystem.jackFL.active,
-        frontRight = state.jumpJackSystem.jackFR.active,
-        rearLeft = state.jumpJackSystem.jackRL.active,
-        rearRight = state.jumpJackSystem.jackRR.active
-    }, dt)
-
-    if wheelSteerCtrlr then
-        local ffb = wheelSteerCtrlr:calculateFFB(dt)
-        if ffb and ffb == ffb then -- Check if value exists and is not NaN
-            ac.setSteeringFFB(ffb)
-        end
-    end
 
     if linkageRatioSetup then
         game.car_cphys.controllerInputs[20] = linkageRatioSetup.value
