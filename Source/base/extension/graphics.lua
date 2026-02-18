@@ -102,11 +102,7 @@ local function updateTurbineAudio(turbine, rpm, throttle, afterburner, damage, f
 end
 
 
-
-
 -- MARK: Initialization
--- Piston engine audio
-local audio_engine = sound("engine_custom", vec3(0.0, 1.2, 0.225), vec3(0, 0, 1), vec3(0, 1, 0), 0.8)
 
 -- Turbine audio
 for name, value in pairs(config.turbines or {}) do
@@ -187,10 +183,6 @@ function script.update(dt)
     end
 
     -- Update audio systems
-    if not audio_engine:isPlaying() then audio_engine:start() end
-    audio_engine:setParam("rpms", car.rpm)
-    audio_engine:setParam("throttle", car.gas)
-
     for name, turbine in pairs(turbines) do
         local data = turbineData[name]
         if turbine.main and not turbine.main:isPlaying() then turbine.main:start() end
