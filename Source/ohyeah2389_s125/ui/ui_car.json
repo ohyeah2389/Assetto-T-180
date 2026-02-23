@@ -1,0 +1,28 @@
+{
+  "name": "Sports-125",
+  "brand": "World Racing League",
+  "description": "In the wake of the 91st Grand Prix, the WRL underwent a period of internal restructuring. Corrupt canals were cleaned out, and in their place stood new internal regulatory agencies to formulate and organize the future of the top-level racing series. One of their first big projects was in response to the slight decline in entry numbers in the seasons that followed: they commissioned the development of a new generation of entry-level cars similar to the T-180 in concept, but standardized, cost-reduced, and most importantly, easier to drive for those aiming to compete at the top in the future.",
+  "tags": [
+    "awd",
+    "4ws",
+    "race",
+    "WRL",
+    "manual"
+  ],
+  "class": "race",
+  "specs": {
+    "bhp": "1991 bhp",
+    "torque": "1418 Nm",
+    "weight": "775 kg",
+    "topspeed": ">700 km/h",
+    "acceleration": "2.1 s 0-100",
+    "pwratio": "0.32 kg/hp"
+  },
+  "torqueCurve":[[0,34.8],[0,34.8],[3600,427.8],[5000,595.9],[6000,679.1],[7000,816.9],[7400,892.4],[7600,923.9],[8000,964.9],[9000,1024.8]],
+  "powerCurve":[[0,0],[0,0],[3600,216.3],[5000,418.4],[6000,572.2],[7000,803],[7400,927.4],[7600,986.1],[8000,1084],[9000,1295.2]],
+  "country": "",
+  "author": "ohyeah2389",
+  "version": null,
+  "url": null,
+  "year": 2026
+}
