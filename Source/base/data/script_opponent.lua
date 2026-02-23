@@ -2,7 +2,7 @@
 -- Authored by ohyeah2389
 
 local steerGainAtSpeed = ac.DataLUT11():add(0, 10):add(400, 10):add(800, 10)
-local frontMultAtSpeed = ac.DataLUT11():add(0, -1.5):add(300, -1.5):add(800, -1.5)
+local frontMultAtSpeed = ac.DataLUT11():add(0, -1.7):add(300, -1.7):add(800, -1.7)
 local rearMultAtSpeed = ac.DataLUT11():add(0, 1):add(200, 1):add(600, 1)
 
 local data = ac.accessCarPhysics()
@@ -190,7 +190,7 @@ local function runCustomAIControl(dt)
     ac.drawDebugLine(targetPoint, targetPoint + vec3(0, 1, 0), rgbm(0.5, 0, 1, 1))
     ac.drawDebugLine(car.position, car.position + vec3(0, 1, 0), rgbm(0, 1, 0, 1))
 
-    local rawSteer = angleToTarget * -2.0
+    local rawSteer = angleToTarget * -1.8
     local damping = 1 - math.exp(-dt * aiSteerDampingHz)
     filteredAiSteer = filteredAiSteer + (rawSteer - filteredAiSteer) * damping
 
@@ -205,8 +205,8 @@ local function runCustomAIControl(dt)
 
     local baseSpeed = 550.0
     local bendChangerateMod = bendChangeNorm * 0
-    local bendMod = ((absAngleSum / 2) ^ 1.5) * 200
-    local steerMod = (math.abs(rawSteer) ^ 1.2) * 300
+    local bendMod = ((absAngleSum / 2) ^ 1.2) * 200
+    local steerMod = (math.abs(rawSteer) ^ 1.2) * 200
 
     local speedWant = math.clamp(baseSpeed - bendChangerateMod - bendMod - steerMod, 100, 1000)
     local speedRateHz = speedWant < filteredSpeedWant and speedFallHz or speedRiseHz
@@ -229,9 +229,9 @@ local function runCustomAIControl(dt)
 
     lastSteer = newSteer
 
-    ac.debug("finalGas", finalGas, 0, 1, 3)
-    ac.debug("finalBrake", finalBrake, 0, 1, 3)
-    ac.debug("finalSteer", finalSteer, -1, 1, 3)
+    ac.debug("finalGas", finalGas, 0, 1, 4)
+    ac.debug("finalBrake", finalBrake, 0, 1, 4)
+    ac.debug("finalSteer", finalSteer, -1, 1, 4)
 
     return finalGas, finalBrake, finalSteer
 end
