@@ -8,7 +8,6 @@
 local config = require('car_config')
 local helpers = require('script_helpers')
 
-
 local perfTracker = class("perfTracker")
 
 function perfTracker:initialize(turbineInstances)

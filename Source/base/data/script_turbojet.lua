@@ -144,32 +144,33 @@ function turbojet:update(dt)
     local frameCooling = (game.car_cphys.speedKmh * airSpeedCoolCoefFrame) + (bleedCoolingFrame * bleedCoolCoefFrame) + staticCoolCoefFrame
     self.heatFrame = math.max(self.heatFrame + ((frameHeating - frameCooling + heatTransferCoreToFrameRate - heatTransferFrameToCoreRate) * dt), game.sim.ambientTemperature + 273.15)
 
-    -- Debug outputs (conditional on ID to avoid spamming)
-    local debugPrefix = "turbojet." .. self.id .. "."
-    ac.debug(debugPrefix .. "throttle", self.throttle, 0, 1, 3)
-    ac.debug(debugPrefix .. "throttleAfterburner", self.throttleAfterburner, 0, 1, 3)
-    ac.debug(debugPrefix .. "thrust", self.thrust, 0, 4000, 3)
-    ac.debug(debugPrefix .. "thrustAfterburner", self.thrustAfterburner, 0, 4000, 3)
-    if self.id == 'single' then
-        ac.debug(debugPrefix .. "bleedBoost", self.bleedBoost)
+    if DEBUG then
+        local debugPrefix = "turbojet." .. self.id .. "."
+        ac.debug(debugPrefix .. "throttle", self.throttle, 0, 1, 3)
+        ac.debug(debugPrefix .. "throttleAfterburner", self.throttleAfterburner, 0, 1, 3)
+        ac.debug(debugPrefix .. "thrust", self.thrust, 0, 4000, 3)
+        ac.debug(debugPrefix .. "thrustAfterburner", self.thrustAfterburner, 0, 4000, 3)
+        if self.id == 'single' then
+            ac.debug(debugPrefix .. "bleedBoost", self.bleedBoost)
+        end
+        ac.debug(debugPrefix .. "turbine.torque", self.shaft.torque)
+        ac.debug(debugPrefix .. "turbine.angularSpeed", self.shaft.angularSpeed)
+        ac.debug(debugPrefix .. "turbine.RPM", self.shaft.angularSpeed * 60 / (2 * math.pi))
+        ac.debug(debugPrefix .. "fuelPumpEnabled", self.fuelPumpEnabled)
+        ac.debug(debugPrefix .. "machNumber", machNumber)
+        ac.debug(debugPrefix .. "speedThrustMultiplier", speedThrustMultiplier)
+        ac.debug(debugPrefix .. "coreHeating", coreHeating, 0, 400, 3)
+        ac.debug(debugPrefix .. "coreCooling", coreCooling, 0, 400, 3)
+        ac.debug(debugPrefix .. "frameHeating", frameHeating, 0, 400, 3)
+        ac.debug(debugPrefix .. "frameCooling", frameCooling, 0, 400, 3)
+        ac.debug(debugPrefix .. "heatFrame", self.heatFrame, 0, 1000, 3)
+        ac.debug(debugPrefix .. "heatCore", self.heatCore, 0, 2000, 3)
+        ac.debug(debugPrefix .. "pidDerateHeatCore.previousOutput", self.pidDerateHeatCore.previousOutput)
+        ac.debug(debugPrefix .. "pidValveCoolFrame.previousOutput", self.pidValveCoolFrame.previousOutput)
+        ac.debug(debugPrefix .. "pidDerateHeatFrame.previousOutput", self.pidDerateHeatFrame.previousOutput)
+        ac.debug(debugPrefix .. "throttleDerate", throttleDerate)
+        ac.debug(debugPrefix .. "burnerDerate", burnerDerate)
     end
-    ac.debug(debugPrefix .. "turbine.torque", self.shaft.torque)
-    ac.debug(debugPrefix .. "turbine.angularSpeed", self.shaft.angularSpeed)
-    ac.debug(debugPrefix .. "turbine.RPM", self.shaft.angularSpeed * 60 / (2 * math.pi))
-    ac.debug(debugPrefix .. "fuelPumpEnabled", self.fuelPumpEnabled)
-    ac.debug(debugPrefix .. "machNumber", machNumber)
-    ac.debug(debugPrefix .. "speedThrustMultiplier", speedThrustMultiplier)
-    ac.debug(debugPrefix .. "coreHeating", coreHeating, 0, 400, 3)
-    ac.debug(debugPrefix .. "coreCooling", coreCooling, 0, 400, 3)
-    ac.debug(debugPrefix .. "frameHeating", frameHeating, 0, 400, 3)
-    ac.debug(debugPrefix .. "frameCooling", frameCooling, 0, 400, 3)
-    ac.debug(debugPrefix .. "heatFrame", self.heatFrame, 0, 1000, 3)
-    ac.debug(debugPrefix .. "heatCore", self.heatCore, 0, 2000, 3)
-    ac.debug(debugPrefix .. "pidDerateHeatCore.previousOutput", self.pidDerateHeatCore.previousOutput)
-    ac.debug(debugPrefix .. "pidValveCoolFrame.previousOutput", self.pidValveCoolFrame.previousOutput)
-    ac.debug(debugPrefix .. "pidDerateHeatFrame.previousOutput", self.pidDerateHeatFrame.previousOutput)
-    ac.debug(debugPrefix .. "throttleDerate", throttleDerate)
-    ac.debug(debugPrefix .. "burnerDerate", burnerDerate)
 end
 
 return turbojet

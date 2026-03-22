@@ -1,6 +1,9 @@
 -- T-180 CSP Physics Script - Main Module
 -- Authored by ohyeah2389
 
+DEBUG = ac.getCarName(0) == "T-180 Chassis DEV"
+DEBUG_PERFTRACKER = false
+
 ---@diagnostic disable: undefined-field
 
 local game = require('script_acConnection')
@@ -9,8 +12,10 @@ local state = require('script_state')
 local controls = require('script_controls')
 local helpers = require('script_helpers')
 local WheelSteerController = nil
+local ActiveSuspension = nil
 if not config.misc.traditionalSteering then
     WheelSteerController = require('script_wheelsteerctrlr')
+    ActiveSuspension = require('script_activesusp')
 end
 local JumpJack = require('script_jumpjack')
 local CustomDrivetrain = require('script_customDrivetrain')
@@ -59,17 +64,14 @@ local function brakeAutoHold()
     if game.car_cphys.speedKmh < config.misc.brakeAutoHold.speed and not (game.car_cphys.gas > 0.05) then
         ac.overrideBrakesTorque(2, config.misc.brakeAutoHold.torque, config.misc.brakeAutoHold.torque)
         ac.overrideBrakesTorque(3, config.misc.brakeAutoHold.torque, config.misc.brakeAutoHold.torque)
-        ac.debug("brakeAutoHold", "brakes engaged")
     else
         ac.overrideBrakesTorque(2, math.nan, math.nan)
         ac.overrideBrakesTorque(3, math.nan, math.nan)
-        ac.debug("brakeAutoHold", "brakes disengaged")
     end
 end
 
-
 local wheelSteerCtrlr = WheelSteerController and WheelSteerController() or nil
-
+local activeSusp = ActiveSuspension and ActiveSuspension() or nil
 
 local TurbojetEngine = require('script_turbojet')
 local turbojetCenter = nil
@@ -128,7 +130,7 @@ elseif config.turboshaft.present then
     turbineInstances.front = turboshaftFront
     turbineInstances.rear = turboshaftRear
 end
-local perfTracker = PerfTracker(turbineInstances)
+local perfTracker = DEBUG_PERFTRACKER and PerfTracker(turbineInstances)
 
 
 ---@diagnostic disable-next-line: duplicate-set-field
@@ -147,6 +149,9 @@ function script.reset()
     if config.turboshaft.present then
         turboshaftFront:reset()
         if turboshaftRear then turboshaftRear:reset() end
+    end
+    if activeSusp then
+        activeSusp:reset()
     end
 end
 
@@ -370,22 +375,28 @@ function script.update(dt)
         game.car_cphys.controllerInputs[20] = linkageRatioSetup.value
     end
 
+    if activeSusp then
+        activeSusp:update(dt)
+    end
+
     if perfTracker then perfTracker:update(dt) end
 
-    local rideHeightSensor = physics.raycastTrack(car.position + (car.up * 0.4) + (car.look * 1.0), -car.up, 1.0)
-    local suctionMult = math.clamp(math.remap(rideHeightSensor, 0.5, 0.9, 1, 0), 0, 1) * (rideHeightSensor == -1 and 0 or 1)
+    local rideHeightSensor = physics.raycastTrack(car.position + (car.up * 0.4) + (car.look * 1.0), -car.up, 2.0)
+    local suctionMult = math.clamp(math.remap(rideHeightSensor, 0.5, 2.0, 1, 0), 0, 1) * (rideHeightSensor == -1 and 0 or 1)
     local aeroForceBase = ((car.name == "ohyeah2389_proto_mach4") or (car.name == "ma_proto_uniron")) and -160 or -200
     local velocityMagnitude = math.sqrt(car.localVelocity.x * car.localVelocity.x + car.localVelocity.z * car.localVelocity.z)
     local forwardAngle = math.atan2(car.localVelocity.x, car.localVelocity.z)
-    local directionalDropoff = 1.0 -- How much force remains at 90 degrees (0.0 = full dropoff, 1.0 = no dropoff)
+    local directionalDropoff = 0.75 -- How much force remains at 90 degrees (0.0 = full dropoff, 1.0 = no dropoff)
     local cosineDropoff = math.lerp(directionalDropoff, 1.0, math.abs(math.cos(forwardAngle)))
     local aeroForce = aeroForceBase * velocityMagnitude * cosineDropoff * suctionMult
 
     ac.addForce(vec3(0, 0, 0), true, vec3(0, aeroForce, 0), true)
 
-    ac.debug("aeroForce", aeroForce)
-    ac.debug("suctionMult", suctionMult)
-    ac.debug("rideHeightSensor", rideHeightSensor)
+    ac.debug("aeroForce", -aeroForce, 0, 20000, 2)
+    ac.debug("suctionMult", suctionMult, 0, 1, 2)
+    ac.debug("rideHeightSensor", rideHeightSensor, 0, 2, 2)
 
-    showDebugValues(dt)
+    if DEBUG then
+        showDebugValues(dt)
+    end
 end
