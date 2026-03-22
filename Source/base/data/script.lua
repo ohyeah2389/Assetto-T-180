@@ -11,35 +11,30 @@ local config = require('car_config')
 local state = require('script_state')
 local controls = require('script_controls')
 local helpers = require('script_helpers')
-local WheelSteerController = nil
-local ActiveSuspension = nil
-if not config.misc.traditionalSteering then
-    WheelSteerController = require('script_wheelsteerctrlr')
-    ActiveSuspension = require('script_activesusp')
-end
 local JumpJack = require('script_jumpjack')
 local CustomDrivetrain = require('script_customDrivetrain')
 local PerfTracker = require('script_perfTracker')
 local Opponent = require('script_opponent')
 
+local WheelSteerController = nil
+local ActiveSuspension = nil
+
+if not config.misc.traditionalSteering then
+    WheelSteerController = require('script_wheelsteerctrlr')
+    ActiveSuspension = require('script_activesusp')
+end
+
 local aiDriver = Opponent({})
 
 local linkageRatioSetup = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_9")
 
-local lastDebugTime = os.clock()
-local function showDebugValues(dt)
-    if os.clock() - lastDebugTime > config.misc.debugFrequency then
-        lastDebugTime = os.clock()
-    end
-end
-
-
+-- Configure jump jacks
 local jumpJackSystem = JumpJack({
     jacks = {
         frontLeft = {
-            length = 1.2,
-            baseForce = 60000,
-            position = vec3(-0.8, 0.18, 0.77)
+            length = 1.2, -- Max extension length
+            baseForce = 60000, -- Force (N) which the jack pushes with
+            position = vec3(-0.8, 0.18, 0.77) -- Mounting position on bottom of car (extends downward from here)
         },
         frontRight = {
             length = 1.2,
@@ -70,9 +65,11 @@ local function brakeAutoHold()
     end
 end
 
+
 local wheelSteerCtrlr = WheelSteerController and WheelSteerController() or nil
 local activeSusp = ActiveSuspension and ActiveSuspension() or nil
 
+-- Load and init turbojet engine(s)
 local TurbojetEngine = require('script_turbojet')
 local turbojetCenter = nil
 local turbojetLeft = nil
@@ -93,7 +90,7 @@ if config.turbojet.present then
     end
 end
 
-
+-- Load and init turboshaft engine(s)
 local TurboshaftEngine = require('script_turboshaft')
 local turboshaftFront = nil
 local turboshaftRear = nil
@@ -117,7 +114,8 @@ if config.turboshaft.present then
     })
 end
 
--- Initialize perfTracker with turbine references
+
+-- Initialize perfTracker, passing turbine references
 local turbineInstances = {}
 if config.turbojet.present then
     if config.turbojet.type == "single" then
@@ -130,9 +128,10 @@ elseif config.turboshaft.present then
     turbineInstances.front = turboshaftFront
     turbineInstances.rear = turboshaftRear
 end
+
 local perfTracker = DEBUG_PERFTRACKER and PerfTracker(turbineInstances)
 
-
+-- Run every time the car resets (reset to pits, teleport, etc.)
 ---@diagnostic disable-next-line: duplicate-set-field
 function script.reset()
     if wheelSteerCtrlr then wheelSteerCtrlr:reset() end
@@ -155,27 +154,33 @@ function script.reset()
     end
 end
 
+-- Run a manual reset on script start before registering the loop to clear out all systems and to check their resets work
 script.reset()
-ac.onCarJumped(0, script.reset)
 
-
--- Run by game every physics tick (~333 Hz)
+-- Run by game every physics tick (333 Hz)
 ---@diagnostic disable-next-line: duplicate-set-field
 function script.update(dt)
-    if car.index ~= 0 then
-        aiDriver:update(dt)
-    else
+    if car.index ~= 0 then -- If car is AI-controlled (not the player car) then...
+        aiDriver:update(dt) -- ...run the AI control system
+    else -- Car must be the player's, so...
+        -- Disable the stock "lock car in place" system, and run brake holding to stop car from rolling around
         ac.awakeCarPhysics()
         brakeAutoHold()
+
+        -- Prime controls table with current inputs
         controls.update()
-        if wheelSteerCtrlr then wheelSteerCtrlr:update(dt) end
+
+        -- Run jump jack system
         jumpJackSystem:update({
             frontLeft = state.jumpJackSystem.jackFL.active,
             frontRight = state.jumpJackSystem.jackFR.active,
             rearLeft = state.jumpJackSystem.jackRL.active,
             rearRight = state.jumpJackSystem.jackRR.active
         }, dt)
+
+        -- Run wheel steering controller code and FFB update if we have one
         if wheelSteerCtrlr then
+            wheelSteerCtrlr:update(dt)
             local ffb = wheelSteerCtrlr:calculateFFB(dt)
             if ffb and ffb == ffb then -- Check if value exists and is not NaN
                 ac.setSteeringFFB(ffb)
@@ -183,7 +188,7 @@ function script.update(dt)
         end
     end
 
-
+    -- Run turbojet system if we have one
     if config.turbojet.present then
         if config.turbojet.type == "single" and turbojetCenter then
             -- Determine throttle
@@ -269,6 +274,7 @@ function script.update(dt)
         end
     end
 
+    -- Run turboshaft system if we have one
     if config.turboshaft.present then
         if config.turboshaft.type == "dual" and turboshaftFront and turboshaftRear then
             -- Update drivetrains first to calculate slip
@@ -278,10 +284,12 @@ function script.update(dt)
             local overLimitFront = math.max(0, slipFront - 1) * 0.02
             local overLimitRear = math.max(0, slipRear - 1) * 0.02
 
-            ac.debug("slipFront", slipFront)
-            ac.debug("slipRear", slipRear)
-            ac.debug("overLimitFront", overLimitFront)
-            ac.debug("overLimitRear", overLimitRear)
+            if DEBUG then
+                ac.debug("slipFront", slipFront)
+                ac.debug("slipRear", slipRear)
+                ac.debug("overLimitFront", overLimitFront)
+                ac.debug("overLimitRear", overLimitRear)
+            end
 
             -- Set turbine throttles
             turboshaftFront.throttle = math.clamp(game.car_cphys.gas + (ac.isControllerGearUpPressed() and 0.75 or 0) - overLimitFront, 0, 1)
@@ -369,34 +377,50 @@ function script.update(dt)
         end
     end
 
+    -- If we're drifting backwards, don't allow clutch input
     if state.control.driftInversion then game.car_cphys.clutch = 0 end
 
-    if linkageRatioSetup then
-        game.car_cphys.controllerInputs[20] = linkageRatioSetup.value
-    end
+    -- If the rear-mechanical-steer linkage ratio setup option exists, transmit it over its controller channel
+    if linkageRatioSetup then game.car_cphys.controllerInputs[20] = linkageRatioSetup.value end
 
-    if activeSusp then
-        activeSusp:update(dt)
-    end
+    -- If we have the active suspension module, run its code
+    if activeSusp then activeSusp:update(dt) end
 
+    -- If we have the performance tracker, run its code
     if perfTracker then perfTracker:update(dt) end
 
+    -- Synthetic downforce code:
+
+    -- Find the car's ride height
     local rideHeightSensor = physics.raycastTrack(car.position + (car.up * 0.4) + (car.look * 1.0), -car.up, 2.0)
+
+    -- Determine if the car is close enough to the ground for the downforce to take effect, else fade it out
     local suctionMult = math.clamp(math.remap(rideHeightSensor, 0.5, 2.0, 1, 0), 0, 1) * (rideHeightSensor == -1 and 0 or 1)
+
+    -- If it's a protocar, it gets a different amount of downforce
     local aeroForceBase = ((car.name == "ohyeah2389_proto_mach4") or (car.name == "ma_proto_uniron")) and -160 or -200
+
+    -- Find the speed of the car in its XZ plane
     local velocityMagnitude = math.sqrt(car.localVelocity.x * car.localVelocity.x + car.localVelocity.z * car.localVelocity.z)
+
+    -- Find the direction of the car in its XZ plane
     local forwardAngle = math.atan2(car.localVelocity.x, car.localVelocity.z)
-    local directionalDropoff = 0.75 -- How much force remains at 90 degrees (0.0 = full dropoff, 1.0 = no dropoff)
+
+    -- Set how much force remains at 90 degrees (0.0 = full dropoff, 1.0 = no dropoff)
+    local directionalDropoff = 0.75
+
+    -- Fade out the downforce with a cosine curve
     local cosineDropoff = math.lerp(directionalDropoff, 1.0, math.abs(math.cos(forwardAngle)))
+
+    -- Final downforce magnitude product
     local aeroForce = aeroForceBase * velocityMagnitude * cosineDropoff * suctionMult
 
+    -- Apply the downforce to the car
     ac.addForce(vec3(0, 0, 0), true, vec3(0, aeroForce, 0), true)
 
-    ac.debug("aeroForce", -aeroForce, 0, 20000, 2)
-    ac.debug("suctionMult", suctionMult, 0, 1, 2)
-    ac.debug("rideHeightSensor", rideHeightSensor, 0, 2, 2)
-
     if DEBUG then
-        showDebugValues(dt)
+        ac.debug("aeroForce", -aeroForce, 0, 20000, 2)
+        ac.debug("suctionMult", suctionMult, 0, 1, 2)
+        ac.debug("rideHeightSensor", rideHeightSensor, 0, 2, 2)
     end
 end
