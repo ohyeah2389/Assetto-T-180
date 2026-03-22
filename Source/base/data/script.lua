@@ -11,7 +11,7 @@ local config = require('car_config')
 local state = require('script_state')
 local controls = require('script_controls')
 local helpers = require('script_helpers')
-local JumpJack = require('script_jumpjack')
+local JumpJacks = require('script_jumpjack')
 local CustomDrivetrain = require('script_customDrivetrain')
 local PerfTracker = require('script_perfTracker')
 local Opponent = require('script_opponent')
@@ -29,12 +29,12 @@ local aiDriver = Opponent({})
 local linkageRatioSetup = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_9")
 
 -- Configure jump jacks
-local jumpJackSystem = JumpJack({
+local jumpJackSystem = JumpJacks({
     jacks = {
         frontLeft = {
-            length = 1.2, -- Max extension length
-            baseForce = 60000, -- Force (N) which the jack pushes with
-            position = vec3(-0.8, 0.18, 0.77) -- Mounting position on bottom of car (extends downward from here)
+            length = 1.2,
+            baseForce = 60000,
+            position = vec3(-0.8, 0.18, 0.77)
         },
         frontRight = {
             length = 1.2,
