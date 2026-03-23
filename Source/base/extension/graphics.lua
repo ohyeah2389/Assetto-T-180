@@ -6,7 +6,7 @@ local car_phys = ac.getCarPhysics(0)
 
 
 local fuelPumpRPMLUT = ac.DataLUT11():add(0, 4000):add(6000, 5000):add(18000, 4500)
-local turbineExhaustGlow = ac.findMeshes(config.turbineExhaustGlowMesh)
+local turbineExhaustGlow = ac.findMeshes(config.turbineExhaustGlowMesh):ensureUniqueMaterials()
 local turbineDamageGlow = ac.findMeshes(config.turbineDamageGlowMesh):ensureUniqueMaterials()
 
 
