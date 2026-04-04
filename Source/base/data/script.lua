@@ -27,6 +27,7 @@ end
 local aiDriver = Opponent({})
 
 local linkageRatioSetup = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_9")
+local steeringRangeSetup = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_20")
 
 -- Configure jump jacks
 local jumpJackSystem = JumpJacks({
@@ -417,6 +418,18 @@ function script.update(dt)
 
     -- Apply the downforce to the car
     ac.addForce(vec3(0, 0, 0), true, vec3(0, aeroForce, 0), true)
+
+    -- Roll control code:
+
+    -- Calculate control force magnitude from normalized steering angle (same normalization as wheelSteerCtrlr)
+    local rollForce = math.clamp(game.car_cphys.steer / (90 * steeringRangeSetup.value / 180), -1, 1) * 100 * (1 - suctionMult)
+
+    -- Apply left side force
+    ac.addForce(vec3(-10, 0, 0), true, vec3(0, -rollForce, 0), true)
+
+    -- Apply right side force
+    ac.addForce(vec3(10, 0, 0), true, vec3(0, rollForce, 0), true)
+
 
     if DEBUG then
         ac.debug("aeroForce", -aeroForce, 0, 20000, 2)
