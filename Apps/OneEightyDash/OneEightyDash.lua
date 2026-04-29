@@ -14,59 +14,18 @@ Config = {
         wheelScaleLateral = 0.5,
         wheelScaleVertical = 0.8,
         wheelCornerRadius = 12,
+        middleLateralOffset = 0,
+        bottomVerticalOffset = 0.8,
     },
     heat = {
         width = 400,
         height = 60,
         spacing = 2,
         rounding = 4,
+        middleLateralOffset = 0,
+        bottomVerticalOffset = 0.9,
     }
 }
-
-local displaySettings = {
-    elements = {
-        wheels = {
-            anchor = { x = 0.5, y = 1.0 },
-            offset = { x = 0, y = 0.1 }
-        },
-        heat = {
-            anchor = { x = 0.5, y = 1.0 },
-            offset = { x = 0, y = 0.88 }
-        },
-        default = {
-            anchor = { x = 0.5, y = 0.5 },
-            offset = { x = 0.0, y = 0.0 }
-        }
-    }
-}
-
-local function getElementPosition(elementSize, elementType)
-    local elementConfig = displaySettings.elements[elementType] or displaySettings.elements.default
-    local anchor = elementConfig.anchor or displaySettings.elements.default.anchor
-    local offset = elementConfig.offset or displaySettings.elements.default.offset
-    local aspectRatio = sim.windowWidth / sim.windowHeight
-    local lateralWidth = sim.windowWidth
-    local lateralOrigin = 0
-    if aspectRatio > 2.5 then
-        lateralWidth = sim.windowWidth / 3
-        lateralOrigin = (sim.windowWidth - lateralWidth) / 2
-    end
-    local lateralBaseX = (lateralWidth * anchor.x) - (elementSize.x * anchor.x)
-    local baseX = lateralOrigin + lateralBaseX
-    local baseY = (sim.windowHeight * anchor.y) - (elementSize.y * anchor.y)
-    local offsetBasisX = lateralBaseX
-    if offsetBasisX == 0 then
-        offsetBasisX = lateralWidth
-    end
-    local offsetBasisY = baseY
-    if offsetBasisY == 0 then
-        offsetBasisY = sim.windowHeight
-    end
-    local finalX = baseX - (-offset.x * offsetBasisX)
-    local finalY = baseY - (offset.y * offsetBasisY)
-
-    return vec2(finalX, finalY)
-end
 
 SlipAngleArrowColors = {
     {
@@ -377,17 +336,13 @@ end
 
 function script.windowWheels(dt)
     if not ac.isInReplayMode() then
-        local wheelSize = vec2(Config.wheels.width, Config.wheels.height)
-
-        ui.transparentWindow("OneEightyDash_Wheels", getElementPosition(wheelSize, "wheels"), wheelSize, true, true, function() displays.drawWheels() end)
+        displays.drawWheels()
     end
 end
 
 function script.windowHeat(dt)
     if not ac.isInReplayMode() then
-        local heatSize = vec2(Config.heat.width, Config.heat.height)
-
-        ui.transparentWindow("OneEightyDash_Heat", getElementPosition(heatSize, "heat"), heatSize, true, true, function() displays.drawHeatBars() end)
+        displays.drawHeatBars()
     end
 end
 
