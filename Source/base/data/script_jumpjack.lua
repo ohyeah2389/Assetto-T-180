@@ -77,8 +77,8 @@ function JumpJacks:initialize(params)
                 center = 0,                   -- Meters, neutral extension target
                 position = 0,                 -- Meters, current extension state
                 mass = 10,                    -- Kilograms, simulated jack mass
-                springCoef = 4000,            -- N/m natural spring force, unused for jump jacks
-                frictionCoef = 20,            -- Dynamic damping/friction coefficient
+                springCoef = jackParams.springCoef or 4000,            -- N/m natural spring force, unused for jump jacks
+                frictionCoef = jackParams.frictionCoef or 20,            -- Dynamic damping/friction coefficient
                 staticFrictionCoef = 1,       -- Static friction coefficient
                 expFrictionCoef = 0.0001,     -- Exponential friction smoothing coefficient
                 forceMax = 1000000,           -- Newtons, maximum internal actuator force
