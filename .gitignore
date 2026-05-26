@@ -16,6 +16,7 @@ preview.*
 *.bank
 *.blend
 *.blend1
+*.svg
 /Art
 /Graphics
 
