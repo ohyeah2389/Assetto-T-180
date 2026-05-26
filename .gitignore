@@ -1,25 +1,26 @@
-*.ksanim
-*.kn5
-*.dds
-*.jpg
-*.knh
-*.vao-patch
-*.bank
-*.zip
-extension/lib.lua
-*.kn5
-/Art/
-/Graphics/
-/ohyeah2389_t180/
-/Build/
-*.code-workspace
-*.tmp
-quickbms.exe
-/ohyeah2389_t180_beamng
-*.svg
-*.csv
+# Binary/large files
+*.mkv
 *.pdf
+*.vao-patch
+
+# Specific files that shouldn't be tracked
+quickbms.exe
+preview.*
+*.code-workspace
+
+# Non-open-source components
+*.kn5
+*.knh
+*.ksanim
+*.dds
+*.bank
 *.blend
 *.blend1
-*.mkv
-/Documentation
+/Art
+/Graphics
+
+# Build and development artifacts
+*.zip
+*.tmp
+/Build
+/ohyeah2389_t180
