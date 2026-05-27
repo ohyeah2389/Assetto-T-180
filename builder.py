@@ -405,21 +405,22 @@ def pack_data_folder(car_build_dir, car_name):
         logger.warning(f"Data folder not found for {car_name}. Skipping data packing.")
         return False
     
-    temp_acd = None
+    input_acd = None
     try:
-        # Pack in-place from data_dir to avoid expensive temp copy per car.
-        temp_acd = os.path.join(data_dir, "data.acd")
-        if os.path.exists(temp_acd):
-            logger.error(f"Unexpected existing '{temp_acd}' before packing; skipping {car_name}")
+        # The rebuilder derives the XOR key from the input ACD path context.
+        # Keep input as <car_name>/data.acd while scanning files from the data folder.
+        input_acd = os.path.join(car_build_dir, "__builder_input_data.acd")
+        if os.path.exists(input_acd):
+            logger.error(f"Unexpected existing '{input_acd}' before packing; skipping {car_name}")
             return False
 
-        with open(temp_acd, 'wb') as f:
+        with open(input_acd, 'wb') as f:
             f.write(b'\x00' * 16)
 
         cmd = [
             quickbms_path,
             rebuilder_script,
-            "data.acd",
+            input_acd,
             "."
         ]
         
@@ -439,15 +440,19 @@ def pack_data_folder(car_build_dir, car_name):
             logger.error(f"Error packing data for {car_name}: QuickBMS returned code {result.returncode}")
             return False
 
-        # Look for the generated .rebuilt file in-place.
+        # Rebuilder outputs to ./<car_name>/<input_filename>.rebuilt.
         rebuilt_file = None
+        expected_rebuilt = os.path.join(data_dir, car_name, "__builder_input_data.acd.rebuilt")
+        if os.path.exists(expected_rebuilt):
+            rebuilt_file = expected_rebuilt
+
         for root, dirs, files in os.walk(data_dir):
+            if rebuilt_file:
+                break
             for file in files:
                 if file.endswith('.rebuilt'):
                     rebuilt_file = os.path.join(root, file)
                     break
-            if rebuilt_file:
-                break
 
         if not rebuilt_file:
             logger.error(f"No .rebuilt file generated for {car_name}")
@@ -467,9 +472,9 @@ def pack_data_folder(car_build_dir, car_name):
         logger.error(f"Error packing data folder for {car_name}: {e}")
         return False
     finally:
-        if temp_acd and os.path.exists(temp_acd):
+        if input_acd and os.path.exists(input_acd):
             try:
-                os.remove(temp_acd)
+                os.remove(input_acd)
             except Exception:
                 pass
 
