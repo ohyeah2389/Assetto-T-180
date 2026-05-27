@@ -22,6 +22,7 @@ Note: This script requires Python 3.8+ for the use of shutil.copytree(..., dirs_
 """
 
 import os
+import atexit
 import shutil
 import sys
 import logging
@@ -32,9 +33,10 @@ import fnmatch
 from typing import List
 import configparser
 import subprocess
-import tempfile
 import argparse
 import zipfile
+from queue import SimpleQueue
+from logging.handlers import QueueHandler, QueueListener
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger("builder")
@@ -261,18 +263,17 @@ def merge_directories(src, dst, ignore_patterns):
     addon_files = {}
     regular_files = []
     
-    for item in os.listdir(src):
-        s_item = os.path.join(src, item)
-        if should_ignore_file(s_item, ignore_patterns):
-            logger.info(f"Skipping ignored file/folder '{item}'")
+    for entry in os.scandir(src):
+        if should_ignore_file(entry.path, ignore_patterns):
+            logger.info(f"Skipping ignored file/folder '{entry.name}'")
             continue
 
-        if item.endswith('.addon.ini'):
+        if entry.name.endswith('.addon.ini'):
             # Map addon file to its base name
-            base_name = item.replace('.addon.ini', '.ini')
-            addon_files[base_name] = s_item
+            base_name = entry.name.replace('.addon.ini', '.ini')
+            addon_files[base_name] = entry.path
         else:
-            regular_files.append(item)
+            regular_files.append(entry.name)
     
     # Second pass: process regular files and handle INI merging
     for item in regular_files:
@@ -282,7 +283,7 @@ def merge_directories(src, dst, ignore_patterns):
         try:
             if os.path.isdir(s_item):
                 if not os.path.exists(d_item):
-                    shutil.copytree(s_item, d_item)
+                    shutil.copytree(s_item, d_item, copy_function=shutil.copyfile)
                     logger.info(f"Copied new folder '{item}' from source merge.")
                 else:
                     merge_directories(s_item, d_item, ignore_patterns)
@@ -292,7 +293,7 @@ def merge_directories(src, dst, ignore_patterns):
             if item.endswith('.ini') and item in addon_files:
                 merge_ini_files(s_item, addon_files[item], d_item)
             else:
-                shutil.copy2(s_item, d_item)
+                shutil.copyfile(s_item, d_item)
                 logger.info(f"Overwritten file '{item}' from source merge.")
         except Exception as e:
             logger.error(f"Error merging {s_item} into {d_item}: {e}")
@@ -313,7 +314,7 @@ def merge_directories(src, dst, ignore_patterns):
             # No base file anywhere - treat addon as the complete file
             d_item = os.path.join(dst, base_name)
             try:
-                shutil.copy2(addon_path, d_item)
+                shutil.copyfile(addon_path, d_item)
                 logger.info(f"Copied addon file '{os.path.basename(addon_path)}' as '{base_name}' (no base file found)")
             except Exception as e:
                 logger.error(f"Error copying addon file {addon_path}: {e}")
@@ -332,9 +333,21 @@ def setup_logging(script_dir):
     console_handler.setLevel(logging.WARNING)
     console_handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
 
-    logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
-    return log_path
+    log_queue = SimpleQueue()
+    queue_handler = QueueHandler(log_queue)
+    queue_handler.setLevel(logging.INFO)
+
+    logger.addHandler(queue_handler)
+
+    queue_listener = QueueListener(
+        log_queue,
+        file_handler,
+        console_handler,
+        respect_handler_level=True,
+    )
+    queue_listener.start()
+    atexit.register(queue_listener.stop)
+    return log_path, queue_listener
 
 class BuildProgress:
     def __init__(self, total):
@@ -392,79 +405,73 @@ def pack_data_folder(car_build_dir, car_name):
         logger.warning(f"Data folder not found for {car_name}. Skipping data packing.")
         return False
     
+    temp_acd = None
     try:
-        # Create a simple temp directory structure
-        with tempfile.TemporaryDirectory() as temp_base:
-            # Create the car folder structure
-            temp_car_dir = os.path.join(temp_base, car_name)
-            os.makedirs(temp_car_dir)
-            
-            # Copy data folder contents directly to the car folder (not in a data subfolder)
-            logger.info(f"Copying data files to temporary location: {temp_car_dir}")
-            for item in os.listdir(data_dir):
-                src_item = os.path.join(data_dir, item)
-                dst_item = os.path.join(temp_car_dir, item)
-                if os.path.isfile(src_item):
-                    shutil.copy2(src_item, dst_item)
-                else:
-                    shutil.copytree(src_item, dst_item)
-            
-            # Create a minimal dummy data.acd file
-            temp_acd = os.path.join(temp_car_dir, "data.acd")
-            with open(temp_acd, 'wb') as f:
-                f.write(b'\x00' * 16)  # Create minimal dummy file
-            
-            # Run QuickBMS directly in the car folder
-            cmd = [
-                quickbms_path,
-                rebuilder_script,
-                "data.acd",
-                "."
-            ]
-            
-            logger.info(f"Packing data folder for {car_name}...")
-            logger.info(f"Command: {' '.join(cmd)} (in directory: {temp_car_dir})")
-            
-            # Run QuickBMS in the temp car folder without changing global cwd.
-            result = subprocess.run(cmd, capture_output=True, text=True, cwd=temp_car_dir)
-            
-            # Log full QuickBMS output to file only (info-level).
-            if result.stdout:
-                logger.info("QuickBMS stdout:")
-                logger.info(result.stdout)
-            if result.stderr:
-                logger.info("QuickBMS stderr:")
-                logger.info(result.stderr)
-            
-            if result.returncode == 0:
-                # Look for the generated .rebuilt file
-                rebuilt_files = []
-                for root, dirs, files in os.walk(temp_base):
-                    for file in files:
-                        if file.endswith('.rebuilt'):
-                            rebuilt_files.append(os.path.join(root, file))
-                
-                if rebuilt_files:
-                    # Move the .rebuilt file to data.acd in the original location
-                    rebuilt_file = rebuilt_files[0]
-                    final_acd = os.path.join(car_build_dir, "data.acd")
-                    shutil.move(rebuilt_file, final_acd)
-                    
-                    # Remove the original data folder
-                    shutil.rmtree(data_dir)
-                    
-                    logger.info(f"Successfully packed data folder for {car_name} -> data.acd")
-                    return True
-                else:
-                    logger.error(f"No .rebuilt file generated for {car_name}")
-                    return False
-            else:
-                logger.error(f"Error packing data for {car_name}: QuickBMS returned code {result.returncode}")
-                return False
+        # Pack in-place from data_dir to avoid expensive temp copy per car.
+        temp_acd = os.path.join(data_dir, "data.acd")
+        if os.path.exists(temp_acd):
+            logger.error(f"Unexpected existing '{temp_acd}' before packing; skipping {car_name}")
+            return False
+
+        with open(temp_acd, 'wb') as f:
+            f.write(b'\x00' * 16)
+
+        cmd = [
+            quickbms_path,
+            rebuilder_script,
+            "data.acd",
+            "."
+        ]
+        
+        logger.info(f"Packing data folder for {car_name}...")
+        logger.info(f"Command: {' '.join(cmd)} (in directory: {data_dir})")
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=data_dir)
+        
+        # Log full QuickBMS output to file only (info-level).
+        if result.stdout:
+            logger.info("QuickBMS stdout:")
+            logger.info(result.stdout)
+        if result.stderr:
+            logger.info("QuickBMS stderr:")
+            logger.info(result.stderr)
+
+        if result.returncode != 0:
+            logger.error(f"Error packing data for {car_name}: QuickBMS returned code {result.returncode}")
+            return False
+
+        # Look for the generated .rebuilt file in-place.
+        rebuilt_file = None
+        for root, dirs, files in os.walk(data_dir):
+            for file in files:
+                if file.endswith('.rebuilt'):
+                    rebuilt_file = os.path.join(root, file)
+                    break
+            if rebuilt_file:
+                break
+
+        if not rebuilt_file:
+            logger.error(f"No .rebuilt file generated for {car_name}")
+            return False
+
+        # Move the .rebuilt file to data.acd in the car root and remove unpacked data folder.
+        final_acd = os.path.join(car_build_dir, "data.acd")
+        if os.path.exists(final_acd):
+            os.remove(final_acd)
+        shutil.move(rebuilt_file, final_acd)
+        shutil.rmtree(data_dir)
+        
+        logger.info(f"Successfully packed data folder for {car_name} -> data.acd")
+        return True
                 
     except Exception as e:
         logger.error(f"Error packing data folder for {car_name}: {e}")
         return False
+    finally:
+        if temp_acd and os.path.exists(temp_acd):
+            try:
+                os.remove(temp_acd)
+            except Exception:
+                pass
 
 def pack_release_zip(script_dir, build_dir, project_name, version):
     """
@@ -529,41 +536,39 @@ def build_one_car(car_name, source_dir, build_dir, global_base_dir, ignore_patte
         # Copy global base folder contents into the car build folder
         progress.update(car_name, "Copying base content")
         try:
-            for base_item in os.listdir(global_base_dir):
-                src_item = os.path.join(global_base_dir, base_item)
-                if should_ignore_file(src_item, ignore_patterns):
-                    logger.info(f"Skipping ignored file/folder '{base_item}'")
+            for entry in os.scandir(global_base_dir):
+                if should_ignore_file(entry.path, ignore_patterns):
+                    logger.info(f"Skipping ignored file/folder '{entry.name}'")
                     continue
 
-                dst_item = os.path.join(car_build_dir, base_item)
-                if os.path.isdir(src_item):
-                    shutil.copytree(src_item, dst_item, dirs_exist_ok=True)
-                    logger.info(f"Copied folder '{base_item}' from base into '{car_name}'")
+                dst_item = os.path.join(car_build_dir, entry.name)
+                if entry.is_dir():
+                    shutil.copytree(entry.path, dst_item, dirs_exist_ok=True, copy_function=shutil.copyfile)
+                    logger.info(f"Copied folder '{entry.name}' from base into '{car_name}'")
                 else:
-                    shutil.copy2(src_item, dst_item)
-                    logger.info(f"Copied file '{base_item}' from base into '{car_name}'")
+                    shutil.copyfile(entry.path, dst_item)
+                    logger.info(f"Copied file '{entry.name}' from base into '{car_name}'")
         except Exception as e:
             logger.error(f"Error copying base folder contents for {car_name}: {e}")
             return False
 
         # Copy all other files and folders from the car's source folder
         progress.update(car_name, "Merging car content")
-        for sub_item in os.listdir(item_path):
-            src_item = os.path.join(item_path, sub_item)
-            if should_ignore_file(src_item, ignore_patterns):
-                logger.info(f"Skipping ignored file/folder '{sub_item}'")
+        for entry in os.scandir(item_path):
+            if should_ignore_file(entry.path, ignore_patterns):
+                logger.info(f"Skipping ignored file/folder '{entry.name}'")
                 continue
 
-            dst_item = os.path.join(car_build_dir, sub_item)
+            dst_item = os.path.join(car_build_dir, entry.name)
             try:
-                if os.path.isdir(src_item):
-                    merge_directories(src_item, dst_item, ignore_patterns)
-                    logger.info(f"Merged folder '{sub_item}' for {car_name}")
+                if entry.is_dir():
+                    merge_directories(entry.path, dst_item, ignore_patterns)
+                    logger.info(f"Merged folder '{entry.name}' for {car_name}")
                 else:
-                    shutil.copy2(src_item, dst_item)
-                    logger.info(f"Copied file '{sub_item}' for {car_name}")
+                    shutil.copyfile(entry.path, dst_item)
+                    logger.info(f"Copied file '{entry.name}' for {car_name}")
             except Exception as e:
-                logger.error(f"Error copying {src_item} for {car_name}: {e}")
+                logger.error(f"Error copying {entry.path} for {car_name}: {e}")
 
         # Rename model.kn5 to [CAR_FOLDER_NAME].kn5 in the car build folder
         progress.update(car_name, "Renaming model")
@@ -622,7 +627,7 @@ def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     source_dir = os.path.join(script_dir, "Source")
     build_dir = os.path.join(script_dir, "Build")
-    log_path = setup_logging(script_dir)
+    log_path, _ = setup_logging(script_dir)
     logger.info(f"Build log initialized at {log_path}")
     
     # Parse info.toml from the Source folder
@@ -697,13 +702,12 @@ def main():
     logger.info(f"Created Build folder at '{build_dir}'")
     
     cars_to_build = []
-    for item in os.listdir(source_dir):
-        item_path = os.path.join(source_dir, item)
-        if not os.path.isdir(item_path) or item.lower() == "base":
+    for entry in os.scandir(source_dir):
+        if not entry.is_dir() or entry.name.lower() == "base":
             continue
-        if args.only and item != args.only:
+        if args.only and entry.name != args.only:
             continue
-        cars_to_build.append(item)
+        cars_to_build.append(entry.name)
 
     total_cars = len(cars_to_build)
     if total_cars == 0:
