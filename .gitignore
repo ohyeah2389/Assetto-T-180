@@ -26,3 +26,4 @@ preview.*
 /Build
 /ohyeah2389_t180
 /Releases
+__pycache__/
