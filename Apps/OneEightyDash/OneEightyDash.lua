@@ -1,9 +1,8 @@
 -- OneEightyDash CSP Lua App
 -- Authored by ohyeah2389
 
-local car = ac.getCar(0)
-local physics = ac.getCarPhysics(0)
-local sim = ac.getSim()
+local car = ac.getCar(0) or {}
+local physics = ac.getCarPhysics(0) or {}
 Font_whiteRabbit = ui.DWriteFont("fonts/whitrabt.ttf")
 
 Config = {
