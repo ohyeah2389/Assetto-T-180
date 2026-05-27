@@ -24,15 +24,21 @@ Note: This script requires Python 3.8+ for the use of shutil.copytree(..., dirs_
 import os
 import shutil
 import sys
+import logging
 import json
+import threading
 from datetime import datetime
 import fnmatch
-from typing import List, Optional
+from typing import List
 import configparser
 import subprocess
 import tempfile
 import argparse
 import zipfile
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+logger = logging.getLogger("builder")
+PROGRESS_BAR_WIDTH = 28
 
 class CaseConfigParser(configparser.ConfigParser):
     """ConfigParser that leaves option keys untouched."""
@@ -46,7 +52,7 @@ except ImportError:
     try:
         import tomli as tomllib
     except ImportError:
-        print("Please install tomli or use Python 3.11+ for tomllib support.")
+        sys.stderr.write("Please install tomli or use Python 3.11+ for tomllib support.\n")
         sys.exit(1)
 
 def confirm_deletion(build_dir):
@@ -84,9 +90,9 @@ def update_lods_ini(lods_ini_path, kn5_filename):
 
         with open(lods_ini_path, "w") as f:
             f.writelines(lines)
-        print(f"Updated lods.ini in {os.path.dirname(lods_ini_path)}")
+        logger.info(f"Updated lods.ini in {os.path.dirname(lods_ini_path)}")
     except Exception as e:
-        print(f"Failed to write {lods_ini_path}: {e}")
+        logger.error(f"Failed to write {lods_ini_path}: {e}")
 
 def should_ignore_file(path: str, ignore_patterns: List[str]) -> bool:
     """
@@ -122,26 +128,6 @@ def should_ignore_file(path: str, ignore_patterns: List[str]) -> bool:
     
     return False
 
-def parse_info_toml(toml_path):
-    """
-    Parse info.toml for version, year, and ignore patterns.
-    """
-    try:
-        with open(toml_path, "rb") as f:
-            data = tomllib.load(f)
-        info = data.get("info", {})
-        version = info.get("version")
-        year = info.get("year")
-        
-        # Get ignore patterns, defaulting to just ~* if not specified
-        build_config = data.get("build", {})
-        ignore_patterns = build_config.get("ignore", ["~*"])
-        
-        return version, year, ignore_patterns
-    except Exception as e:
-        print(f"Error parsing {toml_path}: {e}")
-        return None, None, ["~*"]
-
 def update_ui_json(ui_json_path, version, year):
     """
     Loads the ui/ui_car.json file, updates its 'version' and 'year',
@@ -151,7 +137,7 @@ def update_ui_json(ui_json_path, version, year):
         with open(ui_json_path, "r") as f:
             data = json.load(f)
     except Exception as e:
-        print(f"Failed to load {ui_json_path}: {e}")
+        logger.error(f"Failed to load {ui_json_path}: {e}")
         return
 
     data["version"] = version
@@ -166,28 +152,9 @@ def update_ui_json(ui_json_path, version, year):
     try:
         with open(ui_json_path, "w") as f:
             json.dump(data, f, indent=4)
-        print(f"Updated ui_car.json at {ui_json_path}")
+        logger.info(f"Updated ui_car.json at {ui_json_path}")
     except Exception as e:
-        print(f"Failed to write {ui_json_path}: {e}")
-
-def update_guids_txt(guids_path, old_name, new_name):
-    """
-    Updates the GUIDs.txt file, replacing all occurrences of the old bank name
-    with the new bank name in both bank:/ references and event:/cars/ paths.
-    """
-    try:
-        with open(guids_path, 'r') as f:
-            content = f.read()
-        
-        # Replace both the bank reference and event paths
-        updated_content = content.replace(f"bank:/{old_name}", f"bank:/{new_name}")
-        updated_content = updated_content.replace(f"event:/cars/{old_name}/", f"event:/cars/{new_name}/")
-        
-        with open(guids_path, 'w') as f:
-            f.write(updated_content)
-        print(f"Updated bank and event references in GUIDs.txt from '{old_name}' to '{new_name}'")
-    except Exception as e:
-        print(f"Error updating GUIDs.txt: {e}")
+        logger.error(f"Failed to write {ui_json_path}: {e}")
 
 def handle_sfx_files(car_build_dir, car_name):
     """
@@ -208,15 +175,24 @@ def handle_sfx_files(car_build_dir, car_name):
             
             try:
                 os.rename(old_bank_path, new_bank_path)
-                print(f"Renamed sfx bank file from '{file}' to '{new_bank_name}'")
+                logger.info(f"Renamed sfx bank file from '{file}' to '{new_bank_name}'")
                 
                 # Update GUIDs.txt
                 guids_path = os.path.join(sfx_dir, "GUIDs.txt")
                 if os.path.exists(guids_path):
-                    old_name = os.path.splitext(file)[0]
-                    update_guids_txt(guids_path, old_name, car_name)
+                    try:
+                        with open(guids_path, 'r') as f:
+                            content = f.read()
+                        old_name = os.path.splitext(file)[0]
+                        updated_content = content.replace(f"bank:/{old_name}", f"bank:/{car_name}")
+                        updated_content = updated_content.replace(f"event:/cars/{old_name}/", f"event:/cars/{car_name}/")
+                        with open(guids_path, 'w') as f:
+                            f.write(updated_content)
+                        logger.info(f"Updated bank and event references in GUIDs.txt from '{old_name}' to '{car_name}'")
+                    except Exception as e:
+                        logger.error(f"Error updating GUIDs.txt: {e}")
             except Exception as e:
-                print(f"Error handling sfx files: {e}")
+                logger.error(f"Error handling sfx files: {e}")
             break
 
 def merge_ini_files(base_ini_path, addon_ini_path, output_path):
@@ -250,7 +226,7 @@ def merge_ini_files(base_ini_path, addon_ini_path, output_path):
                 # Remove the section from base config if it exists
                 if base_config.has_section(section_name):
                     base_config.remove_section(section_name)
-                    print(f"Deleted section [{section_name}] from base INI")
+                    logger.info(f"Deleted section [{section_name}] from base INI")
                 continue
             
             # Normal merge logic for non-DELETE sections
@@ -266,10 +242,10 @@ def merge_ini_files(base_ini_path, addon_ini_path, output_path):
         with open(output_path, 'w', encoding='utf-8') as f:
             base_config.write(f, space_around_delimiters=False)
         
-        print(f"Merged INI: {os.path.basename(addon_ini_path)} -> {os.path.basename(output_path)}")
+        logger.info(f"Merged INI: {os.path.basename(addon_ini_path)} -> {os.path.basename(output_path)}")
         
     except Exception as e:
-        print(f"Error merging INI files {base_ini_path} + {addon_ini_path}: {e}")
+        logger.error(f"Error merging INI files {base_ini_path} + {addon_ini_path}: {e}")
 
 def merge_directories(src, dst, ignore_patterns):
     """
@@ -288,9 +264,9 @@ def merge_directories(src, dst, ignore_patterns):
     for item in os.listdir(src):
         s_item = os.path.join(src, item)
         if should_ignore_file(s_item, ignore_patterns):
-            print(f"Skipping ignored file/folder '{item}'")
+            logger.info(f"Skipping ignored file/folder '{item}'")
             continue
-        
+
         if item.endswith('.addon.ini'):
             # Map addon file to its base name
             base_name = item.replace('.addon.ini', '.ini')
@@ -307,21 +283,19 @@ def merge_directories(src, dst, ignore_patterns):
             if os.path.isdir(s_item):
                 if not os.path.exists(d_item):
                     shutil.copytree(s_item, d_item)
-                    print(f"Copied new folder '{item}' from source merge.")
+                    logger.info(f"Copied new folder '{item}' from source merge.")
                 else:
                     merge_directories(s_item, d_item, ignore_patterns)
+                continue
+
+            # Check if this file has a corresponding .addon.ini file
+            if item.endswith('.ini') and item in addon_files:
+                merge_ini_files(s_item, addon_files[item], d_item)
             else:
-                # Check if this file has a corresponding .addon.ini file
-                if item.endswith('.ini') and item in addon_files:
-                    # This is a base INI file with an addon - merge them
-                    addon_path = addon_files[item]
-                    merge_ini_files(s_item, addon_path, d_item)
-                else:
-                    # Regular file copy
-                    shutil.copy2(s_item, d_item)
-                    print(f"Overwritten file '{item}' from source merge.")
+                shutil.copy2(s_item, d_item)
+                logger.info(f"Overwritten file '{item}' from source merge.")
         except Exception as e:
-            print(f"Error merging {s_item} into {d_item}: {e}")
+            logger.error(f"Error merging {s_item} into {d_item}: {e}")
     
     # Third pass: handle .addon.ini files that don't have corresponding base files
     for base_name, addon_path in addon_files.items():
@@ -334,15 +308,66 @@ def merge_directories(src, dst, ignore_patterns):
             try:
                 merge_ini_files(d_item, addon_path, d_item)
             except Exception as e:
-                print(f"Error merging addon {addon_path} with existing {d_item}: {e}")
+                logger.error(f"Error merging addon {addon_path} with existing {d_item}: {e}")
         elif not base_exists_in_src and not base_exists_in_dst:
             # No base file anywhere - treat addon as the complete file
             d_item = os.path.join(dst, base_name)
             try:
                 shutil.copy2(addon_path, d_item)
-                print(f"Copied addon file '{os.path.basename(addon_path)}' as '{base_name}' (no base file found)")
+                logger.info(f"Copied addon file '{os.path.basename(addon_path)}' as '{base_name}' (no base file found)")
             except Exception as e:
-                print(f"Error copying addon file {addon_path}: {e}")
+                logger.error(f"Error copying addon file {addon_path}: {e}")
+
+def setup_logging(script_dir):
+    log_path = os.path.join(script_dir, "build.log")
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+    logger.handlers.clear()
+
+    file_handler = logging.FileHandler(log_path, mode="w", encoding="utf-8")
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.WARNING)
+    console_handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+    return log_path
+
+class BuildProgress:
+    def __init__(self, total):
+        self.total = total
+        self.completed = 0
+        self.active_steps = {}
+        self.lock = threading.Lock()
+
+    def update(self, car_name, step):
+        if self.total <= 0:
+            return
+        with self.lock:
+            self.active_steps[car_name] = step
+            self._render(car_name, step)
+
+    def complete(self, car_name):
+        if self.total <= 0:
+            return
+        with self.lock:
+            self.completed += 1
+            self.active_steps.pop(car_name, None)
+            self._render(car_name, "Done")
+            if self.completed >= self.total:
+                sys.stdout.write("\n")
+                sys.stdout.flush()
+
+    def _render(self, car_name, step):
+        filled = int(PROGRESS_BAR_WIDTH * self.completed / self.total)
+        bar = "#" * filled + "-" * (PROGRESS_BAR_WIDTH - filled)
+        active_count = len(self.active_steps)
+        status = f"[{bar}] {self.completed}/{self.total} done | active:{active_count} | {car_name} | {step}"
+        sys.stdout.write("\r" + status.ljust(140))
+        sys.stdout.flush()
 
 def pack_data_folder(car_build_dir, car_name):
     """
@@ -356,15 +381,15 @@ def pack_data_folder(car_build_dir, car_name):
     
     # Check if QuickBMS and the rebuilder script exist
     if not os.path.exists(quickbms_path):
-        print(f"Warning: QuickBMS not found at {quickbms_path}. Skipping data packing for {car_name}")
+        logger.warning(f"QuickBMS not found at {quickbms_path}. Skipping data packing for {car_name}")
         return False
     
     if not os.path.exists(rebuilder_script):
-        print(f"Warning: Rebuilder script not found at {rebuilder_script}. Skipping data packing for {car_name}")
+        logger.warning(f"Rebuilder script not found at {rebuilder_script}. Skipping data packing for {car_name}")
         return False
     
     if not os.path.exists(data_dir):
-        print(f"Warning: Data folder not found for {car_name}. Skipping data packing.")
+        logger.warning(f"Data folder not found for {car_name}. Skipping data packing.")
         return False
     
     try:
@@ -375,7 +400,7 @@ def pack_data_folder(car_build_dir, car_name):
             os.makedirs(temp_car_dir)
             
             # Copy data folder contents directly to the car folder (not in a data subfolder)
-            print(f"Copying data files to temporary location: {temp_car_dir}")
+            logger.info(f"Copying data files to temporary location: {temp_car_dir}")
             for item in os.listdir(data_dir):
                 src_item = os.path.join(data_dir, item)
                 dst_item = os.path.join(temp_car_dir, item)
@@ -397,26 +422,19 @@ def pack_data_folder(car_build_dir, car_name):
                 "."
             ]
             
-            print(f"Packing data folder for {car_name}...")
-            print(f"Command: {' '.join(cmd)} (in directory: {temp_car_dir})")
+            logger.info(f"Packing data folder for {car_name}...")
+            logger.info(f"Command: {' '.join(cmd)} (in directory: {temp_car_dir})")
             
-            # Change working directory to the temp car folder
-            original_cwd = os.getcwd()
-            os.chdir(temp_car_dir)
+            # Run QuickBMS in the temp car folder without changing global cwd.
+            result = subprocess.run(cmd, capture_output=True, text=True, cwd=temp_car_dir)
             
-            try:
-                result = subprocess.run(cmd, capture_output=True, text=True)
-            finally:
-                # Always restore original working directory
-                os.chdir(original_cwd)
-            
-            # Print QuickBMS output for debugging
+            # Log full QuickBMS output to file only (info-level).
             if result.stdout:
-                print("QuickBMS stdout:")
-                print(result.stdout)
+                logger.info("QuickBMS stdout:")
+                logger.info(result.stdout)
             if result.stderr:
-                print("QuickBMS stderr:")
-                print(result.stderr)
+                logger.info("QuickBMS stderr:")
+                logger.info(result.stderr)
             
             if result.returncode == 0:
                 # Look for the generated .rebuilt file
@@ -435,63 +453,18 @@ def pack_data_folder(car_build_dir, car_name):
                     # Remove the original data folder
                     shutil.rmtree(data_dir)
                     
-                    print(f"Successfully packed data folder for {car_name} -> data.acd")
+                    logger.info(f"Successfully packed data folder for {car_name} -> data.acd")
                     return True
                 else:
-                    print(f"Error: No .rebuilt file generated for {car_name}")
+                    logger.error(f"No .rebuilt file generated for {car_name}")
                     return False
             else:
-                print(f"Error packing data for {car_name}: QuickBMS returned code {result.returncode}")
+                logger.error(f"Error packing data for {car_name}: QuickBMS returned code {result.returncode}")
                 return False
                 
     except Exception as e:
-        print(f"Error packing data folder for {car_name}: {e}")
+        logger.error(f"Error packing data folder for {car_name}: {e}")
         return False
-
-def debug_directory_scan(data_dir):
-    """
-    Debug function to see what files are actually in the directory
-    and test if there are any problematic files.
-    """
-    print(f"DEBUG: Scanning directory {data_dir}")
-    try:
-        files = os.listdir(data_dir)
-        print(f"DEBUG: Found {len(files)} items")
-        
-        for file in sorted(files):
-            file_path = os.path.join(data_dir, file)
-            try:
-                if os.path.isfile(file_path):
-                    size = os.path.getsize(file_path)
-                    # Check for non-ASCII characters
-                    try:
-                        file.encode('ascii')
-                        ascii_ok = "✓"
-                    except UnicodeEncodeError:
-                        ascii_ok = "✗ (non-ASCII)"
-                    
-                    print(f"  FILE: {file} ({size} bytes) {ascii_ok}")
-                else:
-                    print(f"  DIR:  {file}/")
-            except Exception as e:
-                print(f"  ERROR: {file} - {e}")
-                
-        # Check for hidden files on Windows
-        try:
-            import subprocess
-            result = subprocess.run(['dir', '/a', data_dir], 
-                                  capture_output=True, text=True, shell=True)
-            hidden_files = [line for line in result.stdout.split('\n') 
-                          if 'ro.ini' in line.lower()]
-            if hidden_files:
-                print(f"DEBUG: Found ro.ini references in dir output:")
-                for line in hidden_files:
-                    print(f"  {line.strip()}")
-        except:
-            pass
-            
-    except Exception as e:
-        print(f"DEBUG: Error scanning directory: {e}")
 
 def pack_release_zip(script_dir, build_dir, project_name, version):
     """
@@ -500,14 +473,14 @@ def pack_release_zip(script_dir, build_dir, project_name, version):
     Also includes LICENSE.txt if it exists.
     """
     if not os.path.exists(build_dir):
-        print(f"Build directory not found: {build_dir}")
+        logger.error(f"Build directory not found: {build_dir}")
         return False
     
     # Create the zip filename
     zip_filename = f"{project_name} v{version}.zip"
     zip_path = os.path.join(script_dir, zip_filename)
     
-    print(f"Creating release zip: {zip_filename}")
+    logger.info(f"Creating release zip: {zip_filename}")
     
     try:
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -516,7 +489,7 @@ def pack_release_zip(script_dir, build_dir, project_name, version):
                 item_path = os.path.join(build_dir, item)
                 if os.path.isdir(item_path):
                     car_name = item
-                    print(f"Adding car '{car_name}' to release zip...")
+                    logger.info(f"Adding car '{car_name}' to release zip...")
                     
                     # Add all files in the car folder
                     for root, dirs, files in os.walk(item_path):
@@ -532,184 +505,243 @@ def pack_release_zip(script_dir, build_dir, project_name, version):
             license_path = os.path.join(script_dir, "LICENSE.txt")
             if os.path.exists(license_path):
                 zipf.write(license_path, "LICENSE.txt")
-                print("Added LICENSE.txt to release zip")
+                logger.info("Added LICENSE.txt to release zip")
             else:
-                print("Warning: LICENSE.txt not found, skipping")
+                logger.warning("LICENSE.txt not found, skipping")
         
-        print(f"Release zip created successfully: {zip_path}")
+        logger.info(f"Release zip created successfully: {zip_path}")
         return True
         
     except Exception as e:
-        print(f"Error creating release zip: {e}")
+        logger.error(f"Error creating release zip: {e}")
         return False
+
+def build_one_car(car_name, source_dir, build_dir, global_base_dir, ignore_patterns, info_version, info_year, progress):
+    item_path = os.path.join(source_dir, car_name)
+    logger.info(f"Processing car: {car_name}")
+
+    try:
+        # Create a new folder for the car in Build
+        progress.update(car_name, "Preparing build folder")
+        car_build_dir = os.path.join(build_dir, car_name)
+        os.makedirs(car_build_dir, exist_ok=True)
+
+        # Copy global base folder contents into the car build folder
+        progress.update(car_name, "Copying base content")
+        try:
+            for base_item in os.listdir(global_base_dir):
+                src_item = os.path.join(global_base_dir, base_item)
+                if should_ignore_file(src_item, ignore_patterns):
+                    logger.info(f"Skipping ignored file/folder '{base_item}'")
+                    continue
+
+                dst_item = os.path.join(car_build_dir, base_item)
+                if os.path.isdir(src_item):
+                    shutil.copytree(src_item, dst_item, dirs_exist_ok=True)
+                    logger.info(f"Copied folder '{base_item}' from base into '{car_name}'")
+                else:
+                    shutil.copy2(src_item, dst_item)
+                    logger.info(f"Copied file '{base_item}' from base into '{car_name}'")
+        except Exception as e:
+            logger.error(f"Error copying base folder contents for {car_name}: {e}")
+            return False
+
+        # Copy all other files and folders from the car's source folder
+        progress.update(car_name, "Merging car content")
+        for sub_item in os.listdir(item_path):
+            src_item = os.path.join(item_path, sub_item)
+            if should_ignore_file(src_item, ignore_patterns):
+                logger.info(f"Skipping ignored file/folder '{sub_item}'")
+                continue
+
+            dst_item = os.path.join(car_build_dir, sub_item)
+            try:
+                if os.path.isdir(src_item):
+                    merge_directories(src_item, dst_item, ignore_patterns)
+                    logger.info(f"Merged folder '{sub_item}' for {car_name}")
+                else:
+                    shutil.copy2(src_item, dst_item)
+                    logger.info(f"Copied file '{sub_item}' for {car_name}")
+            except Exception as e:
+                logger.error(f"Error copying {src_item} for {car_name}: {e}")
+
+        # Rename model.kn5 to [CAR_FOLDER_NAME].kn5 in the car build folder
+        progress.update(car_name, "Renaming model")
+        model_kn5_path = os.path.join(car_build_dir, "model.kn5")
+        new_kn5_name = f"{car_name}.kn5"
+        new_kn5_path = os.path.join(car_build_dir, new_kn5_name)
+        if os.path.exists(model_kn5_path):
+            try:
+                os.rename(model_kn5_path, new_kn5_path)
+                logger.info(f"Renamed 'model.kn5' to '{new_kn5_name}'")
+            except Exception as e:
+                logger.error(f"Error renaming model.kn5 for {car_name}: {e}")
+        else:
+            logger.warning(f"'model.kn5' not found for {car_name}")
+
+        # After copying all files but before updating lods.ini, handle sfx files
+        progress.update(car_name, "Fixing SFX references")
+        handle_sfx_files(car_build_dir, car_name)
+
+        # Update lods.ini in the built car folder.
+        progress.update(car_name, "Updating lods.ini")
+        lods_ini_path = os.path.join(car_build_dir, "data", "lods.ini")
+        if os.path.exists(lods_ini_path):
+            update_lods_ini(lods_ini_path, new_kn5_name)
+        else:
+            logger.warning(f"'lods.ini' not found in '{car_build_dir}' for {car_name}")
+
+        # Update ui/ui_car.json in the built car folder.
+        progress.update(car_name, "Updating ui_car.json")
+        ui_json_path = os.path.join(car_build_dir, "ui", "ui_car.json")
+        if os.path.exists(ui_json_path):
+            update_ui_json(ui_json_path, info_version, info_year)
+        else:
+            logger.warning(f"'ui/ui_car.json' not found for {car_name}")
+
+        # Pack the data folder into data.acd
+        progress.update(car_name, "Packing data.acd")
+        pack_data_folder(car_build_dir, car_name)
+        return True
+    finally:
+        progress.complete(car_name)
 
 def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Build car folders and optionally create release packages')
-    parser.add_argument('--pack-release', action='store_true', 
-                       help='Create a release zip file from the Build folder contents')
-    parser.add_argument('--only', type=str, metavar='CAR_NAME',
-                       help='Build only the specified car folder instead of all cars')
+    parser.add_argument('--pack-release', action='store_true', help='Create a release zip file from the Build folder contents')
+    parser.add_argument('--only', type=str, metavar='CAR_NAME', help='Build only the specified car folder instead of all cars')
+    parser.add_argument('--workers', type=int, default=4, metavar='N', help='Number of cars to build in parallel (default: 4)')
     args = parser.parse_args()
+
+    if args.workers < 1:
+        sys.stderr.write("--workers must be at least 1.\n")
+        sys.exit(1)
     
     # Get the directory in which the script is located
     script_dir = os.path.dirname(os.path.abspath(__file__))
     source_dir = os.path.join(script_dir, "Source")
     build_dir = os.path.join(script_dir, "Build")
+    log_path = setup_logging(script_dir)
+    logger.info(f"Build log initialized at {log_path}")
     
     # Parse info.toml from the Source folder
     info_toml_path = os.path.join(source_dir, "info.toml")
     if not os.path.exists(info_toml_path):
-        print(f"info.toml not found in {source_dir}")
+        logger.error(f"info.toml not found in {source_dir}")
         sys.exit(1)
-    info_version, info_year, ignore_patterns = parse_info_toml(info_toml_path)
-    
-    # Also get the project name for release packaging
+
     try:
         with open(info_toml_path, "rb") as f:
             data = tomllib.load(f)
-        info = data.get("info", {})
-        project_name = info.get("project", "Unknown Project")
     except Exception as e:
-        print(f"Error getting project name from {info_toml_path}: {e}")
-        project_name = "Unknown Project"
+        logger.error(f"Error parsing {info_toml_path}: {e}")
+        sys.exit(1)
+
+    info = data.get("info", {})
+    build_config = data.get("build", {})
+    info_version = info.get("version")
+    info_year = info.get("year")
+    ignore_patterns = build_config.get("ignore", ["~*"])
+    project_name = info.get("project", "Unknown Project")
     
     if not info_version or not info_year:
-        print("Could not parse version and year from info.toml")
+        logger.error("Could not parse version and year from info.toml")
         sys.exit(1)
     
     # If --pack-release is specified, create release zip and exit
     if args.pack_release:
         if pack_release_zip(script_dir, build_dir, project_name, info_version):
-            print("Release packaging complete.")
+            logger.info("Release packaging complete.")
         else:
-            print("Release packaging failed.")
+            logger.error("Release packaging failed.")
             sys.exit(1)
         return
     
     # Ensure Source folder exists
     if not os.path.exists(source_dir):
-        print(f"Source directory not found: {source_dir}")
+        logger.error(f"Source directory not found: {source_dir}")
         sys.exit(1)
     
     # If --only is specified, validate that the car exists
     if args.only:
         only_car_path = os.path.join(source_dir, args.only)
         if not os.path.exists(only_car_path) or not os.path.isdir(only_car_path):
-            print(f"Error: Car folder '{args.only}' not found in Source directory")
+            logger.error(f"Car folder '{args.only}' not found in Source directory")
             sys.exit(1)
         if args.only.lower() == "base":
-            print("Error: Cannot build the 'base' folder as it's not a car")
+            logger.error("Cannot build the 'base' folder as it's not a car")
             sys.exit(1)
-        print(f"Building only car: {args.only}")
+        logger.info(f"Building only car: {args.only}")
     
     # Get the global base folder from Source/base
     global_base_dir = os.path.join(source_dir, "base")
     if not os.path.exists(global_base_dir):
-        print(f"Global base folder not found: {global_base_dir}")
+        logger.error(f"Global base folder not found: {global_base_dir}")
         sys.exit(1)
     
     # Handle an existing Build directory (delete with prompt if non-empty)
     if os.path.exists(build_dir):
         if not confirm_deletion(build_dir):
-            print("Build process cancelled.")
+            logger.warning("Build process cancelled.")
             sys.exit(0)
         try:
             shutil.rmtree(build_dir)
-            print(f"Deleted existing '{build_dir}' folder.")
+            logger.info(f"Deleted existing '{build_dir}' folder.")
         except Exception as e:
-            print(f"Error deleting {build_dir}: {e}")
+            logger.error(f"Error deleting {build_dir}: {e}")
             sys.exit(1)
     
     # Create a fresh Build directory
     os.makedirs(build_dir)
-    print(f"Created Build folder at '{build_dir}'")
+    logger.info(f"Created Build folder at '{build_dir}'")
     
-    # Process each car folder in Source (skip the "base" folder)
+    cars_to_build = []
     for item in os.listdir(source_dir):
         item_path = os.path.join(source_dir, item)
-        if os.path.isdir(item_path) and item.lower() != "base":
-            # If --only is specified, skip cars that don't match
-            if args.only and item != args.only:
-                continue
-                
-            car_name = item
-            print(f"\nProcessing car: {car_name}")
-            # Create a new folder for the car in Build
-            car_build_dir = os.path.join(build_dir, car_name)
-            os.makedirs(car_build_dir, exist_ok=True)
-            
-            # Copy global base folder contents into the car build folder
-            try:
-                for base_item in os.listdir(global_base_dir):
-                    src_item = os.path.join(global_base_dir, base_item)
-                    if should_ignore_file(src_item, ignore_patterns):
-                        print(f"Skipping ignored file/folder '{base_item}'")
-                        continue
-                        
-                    dst_item = os.path.join(car_build_dir, base_item)
-                    if os.path.isdir(src_item):
-                        shutil.copytree(src_item, dst_item, dirs_exist_ok=True)
-                        print(f"Copied folder '{base_item}' from base into '{car_name}'")
-                    else:
-                        shutil.copy2(src_item, dst_item)
-                        print(f"Copied file '{base_item}' from base into '{car_name}'")
-            except Exception as e:
-                print(f"Error copying base folder contents for {car_name}: {e}")
-                continue
-            
-            # Copy all other files and folders from the car's source folder
-            for sub_item in os.listdir(item_path):
-                src_item = os.path.join(item_path, sub_item)
-                if should_ignore_file(src_item, ignore_patterns):
-                    print(f"Skipping ignored file/folder '{sub_item}'")
-                    continue
-                    
-                dst_item = os.path.join(car_build_dir, sub_item)
+        if not os.path.isdir(item_path) or item.lower() == "base":
+            continue
+        if args.only and item != args.only:
+            continue
+        cars_to_build.append(item)
+
+    total_cars = len(cars_to_build)
+    if total_cars == 0:
+        logger.warning("No car folders found to build.")
+    else:
+        logger.info(f"Building {total_cars} car(s) with {args.workers} worker(s).")
+        progress = BuildProgress(total_cars)
+        failures = 0
+
+        with ThreadPoolExecutor(max_workers=args.workers) as executor:
+            futures = {
+                executor.submit(
+                    build_one_car,
+                    car_name,
+                    source_dir,
+                    build_dir,
+                    global_base_dir,
+                    ignore_patterns,
+                    info_version,
+                    info_year,
+                    progress,
+                ): car_name
+                for car_name in cars_to_build
+            }
+
+            for future in as_completed(futures):
+                car_name = futures[future]
                 try:
-                    if os.path.isdir(src_item):
-                        merge_directories(src_item, dst_item, ignore_patterns)
-                        print(f"Merged folder '{sub_item}' for {car_name}")
-                    else:
-                        shutil.copy2(src_item, dst_item)
-                        print(f"Copied file '{sub_item}' for {car_name}")
+                    if not future.result():
+                        failures += 1
                 except Exception as e:
-                    print(f"Error copying {src_item} for {car_name}: {e}")
-            
-            # Rename model.kn5 to [CAR_FOLDER_NAME].kn5 in the car build folder
-            model_kn5_path = os.path.join(car_build_dir, "model.kn5")
-            new_kn5_name = f"{car_name}.kn5"
-            new_kn5_path = os.path.join(car_build_dir, new_kn5_name)
-            if os.path.exists(model_kn5_path):
-                try:
-                    os.rename(model_kn5_path, new_kn5_path)
-                    print(f"Renamed 'model.kn5' to '{new_kn5_name}'")
-                except Exception as e:
-                    print(f"Error renaming model.kn5 for {car_name}: {e}")
-            else:
-                print(f"Warning: 'model.kn5' not found for {car_name}")
-            
-            # After copying all files but before updating lods.ini, handle sfx files
-            handle_sfx_files(car_build_dir, car_name)
-            
-            # Update lods.ini in the built car folder.
-            lods_ini_path = os.path.join(car_build_dir, "data", "lods.ini")
-            if os.path.exists(lods_ini_path):
-                update_lods_ini(lods_ini_path, new_kn5_name)
-            else:
-                print(f"Warning: 'lods.ini' not found in '{car_build_dir}' for {car_name}")
-            
-            # Update ui/ui_car.json in the built car folder.
-            ui_json_path = os.path.join(car_build_dir, "ui", "ui_car.json")
-            if os.path.exists(ui_json_path):
-                update_ui_json(ui_json_path, info_version, info_year)
-            else:
-                print(f"Warning: 'ui/ui_car.json' not found for {car_name}")
-            
-            # Pack the data folder into data.acd
-            pack_data_folder(car_build_dir, car_name)
-    
-    print("\nBuild process complete.")
+                    failures += 1
+                    logger.error(f"Unhandled error while processing {car_name}: {e}")
+
+        if failures:
+            logger.warning(f"Build completed with {failures} car(s) reporting errors.")
+
+    logger.info("Build process complete.")
 
 if __name__ == "__main__":
     main()
