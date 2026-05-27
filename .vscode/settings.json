@@ -10,9 +10,5 @@
     "Lua.runtime.path": [
         "?.lua",
         "?/init.lua",
-    ],
-    "Lua.diagnostics.disable": [
-        "deprecated",
-        "need-check-nil"
     ]
 }
