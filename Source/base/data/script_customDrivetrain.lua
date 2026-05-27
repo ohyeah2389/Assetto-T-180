@@ -1,12 +1,7 @@
 -- T-180 CSP Physics Script - Custom Drivetrain Physics Module
 -- Authored by ohyeah2389
 
-
-local game = require('script_acConnection')
-
-
 local drivetrain = class("drivetrain")
-
 
 function drivetrain:initialize(params)
     self.drivenWheels = params.drivenWheels or {ac.Wheel.RearLeft, ac.Wheel.RearRight}
@@ -25,10 +20,9 @@ function drivetrain:initialize(params)
     self.id = params.id or "rear"
 end
 
-
 function drivetrain:update(inputShaftSpeed, inputTorque, clutchPosition, dt)
-    local leftWheel = game.carPhysics.wheels[self.drivenWheels[1]]
-    local rightWheel = game.carPhysics.wheels[self.drivenWheels[2]]
+    local leftWheel = Physics.wheels[self.drivenWheels[1]]
+    local rightWheel = Physics.wheels[self.drivenWheels[2]]
 
     -- Clutch engagement is the clutch position to the power of the clutch engage rate
     local clutchEngagement = (clutchPosition ^ self.clutchEngageRate)
@@ -53,11 +47,11 @@ function drivetrain:update(inputShaftSpeed, inputTorque, clutchPosition, dt)
     -- Calculate wheel speed difference for torque distribution
     local wheelSpeedDiff = math.abs(leftWheel.shaftVelocity - rightWheel.shaftVelocity)
     local speedRatio = wheelSpeedDiff / (math.max(math.abs(leftWheel.shaftVelocity), math.abs(rightWheel.shaftVelocity)) + 0.001)
-    
+
     -- Base torque distribution (50/50)
     local leftRatio = 0.5
     local rightRatio = 0.5
-    
+
     -- Adjust distribution based on which wheel is slower (up to 90/10 split)
     if leftWheel.shaftVelocity < rightWheel.shaftVelocity then
         leftRatio = math.lerp(0.5, 0.9, speedRatio)
@@ -101,6 +95,5 @@ function drivetrain:update(inputShaftSpeed, inputTorque, clutchPosition, dt)
 
     return finalFeedback
 end
-
 
 return drivetrain

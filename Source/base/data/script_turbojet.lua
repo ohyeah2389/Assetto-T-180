@@ -3,7 +3,6 @@
 
 
 local config = require('car_config')
-local game = require('script_acConnection')
 local helpers = require('script_helpers')
 local physics = require('script_physics')
 local PIDController = require('script_pid')
@@ -43,8 +42,8 @@ function turbojet:initialize(params)
     self.thrustAfterburner = 0.0
     self.fuelPumpEnabled = true
     self.bleedBoost = 0.0
-    self.heatFrame = game.sim.ambientTemperature + 273.15
-    self.heatCore = game.sim.ambientTemperature + 273.15
+    self.heatFrame = Sim.ambientTemperature + 273.15
+    self.heatCore = Sim.ambientTemperature + 273.15
 
     self.pidDerateHeatCore = PIDController(0.01, 0, 0, 0, 1)
     self.pidDerateHeatFrame = PIDController(0.04, 0, 0, 0, 1)
@@ -70,8 +69,8 @@ function turbojet:reset()
     self.thrust = 0.0
     self.thrustAfterburner = 0.0
     self.bleedBoost = 0.0
-    self.heatFrame = game.sim.ambientTemperature + 273.15
-    self.heatCore = game.sim.ambientTemperature + 273.15
+    self.heatFrame = Sim.ambientTemperature + 273.15
+    self.heatCore = Sim.ambientTemperature + 273.15
 end
 
 function turbojet:update(dt)
@@ -84,7 +83,7 @@ function turbojet:update(dt)
     self.throttleAfterburner = math.applyLag(self.throttleAfterburner, self.targetThrottleAfterburner * burnerDerate, config.turbojet.throttleLagAfterburner, dt)
 
     -- Calculate speed in Mach number (assuming speed of sound = 1225 km/h at sea level)
-    local machNumber = game.car_cphys.speedKmh / 1225
+    local machNumber = Data.speedKmh / 1225
 
     -- Calculate speed-based thrust multiplier
     local speedThrustMultiplier
@@ -137,12 +136,12 @@ function turbojet:update(dt)
     local heatTransferFrameToCoreRate = (self.heatFrame - self.heatCore) * frameTransferToCore
 
     local coreHeating = (coreThrust * thrustHeatCoefCore) + (self.thrustAfterburner * burnerHeatCoefCore)
-    local coreCooling = (game.car_cphys.speedKmh * airSpeedCoolCoefCore) + (self.shaft.angularSpeed * shaftSpeedCoolCoefCore) + staticCoolCoefCore
-    self.heatCore = math.max(self.heatCore + ((coreHeating - coreCooling - heatTransferCoreToFrameRate + heatTransferFrameToCoreRate) * dt), game.sim.ambientTemperature + 273.15)
+    local coreCooling = (Data.speedKmh * airSpeedCoolCoefCore) + (self.shaft.angularSpeed * shaftSpeedCoolCoefCore) + staticCoolCoefCore
+    self.heatCore = math.max(self.heatCore + ((coreHeating - coreCooling - heatTransferCoreToFrameRate + heatTransferFrameToCoreRate) * dt), Sim.ambientTemperature + 273.15)
 
     local frameHeating = (coreThrust * thrustHeatCoefFrame) + (self.thrustAfterburner * burnerHeatCoefFrame)
-    local frameCooling = (game.car_cphys.speedKmh * airSpeedCoolCoefFrame) + (bleedCoolingFrame * bleedCoolCoefFrame) + staticCoolCoefFrame
-    self.heatFrame = math.max(self.heatFrame + ((frameHeating - frameCooling + heatTransferCoreToFrameRate - heatTransferFrameToCoreRate) * dt), game.sim.ambientTemperature + 273.15)
+    local frameCooling = (Data.speedKmh * airSpeedCoolCoefFrame) + (bleedCoolingFrame * bleedCoolCoefFrame) + staticCoolCoefFrame
+    self.heatFrame = math.max(self.heatFrame + ((frameHeating - frameCooling + heatTransferCoreToFrameRate - heatTransferFrameToCoreRate) * dt), Sim.ambientTemperature + 273.15)
 
     if DEBUG then
         local debugPrefix = "turbojet." .. self.id .. "."

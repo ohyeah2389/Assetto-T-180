@@ -1,9 +1,7 @@
 -- Mach 5 CSP Physics Script - Physics Object Class Definition
 -- Authored by ohyeah2389
 
-
 local physics = class("Physics")
-
 
 function physics:initialize(params)
     self.posMax = params.posMax or 1
@@ -33,7 +31,6 @@ function physics:initialize(params)
     end
 end
 
-
 function physics:step(force, dt)
     if self.rotary then
         -- Rotary motion calculations
@@ -46,9 +43,7 @@ function physics:step(force, dt)
             self.angularAccel = 0
         else
             -- Kinetic friction with speed-dependent component
-            local frictionTorque = self.frictionCoef *
-                                 (math.abs(self.angularSpeed) ^ self.expFrictionCoef) *
-                                 math.sign(self.angularSpeed)
+            local frictionTorque = self.frictionCoef * (math.abs(self.angularSpeed) ^ self.expFrictionCoef) * math.sign(self.angularSpeed)
             self.angularAccel = (self.torque - frictionTorque) / self.inertia
         end
 
@@ -67,8 +62,7 @@ function physics:step(force, dt)
     else
         -- Linear motion calculations (updated with similar friction model)
         local distanceFromCenter = self.position - self.center
-        self.force = math.clamp(force * self.mass, -self.forceMax, self.forceMax) + 
-                     (distanceFromCenter * -self.springCoef) + self.constantForce
+        self.force = math.clamp(force * self.mass, -self.forceMax, self.forceMax) + (distanceFromCenter * -self.springCoef) + self.constantForce
 
         -- Static friction
         local staticFrictionForce = self.frictionCoef * self.staticFrictionCoef * self.mass
@@ -108,6 +102,5 @@ function physics:step(force, dt)
         end
     end
 end
-
 
 return physics

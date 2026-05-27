@@ -67,8 +67,6 @@ function perfTracker:saveLapDataToCSV()
 end
 
 function perfTracker:recordDataPoint(dt)
-    local car = ac.getCar(0)
-
     -- Record data point
     local dataPoint = {
         time = car.lapTimeMs / 1000.0,      -- Convert to seconds
@@ -94,7 +92,6 @@ function perfTracker:recordDataPoint(dt)
 end
 
 function perfTracker:checkLapCompletion()
-    local car = ac.getCar(0)
     local currentLapCount = car.lapCount
 
     -- Detect lap completion
@@ -112,9 +109,6 @@ function perfTracker:checkLapCompletion()
 end
 
 function perfTracker:update(dt)
-    local car = ac.getCar(0)
-    local carPhysics = ac.accessCarPhysics()
-
     -- Check for lap completion
     self:checkLapCompletion()
 
@@ -169,10 +163,10 @@ function perfTracker:update(dt)
 
         -- For turbojet cars, get wheel forces directly from CPhys
         -- fx is "Force along car tyre" which should be the driving force
-        wheelForces.frontLeft = carPhysics.wheels[0].fx * -1
-        wheelForces.frontRight = carPhysics.wheels[1].fx * -1
-        wheelForces.rearLeft = carPhysics.wheels[2].fx * -1
-        wheelForces.rearRight = carPhysics.wheels[3].fx * -1
+        wheelForces.frontLeft = Data.wheels[0].fx * -1
+        wheelForces.frontRight = Data.wheels[1].fx * -1
+        wheelForces.rearLeft = Data.wheels[2].fx * -1
+        wheelForces.rearRight = Data.wheels[3].fx * -1
 
         totalWheelForce = wheelForces.frontLeft + wheelForces.frontRight + wheelForces.rearLeft + wheelForces.rearRight
 

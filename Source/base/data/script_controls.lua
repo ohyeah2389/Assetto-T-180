@@ -1,9 +1,7 @@
 -- T-180 CSP Physics Script - Extended Controls Module
 -- Authored by ohyeah2389
 
-
 local state = require('script_state')
-
 
 local controls = {
     jumpJack = {
@@ -25,7 +23,6 @@ local controls = {
     }
 }
 
-
 controls.turbine.fuelPump:onPressed(function()
     state.turbine.fuelPumpEnabled = not state.turbine.fuelPumpEnabled
 end)
@@ -44,6 +41,5 @@ function controls.update()
     state.jumpJackSystem.jackRL.active = controls.jumpJack.rear:down() or controls.jumpJack.right:down() or controls.jumpJack.all:down()
     state.jumpJackSystem.jackRR.active = controls.jumpJack.rear:down() or controls.jumpJack.left:down() or controls.jumpJack.all:down()
 end
-
 
 return controls

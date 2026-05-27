@@ -1,9 +1,7 @@
 -- T-180 CSP Physics Script - 360deg Wheel Angle Control Computer
 -- Authored by ohyeah2389
 
-
 local ThreeSixtyCtrlr = class("ThreeSixtyCtrlr")
-
 
 function ThreeSixtyCtrlr:initialize()
     -- Calculate initial piston lengths at 0 degrees rotation
@@ -23,7 +21,6 @@ function ThreeSixtyCtrlr:initialize()
     -- Control parameters
     self.maxServoSlewRate = 200.0  -- Maximum steering servo angle change in degrees per second
 end
-
 
 function ThreeSixtyCtrlr:calculatePistonLengths(target_angle)
     -- Normalize angle to -180 to 180 range
@@ -47,7 +44,6 @@ function ThreeSixtyCtrlr:calculatePistonLengths(target_angle)
 
     return p1_offset, p2_offset
 end
-
 
 function ThreeSixtyCtrlr:update(steerNormalized, dt)
     -- Get current steering input (-1 to 1) and convert to angle (-180 to 180)
@@ -90,13 +86,11 @@ function ThreeSixtyCtrlr:update(steerNormalized, dt)
     return p1_offset, p2_offset
 end
 
-
 function ThreeSixtyCtrlr:reset()
     self.current_p1_offset = 0
     self.current_p2_offset = 0
     self.current_angle = 0
     self.last_steer_input = 0
 end
-
 
 return ThreeSixtyCtrlr

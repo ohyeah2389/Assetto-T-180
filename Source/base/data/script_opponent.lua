@@ -1,14 +1,6 @@
 -- T-180 CSP Physics Script - Opponent Physics Module
 -- Authored by ohyeah2389
 
-local steerGainAtSpeed = ac.DataLUT11():add(0, 10):add(400, 10):add(800, 10)
-local frontMultAtSpeed = ac.DataLUT11():add(0, -1.7):add(300, -1.7):add(800, -1.7)
-local rearMultAtSpeed = ac.DataLUT11():add(0, 1):add(200, 1):add(600, 1)
-
-local data = ac.accessCarPhysics()
-local carphys = ac.getCarPhysics(0)
-local PIDController = require("script_pid")
-
 -- Settings
 local aiSteerRateLimit = 600
 local aiSteerDampingHz = 60
@@ -16,6 +8,11 @@ local accelRiseHz = 30
 local accelFallHz = 30
 local speedRiseHz = 1
 local speedFallHz = 15
+local steerGainAtSpeed = ac.DataLUT11():add(0, 10):add(400, 10):add(800, 10)
+local frontMultAtSpeed = ac.DataLUT11():add(0, -1.7):add(300, -1.7):add(800, -1.7)
+local rearMultAtSpeed = ac.DataLUT11():add(0, 1):add(200, 1):add(600, 1)
+
+local PIDController = require("script_pid")
 
 local Wheel = class("Wheel")
 
@@ -25,40 +22,37 @@ function Wheel:initialize(wheelIndex)
 end
 
 function Wheel:update(dt, steeringAngle, inputGas, inputBrake)
-    local wheelData = data.wheels[self.wheelIndex]
+    local wheelData = Data.wheels[self.wheelIndex]
 
     -- Suspension
-    local height = physics.raycastTrack(wheelData.position, -data.up, 2)
+    local height = physics.raycastTrack(wheelData.position, -Data.up, 2)
     if height == -1 then height = 2 end
     local liftStrength = self.liftPID:update(0.4, height, dt)
-    ac.addHubForce2(self.wheelIndex, wheelData.position - (-wheelData.up * 0.4), data.up * liftStrength)
+    ac.addHubForce2(self.wheelIndex, wheelData.position - (-wheelData.up * 0.4), Data.up * liftStrength)
 
     -- Convert steering angle to radians
     local steerRad = math.rad(steeringAngle or 0)
     local cosSteer = math.cos(steerRad)
     local sinSteer = math.sin(steerRad)
 
-    -- IMPORTANT:
-    -- For a steered wheel, "local velocity" must be measured in the wheel's rotated frame,
-    -- not the car frame. Otherwise steering has little/no effect (especially with anisotropic
-    -- damping like 10000 lateral vs 100 longitudinal).
-    local wheelSide = data.side * cosSteer - data.look * sinSteer
-    local wheelLook = data.side * sinSteer + data.look * cosSteer
+    -- Calculate wheel facing vectors
+    local wheelSide = Data.side * cosSteer - Data.look * sinSteer
+    local wheelLook = Data.side * sinSteer + Data.look * cosSteer
 
-    -- Calculate velocity in the *wheel* frame
+    -- Calculate velocity in the wheel's frame
     local localVel = vec3(
         wheelData.velocity:dot(wheelSide),
-        wheelData.velocity:dot(data.up),
+        wheelData.velocity:dot(Data.up),
         wheelData.velocity:dot(wheelLook)
     )
 
-    -- Grip and drive forces in wheel frame
-    local gripForce = -localVel.x * 250 * math.clamp(data.gForces.y, 1, 4)
+    -- Grip and drive forces in the wheel's frame
+    local gripForce = -localVel.x * 250 * math.clamp(Data.gForces.y, 1, 4)
     local driveForce = (5000 * inputGas) + (-localVel.z * 400 * inputBrake)
 
-    -- Convert to world space using the steered wheel frame
+    -- Convert to world space from the steered wheel frame
     local forceWorld = wheelSide * gripForce + wheelLook * driveForce
-    ac.addHubForce2(self.wheelIndex, wheelData.position, forceWorld * (physics.raycastTrack(wheelData.position, -data.up, 0.45) > -1 and 1 or 0))
+    ac.addHubForce2(self.wheelIndex, wheelData.position, forceWorld * (physics.raycastTrack(wheelData.position, -Data.up, 0.45) > -1 and 1 or 0))
 
     return height, liftStrength
 end
@@ -167,7 +161,7 @@ local function runCustomAIControl(dt)
 
     local toTarget = targetPoint - car.position
     if toTarget:length() < 0.01 then
-        toTarget = car.look  -- avoid zero-length and keep steering stable
+        toTarget = car.look -- avoid zero-length and keep steering stable
     end
 
     -- Steering target in car space (car-local axes)
@@ -245,15 +239,15 @@ function Opponent:update(dt)
 
     ac.overrideGasInput(autoGas)
 
-    local steeringAngleFront = autoSteer * steerGainAtSpeed:get(data.speedKmh) * frontMultAtSpeed:get(data.speedKmh)
-    local steeringAngleRear = autoSteer * steerGainAtSpeed:get(data.speedKmh) * rearMultAtSpeed:get(data.speedKmh)
+    local steeringAngleFront = autoSteer * steerGainAtSpeed:get(Data.speedKmh) * frontMultAtSpeed:get(Data.speedKmh)
+    local steeringAngleRear = autoSteer * steerGainAtSpeed:get(Data.speedKmh) * rearMultAtSpeed:get(Data.speedKmh)
     local height_FL, strength_FL = self.wheel_FL:update(dt, steeringAngleFront, autoGas, autoBrake)
     local height_FR, strength_FR = self.wheel_FR:update(dt, steeringAngleFront, autoGas, autoBrake)
     local height_RL, strength_RL = self.wheel_RL:update(dt, steeringAngleRear, autoGas, autoBrake)
     local height_RR, strength_RR = self.wheel_RR:update(dt, steeringAngleRear, autoGas, autoBrake)
 
-    local averageWheelSpeed = (data.wheels[0].angularSpeed + data.wheels[1].angularSpeed + data.wheels[2].angularSpeed + data.wheels[3].angularSpeed) / 4
-    local drivetrainSpeed = averageWheelSpeed * carphys.finalRatio * carphys.gearRatios[7]
+    local averageWheelSpeed = (Data.wheels[0].angularSpeed + Data.wheels[1].angularSpeed + Data.wheels[2].angularSpeed + Data.wheels[3].angularSpeed) / 4
+    local drivetrainSpeed = averageWheelSpeed * Physics.finalRatio * Physics.gearRatios[7]
 
     ac.setEngineRPM(drivetrainSpeed * (60/(2*math.pi)))
 

@@ -1,12 +1,9 @@
 -- T-180 CSP Physics Script - Extended Turbine Physics Module
 -- Authored by ohyeah2389
 
-
 local config = require('car_config')
 local physics = require('script_physics')
 local FADEC = require('script_fadec')
-local game = require('script_acConnection')
-
 
 local Turboshaft = class("Turboshaft")
 
@@ -38,8 +35,8 @@ function Turboshaft:initialize(turbineId)
     self.gasTurbine.angularSpeed = config.turboshaft.designMaxNGRPM * math.pi / 60
 
     -- Ambient conditions
-    self.ambientPressure = ac.getAirPressure(game.car_cphys.position) -- kPa at sea level
-    self.ambientTemp = 273.15 + game.car_cphys.ambientTemperature
+    self.ambientPressure = ac.getAirPressure(Data.position) -- kPa at sea level
+    self.ambientTemp = 273.15 + Data.ambientTemperature
     self.massFlowAirCoefficient = 1.5                                 -- kg/s
 
     -- Thermodynamic properties
@@ -131,7 +128,7 @@ function Turboshaft:update(dt)
     self.fuelSystem.commandedFuelFlow = self.fuelPumpEnabled and self.fadec:update(dt, self.sensors, controls, self.maxNG, self.maxTIT) or 0
 
     -- Afterburner control logic
-    local throttleLevel = car.extraB and 1 or (1 - game.car_cphys.clutch) * (car.isInPit and 0 or 1)
+    local throttleLevel = car.extraB and 1 or (1 - Data.clutch) * (car.isInPit and 0 or 1)
     self.afterburner.throttleAfterburner = math.applyLag(
         self.afterburner.throttleAfterburner,
         throttleLevel,
@@ -145,7 +142,7 @@ function Turboshaft:update(dt)
 
     -- Calculate ram air effects at inlet
     local speedOfSound = math.sqrt(self.specificHeatRatio * 287 * self.ambientTemp) -- m/s, R=287 J/(kg·K) for air
-    local machNumber = game.car_cphys.localVelocity:length() / speedOfSound
+    local machNumber = Data.localVelocity:length() / speedOfSound
 
     -- Inlet pressure recovery (simple inlet model with transonic effects)
     -- Subsonic: near-perfect recovery, Transonic: shock losses, Supersonic: normal shock losses

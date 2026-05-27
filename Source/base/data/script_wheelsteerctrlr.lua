@@ -2,22 +2,19 @@
 -- Authored by ohyeah2389
 
 local state = require('script_state')
-local game = require('script_acConnection')
 local helpers = require('script_helpers')
 local PIDController = require('script_pid')
 local threesixtyctrlr = require('script_threesixtyctrlr')
 
 local WheelSteerCtrlr = class("WheelSteerCtrlr")
 
-
 local threesixtyctrlr_FL = threesixtyctrlr()
 local threesixtyctrlr_FR = threesixtyctrlr()
 local threesixtyctrlr_RL = threesixtyctrlr()
 local threesixtyctrlr_RR = threesixtyctrlr()
 
-
 function WheelSteerCtrlr:initialize()
-    self.steerInputLast = game.car_cphys.steer
+    self.steerInputLast = Data.steer
     self.lastFFB = 0
     self.steerChangeHistory = {0, 0, 0, 0, 0}  -- Circular buffer for averaging
     self.historyIndex = 1
@@ -62,25 +59,24 @@ function WheelSteerCtrlr:initialize()
     self:updateSetupValues()
 end
 
-
 function WheelSteerCtrlr:calculateFFB(dt)
     -- Prevent division by zero
     dt = math.max(dt, 0.001)
 
     -- Add safety check for NaN/infinite values
-    if not game.car_cphys.steer or not self.steerInputLast then
+    if not Data.steer or not self.steerInputLast then
         return 0
     end
 
     self.maxSteer = 90 * ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_20").value
     local steerOverLimitDelta = math.max(0, math.abs(car.steer) - self.maxSteer)
 
-    local steerChange = (game.car_cphys.steer - self.steerInputLast) / dt
-    self.steerInputLast = game.car_cphys.steer
+    local steerChange = (Data.steer - self.steerInputLast) / dt
+    self.steerInputLast = Data.steer
 
     -- Add null checks for wheel slip angles
-    local frontSlipAngle = (game.car_cphys.wheels[0].slipAngle or 0) + (game.car_cphys.wheels[1].slipAngle or 0)
-    local rearSlipAngle = (game.car_cphys.wheels[2].slipAngle or 0) + (game.car_cphys.wheels[3].slipAngle or 0)
+    local frontSlipAngle = (Data.wheels[0].slipAngle or 0) + (Data.wheels[1].slipAngle or 0)
+    local rearSlipAngle = (Data.wheels[2].slipAngle or 0) + (Data.wheels[3].slipAngle or 0)
 
     -- Get FFB effect values
     local frontSteerGain = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_2").value or 0) / 5
@@ -94,7 +90,7 @@ function WheelSteerCtrlr:calculateFFB(dt)
     local frontSlipEffect = math.clamp(frontSlipAngle * -5, -6, 6) * frontSlipGain
     local rearSteerEffect = (self.desiredSteerRL + self.desiredSteerRR) * rearSteerGain
     local rearSlipEffect = math.clamp(rearSlipAngle * -15, -6, 6) * rearSlipGain
-    local latGEffect = math.clamp(game.car_cphys.gForces.x or 0, -5, 5) * latGGain
+    local latGEffect = math.clamp(Data.gForces.x or 0, -5, 5) * latGGain
     local steerLimitEffect = math.clamp((steerOverLimitDelta ^ 2) * steerLimitGain, -(steerLimitGain * 2), (steerLimitGain * 2))
     local helperEffect = frontSteerEffect + frontSlipEffect + rearSteerEffect + rearSlipEffect + latGEffect
     if math.abs(steerLimitEffect) > 0 then
@@ -129,7 +125,7 @@ function WheelSteerCtrlr:calculateFFB(dt)
     avgSteerChange = avgSteerChange / #self.steerChangeHistory
 
     -- Calculate new FFB with exponential smoothing
-    local targetFFB = (game.car_cphys.steer * 0.2 or 0) + (avgSteerChange * 0.03)
+    local targetFFB = (Data.steer * 0.2 or 0) + (avgSteerChange * 0.03)
     local smoothedFFB = self.lastFFB * self.ffbSmoothing + targetFFB * (1 - self.ffbSmoothing)
 
     -- Final safety check before returning
@@ -140,7 +136,6 @@ function WheelSteerCtrlr:calculateFFB(dt)
     self.lastFFB = smoothedFFB
     return math.clamp(smoothedFFB * self.ffbMultiplier, -1, 1)
 end
-
 
 function WheelSteerCtrlr:updateSetupValues()
     -- Only check for updates every N frames to reduce overhead
@@ -177,12 +172,11 @@ function WheelSteerCtrlr:updateSetupValues()
     self.ffbMultiplier = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_0").value or 10) / 10
 end
 
-
 function WheelSteerCtrlr:update(dt)
     self:updateSetupValues()
-    self.isReversing = helpers.getWheelsOffGround() > 3 or game.car_cphys.localVelocity.z < 0
+    self.isReversing = helpers.getWheelsOffGround() > 3 or Data.localVelocity.z < 0
 
-    local driftAngle = math.atan2(game.car_cphys.localVelocity.x, game.car_cphys.localVelocity.z) * helpers.mapRange(car.speedKmh, 2, 20, 0.1, 1, true)
+    local driftAngle = math.atan2(Data.localVelocity.x, Data.localVelocity.z) * helpers.mapRange(car.speedKmh, 2, 20, 0.1, 1, true)
 
     -- Check for drift angle inversion (crossing +/-pi boundary)
     local angleDiff = driftAngle - self.lastDriftAngle
@@ -201,13 +195,13 @@ function WheelSteerCtrlr:update(dt)
 
     self.lastDriftAngle = driftAngle
 
-    local cornerControl = (1 - game.car_cphys.clutch)
+    local cornerControl = (1 - Data.clutch)
     local cornerControlGainF = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_10").value or 5) / 20
     local cornerControlGainR = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_11").value or 8) / 20
     local cornerControlCurve = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_12").value or 1)
     local cornerControlYawRateMult = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_15").value or 0) / 2
 
-    local steerNormalizedInput = math.clamp(game.car_cphys.steer / (self.maxSteer / 180), -1, 1)
+    local steerNormalizedInput = math.clamp(Data.steer / (self.maxSteer / 180), -1, 1)
     local steerSigmoidInput
     if cornerControlCurve < 0 then
         -- Inverted sigmoid
@@ -228,10 +222,10 @@ function WheelSteerCtrlr:update(dt)
 
     local driftAngleMultiplier = helpers.mapRange(math.abs(driftAngle) * math.sign(steerNormalizedInput), math.rad(90), math.rad(180), 1, 8, true)
 
-    local slipAngleFL = (game.car_cphys.wheels[0].slipAngle ~= 0 and game.car_cphys.wheels[0].slipAngle or self.slipAngleFL_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true) * math.clamp(game.car_cphys.wheels[0].load, 0, 1)
-    local slipAngleFR = (game.car_cphys.wheels[1].slipAngle ~= 0 and game.car_cphys.wheels[1].slipAngle or self.slipAngleFR_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true) * math.clamp(game.car_cphys.wheels[1].load, 0, 1)
-    local slipAngleRL = (game.car_cphys.wheels[2].slipAngle ~= 0 and game.car_cphys.wheels[2].slipAngle or self.slipAngleRL_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true) * math.clamp(game.car_cphys.wheels[2].load, 0, 1)
-    local slipAngleRR = (game.car_cphys.wheels[3].slipAngle ~= 0 and game.car_cphys.wheels[3].slipAngle or self.slipAngleRR_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true) * math.clamp(game.car_cphys.wheels[3].load, 0, 1)
+    local slipAngleFL = (Data.wheels[0].slipAngle ~= 0 and Data.wheels[0].slipAngle or self.slipAngleFL_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true) * math.clamp(Data.wheels[0].load, 0, 1)
+    local slipAngleFR = (Data.wheels[1].slipAngle ~= 0 and Data.wheels[1].slipAngle or self.slipAngleFR_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true) * math.clamp(Data.wheels[1].load, 0, 1)
+    local slipAngleRL = (Data.wheels[2].slipAngle ~= 0 and Data.wheels[2].slipAngle or self.slipAngleRL_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true) * math.clamp(Data.wheels[2].load, 0, 1)
+    local slipAngleRR = (Data.wheels[3].slipAngle ~= 0 and Data.wheels[3].slipAngle or self.slipAngleRR_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true) * math.clamp(Data.wheels[3].load, 0, 1)
 
     self.slipAngleFL_prev = slipAngleFL
     self.slipAngleFR_prev = slipAngleFR
@@ -281,10 +275,10 @@ function WheelSteerCtrlr:update(dt)
     self.steerStateRL = self.desiredSteerRL * (state.control.lockedRears and 0 or 1)
     self.steerStateRR = self.desiredSteerRR * (state.control.lockedRears and 0 or 1)
 
-    game.car_cphys.controllerInputs[0], game.car_cphys.controllerInputs[1] = threesixtyctrlr_FL:update(self.steerStateFL, dt)
-    game.car_cphys.controllerInputs[2], game.car_cphys.controllerInputs[3] = threesixtyctrlr_FR:update(-self.steerStateFR, dt)
-    game.car_cphys.controllerInputs[4], game.car_cphys.controllerInputs[5] = threesixtyctrlr_RL:update(self.steerStateRL, dt)
-    game.car_cphys.controllerInputs[6], game.car_cphys.controllerInputs[7] = threesixtyctrlr_RR:update(-self.steerStateRR, dt)
+    Data.controllerInputs[0], Data.controllerInputs[1] = threesixtyctrlr_FL:update(self.steerStateFL, dt)
+    Data.controllerInputs[2], Data.controllerInputs[3] = threesixtyctrlr_FR:update(-self.steerStateFR, dt)
+    Data.controllerInputs[4], Data.controllerInputs[5] = threesixtyctrlr_RL:update(self.steerStateRL, dt)
+    Data.controllerInputs[6], Data.controllerInputs[7] = threesixtyctrlr_RR:update(-self.steerStateRR, dt)
 
     self.steerStateFL_prev = self.steerStateFL
     self.steerStateFR_prev = self.steerStateFR
@@ -301,10 +295,10 @@ function WheelSteerCtrlr:update(dt)
         ac.debug("steerctrl.steerStateFR", self.steerStateFR)
         ac.debug("steerctrl.steerStateRL", self.steerStateRL)
         ac.debug("steerctrl.steerStateRR", self.steerStateRR)
-        ac.debug("steerctrl.localVelocity.x", game.car_cphys.localVelocity.x)
-        ac.debug("steerctrl.localVelocity.y", game.car_cphys.localVelocity.y)
-        ac.debug("steerctrl.localVelocity.z", game.car_cphys.localVelocity.z)
-        ac.debug("steerctrl.game.car_cphys.steer", game.car_cphys.steer)
+        ac.debug("steerctrl.localVelocity.x", Data.localVelocity.x)
+        ac.debug("steerctrl.localVelocity.y", Data.localVelocity.y)
+        ac.debug("steerctrl.localVelocity.z", Data.localVelocity.z)
+        ac.debug("steerctrl.Data.steer", Data.steer)
         ac.debug("steerctrl.rawDriftAngle", driftAngle)
         ac.debug("steerctrl.driftAngle", driftAngle)
         ac.debug("steerctrl.targetYawRate", targetYawRate)
@@ -315,10 +309,10 @@ function WheelSteerCtrlr:update(dt)
         ac.debug("steerctrl.FR_slipTargetPID.previousError", self.steerFR_PID.previousError)
         ac.debug("steerctrl.RL_slipTargetPID.previousError", self.steerRL_PID.previousError)
         ac.debug("steerctrl.RR_slipTargetPID.previousError", self.steerRR_PID.previousError)
-        ac.debug("steerctrl.actualSlipAngleFL", game.car_cphys.wheels[0].slipAngle)
-        ac.debug("steerctrl.actualSlipAngleFR", game.car_cphys.wheels[1].slipAngle)
-        ac.debug("steerctrl.actualSlipAngleRL", game.car_cphys.wheels[2].slipAngle)
-        ac.debug("steerctrl.actualSlipAngleRR", game.car_cphys.wheels[3].slipAngle)
+        ac.debug("steerctrl.actualSlipAngleFL", Data.wheels[0].slipAngle)
+        ac.debug("steerctrl.actualSlipAngleFR", Data.wheels[1].slipAngle)
+        ac.debug("steerctrl.actualSlipAngleRL", Data.wheels[2].slipAngle)
+        ac.debug("steerctrl.actualSlipAngleRR", Data.wheels[3].slipAngle)
         ac.debug("steerctrl.calcSlipAngleFL", slipAngleFL)
         ac.debug("steerctrl.calcSlipAngleFR", slipAngleFR)
         ac.debug("steerctrl.calcSlipAngleRL", slipAngleRL)
@@ -331,7 +325,6 @@ function WheelSteerCtrlr:update(dt)
         ac.debug("steerctrl.cornerControl", cornerControl)
     end
 end
-
 
 function WheelSteerCtrlr:reset()
     -- Reset direction and blend states
@@ -378,6 +371,5 @@ function WheelSteerCtrlr:reset()
     end
     self.historyIndex = 1
 end
-
 
 return WheelSteerCtrlr

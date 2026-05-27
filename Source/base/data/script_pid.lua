@@ -1,9 +1,7 @@
 -- PID Controller
 -- Authored by ohyeah2389
 
-
 local PIDController = class("PIDController")
-
 
 function PIDController:initialize(kP, kI, kD, minOutput, maxOutput, dampingFactor)
     self.kP = kP or 0
@@ -18,12 +16,11 @@ function PIDController:initialize(kP, kI, kD, minOutput, maxOutput, dampingFacto
     self.previousOutput = 0
 end
 
-
 function PIDController:update(setpoint, measurement, dt)
     -- Check for infinite values in state variables and reset if found
-    if math.abs(self.integral) == math.huge or 
-       math.abs(self.previousError) == math.huge or 
-       math.abs(self.previousOutput) == math.huge then
+    if math.abs(self.integral) == math.huge or
+        math.abs(self.previousError) == math.huge or
+        math.abs(self.previousOutput) == math.huge then
         self:reset()
     end
 
@@ -45,9 +42,9 @@ function PIDController:update(setpoint, measurement, dt)
 
     -- If output would saturate, prevent integral from growing further
     if output > self.maxOutput then
-        self.integral = self.integral - error * dt  -- Unwind the last integration
+        self.integral = self.integral - error * dt -- Unwind the last integration
     elseif output < self.minOutput then
-        self.integral = self.integral - error * dt  -- Unwind the last integration
+        self.integral = self.integral - error * dt -- Unwind the last integration
     end
 
     -- Recalculate I term with possibly adjusted integral
@@ -67,12 +64,10 @@ function PIDController:update(setpoint, measurement, dt)
     return math.clamp(totalOutput, self.minOutput, self.maxOutput)
 end
 
-
 function PIDController:reset()
     self.previousError = 0
     self.integral = 0
-    self.previousOutput = 0  -- Reset previous output
+    self.previousOutput = 0 -- Reset previous output
 end
-
 
 return PIDController

@@ -1,10 +1,7 @@
 -- CSP Physics Script - Helper Functions Module
 -- Authored by ohyeah2389
 
-local game = require('script_acConnection')
-
 local script_helpers = {}
-
 
 -- math helper function, like Map Range in Blender
 function script_helpers.mapRange(n, start, stop, newStart, newStop, withinBounds)
@@ -22,7 +19,6 @@ function script_helpers.mapRange(n, start, stop, newStart, newStop, withinBounds
         return math.max(math.min(value, newStart), newStop)
     end
 end
-
 
 -- math helper function, returns quartic of input
 function script_helpers.quarticInverse(x)
@@ -62,19 +58,19 @@ end
 
 function script_helpers.getWheelsOffGround()
     local wheelsOnGround = {
-        game.car_cphys.wheels[0].load > 0,
-        game.car_cphys.wheels[1].load > 0,
-        game.car_cphys.wheels[2].load > 0,
-        game.car_cphys.wheels[3].load > 0
+        Data.wheels[0].load > 0,
+        Data.wheels[1].load > 0,
+        Data.wheels[2].load > 0,
+        Data.wheels[3].load > 0
     }
-    
+
     local wheelsOffGround = 0
     for _, onGround in ipairs(wheelsOnGround) do
         if not onGround then
             wheelsOffGround = wheelsOffGround + 1
         end
     end
-    
+
     return wheelsOffGround
 end
 
