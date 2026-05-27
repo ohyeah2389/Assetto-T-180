@@ -27,8 +27,8 @@ end
 
 local aiDriver = Opponent({})
 
-local linkageRatioSetup = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_9")
-local steeringRangeSetup = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_20") or {}
+local linkageRatioSetup = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_9") or refnumber(0)
+local steeringRangeSetup = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_20") or refnumber(180)
 
 -- Configure jump jacks
 local jumpJackSystem = JumpJacks({
