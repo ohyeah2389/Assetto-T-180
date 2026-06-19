@@ -1,14 +1,30 @@
 -- T-180 CSP Graphics Script
 -- Authored by ohyeah2389
 
-local config = require("car_coordinates")
-local car_phys = ac.getCarPhysics(0)
+DEBUG = false
 
+Config = require("car_coordinates")
+Physics = ac.getCarPhysics(0) or {}
 
 local fuelPumpRPMLUT = ac.DataLUT11():add(0, 4000):add(6000, 5000):add(18000, 4500)
-local turbineExhaustGlow = ac.findMeshes(config.turbineExhaustGlowMesh):ensureUniqueMaterials()
-local turbineDamageGlow = ac.findMeshes(config.turbineDamageGlowMesh):ensureUniqueMaterials()
+local turbineExhaustGlow = ac.findMeshes(Config.turbineExhaustGlowMesh):ensureUniqueMaterials()
+local turbineDamageGlow = ac.findMeshes(Config.turbineDamageGlowMesh):ensureUniqueMaterials()
+local turbineExhaustGlowThrottleBaseColor = rgbm(20, 20, 40, 1)
+local turbineExhaustGlowAfterburnerBaseColor = rgbm(20, 20, 20, 1)
+local turbineDamageGlowBaseColor = rgbm(30, 7.5, 0, 1)
+local turbineExhaustGlowColor = rgbm()
+local turbineDamageGlowColor = rgbm()
+local flameVectorDefault = vec3(0, 0, -3)
+local particlePos = vec3()
+local baseVel = vec3()
+local smokeVel = vec3()
 
+local debugLabels = {
+    rear = Config.turbojetType == "single" and "TJ Single" or "TS Rear",
+    left = "TJ Left",
+    right = "TJ Right",
+    front = "TS Front"
+}
 
 -- MARK: Helper Functions
 local function mapRange(n, start, stop, newStart, newStop, withinBounds)
@@ -30,20 +46,19 @@ local function sound(eventName, position, direction, up, volume, interiorMult, a
     return audio
 end
 
-
 -- MARK: Particle Systems
 local particles = {
     flameBoost = ac.Particles.Flame({
-        color = config.flame.color,
-        size = config.flame.size,
-        temperatureMultiplier = config.flame.temperatureMultiplier,
-        flameIntensity = config.flame.intensity
+        color = Config.flame.color,
+        size = Config.flame.size,
+        temperatureMultiplier = Config.flame.temperatureMultiplier,
+        flameIntensity = Config.flame.intensity
     }),
     flameTurbo = ac.Particles.Flame({
-        color = config.flame.afterburnerColor,
-        size = config.flame.size,
-        temperatureMultiplier = config.flame.afterburnerTemperatureMultiplier,
-        flameIntensity = config.flame.afterburnerIntensity
+        color = Config.flame.afterburnerColor,
+        size = Config.flame.size,
+        temperatureMultiplier = Config.flame.afterburnerTemperatureMultiplier,
+        flameIntensity = Config.flame.afterburnerIntensity
     }),
     exhaustSmoke = ac.Particles.Smoke({
         color = rgbm(0.3, 0.32, 0.35, 0.08),
@@ -67,23 +82,51 @@ local jumpJack = {
     chargeR = sound("jumpjack_charge", vec3(0, 0, 0), nil, nil, 0.5, nil, false),
     chargeFr = sound("jumpjack_charge", vec3(0, 0, 0), nil, nil, 0.5, nil, false),
     chargeRe = sound("jumpjack_charge", vec3(0, 0, 0), nil, nil, 0.5, nil, false),
+    controlLeft = ac.ControlButton("__EXT_LIGHT_JUMPJACK_LEFT"),
+    controlRight = ac.ControlButton("__EXT_LIGHT_JUMPJACK_RIGHT"),
+    controlFront = ac.ControlButton("__EXT_LIGHT_JUMPJACK_FRONT"),
+    controlRear = ac.ControlButton("__EXT_LIGHT_JUMPJACK_REAR"),
     leftLast = false,
     rightLast = false,
     frontLast = false,
     rearLast = false,
-    extraALast = false
+    allLast = false
 }
 
 -- MARK: Lighting Config
-local lighting = {
-    headlightLeft = ac.accessCarLight("LIGHT_HEADLIGHT_1"),
-    headlightRight = ac.accessCarLight("LIGHT_HEADLIGHT_2"),
-    fadeout = 0
+local headlightLeft = ac.accessCarLight("LIGHT_HEADLIGHT_1")
+local headlightRight = ac.accessCarLight("LIGHT_HEADLIGHT_2")
+local headlightFade = 0
+local lightConfig = {
+    color = rgb(27, 25, 22),
+    singleFrequency = 0,
+    rangeGradientOffset = 0.2,
+    secondSpotIntensity = 0.2,
+    secondSpot = 160,
+    spot = 40,
+    spotSharpness = 0.2
 }
 
+headlightLeft.direction = vec3(0.1, 0, 1)
+headlightRight.direction = vec3(-0.1, 0, 1)
 
 -- MARK: Turbine Audio System
 local turbines = {}
+local turbineData = {
+    rear = { throttle = 0, thrust = 0, rpm = 0, fuelPumpEnabled = 0, afterburner = 0, damage = 0 },
+    left = { throttle = 0, thrust = 0, rpm = 0, fuelPumpEnabled = 0, afterburner = 0, damage = 0 },
+    right = { throttle = 0, thrust = 0, rpm = 0, fuelPumpEnabled = 0, afterburner = 0, damage = 0 },
+    front = { throttle = 0, thrust = 0, rpm = 0, fuelPumpEnabled = 0, afterburner = 0, damage = 0 }
+}
+
+local function setTurbineData(targetTurbine, throttle, thrust, rpm, fuelPumpEnabled, afterburner, damage)
+    targetTurbine.throttle = throttle
+    targetTurbine.thrust = thrust
+    targetTurbine.rpm = rpm
+    targetTurbine.fuelPumpEnabled = fuelPumpEnabled
+    targetTurbine.afterburner = afterburner
+    targetTurbine.damage = damage
+end
 
 local function updateTurbineAudio(turbine, rpm, throttle, afterburner, damage, fuelPumpEnabled, dt)
     if not turbine then return end
@@ -105,7 +148,7 @@ end
 -- MARK: Initialization
 
 -- Turbine audio
-for name, value in pairs(config.turbines or {}) do
+for name, value in pairs(Config.turbines or {}) do
     local pos = value.position or vec3(0, 0, 0)
     local dir = value.direction or vec3(0, 1, 0)
     local up = value.up or vec3(0, 0, -1)
@@ -127,62 +170,69 @@ function script.update(dt)
     ac.boostFrameRate()
 
     -- Parse turbine data from physics
-    local turbineData = {}
+    local inputs = Physics.scriptControllerInputs
+    setTurbineData(turbineData.rear, 0, 0, 0, 0, 0, 0)
+    setTurbineData(turbineData.left, 0, 0, 0, 0, 0, 0)
+    setTurbineData(turbineData.right, 0, 0, 0, 0, 0, 0)
+    setTurbineData(turbineData.front, 0, 0, 0, 0, 0, 0)
 
-    if config.turbojetType == "single" then
-        turbineData.rear = {
-            throttle = car_phys.scriptControllerInputs[8] or 0,
-            thrust = car_phys.scriptControllerInputs[9] or 0,
-            rpm = car_phys.scriptControllerInputs[10] or 0,
-            fuelPumpEnabled = car_phys.scriptControllerInputs[11] or 0,
-            afterburner = car_phys.scriptControllerInputs[12] or 0,
-            damage = car_phys.scriptControllerInputs[18] or 0
-        }
-    elseif config.turbojetType == "dual" then
-        turbineData.left = {
-            throttle = car_phys.scriptControllerInputs[8] or 0,
-            thrust = car_phys.scriptControllerInputs[9] or 0,
-            rpm = car_phys.scriptControllerInputs[10] or 0,
-            fuelPumpEnabled = car_phys.scriptControllerInputs[11] or 0,
-            afterburner = car_phys.scriptControllerInputs[12] or 0,
-            damage = car_phys.scriptControllerInputs[18] or 0
-        }
-        turbineData.right = {
-            throttle = car_phys.scriptControllerInputs[13] or 0,
-            thrust = car_phys.scriptControllerInputs[14] or 0,
-            rpm = car_phys.scriptControllerInputs[15] or 0,
-            fuelPumpEnabled = car_phys.scriptControllerInputs[16] or 0,
-            afterburner = car_phys.scriptControllerInputs[17] or 0,
-            damage = car_phys.scriptControllerInputs[19] or 0
-        }
+    if Config.turbojetType == "single" then
+        setTurbineData(
+            turbineData.rear,
+            inputs[8] or 0,
+            inputs[9] or 0,
+            inputs[10] or 0,
+            inputs[11] or 0,
+            inputs[12] or 0,
+            inputs[18] or 0
+        )
+    elseif Config.turbojetType == "dual" then
+        setTurbineData(
+            turbineData.left,
+            inputs[8] or 0,
+            inputs[9] or 0,
+            inputs[10] or 0,
+            inputs[11] or 0,
+            inputs[12] or 0,
+            inputs[18] or 0
+        )
+        setTurbineData(
+            turbineData.right,
+            inputs[13] or 0,
+            inputs[14] or 0,
+            inputs[15] or 0,
+            inputs[16] or 0,
+            inputs[17] or 0,
+            inputs[19] or 0
+        )
     end
 
-    if config.turboshaftPresent then
-        if config.turbojetType ~= "single" then
-            local rpm = (car_phys.scriptControllerInputs[10] or 0) * 2.25
-            turbineData.rear = {
-                throttle = car_phys.scriptControllerInputs[8] or 0,
-                thrust = car_phys.scriptControllerInputs[9] or 0,
-                rpm = rpm,
-                fuelPumpEnabled = car_phys.scriptControllerInputs[11] or 0,
-                afterburner = car_phys.scriptControllerInputs[12] or 0,
-                damage = car_phys.scriptControllerInputs[19] or 0
-            }
+    if Config.turboshaftPresent then
+        if Config.turbojetType ~= "single" then
+            setTurbineData(
+                turbineData.rear,
+                inputs[8] or 0,
+                inputs[9] or 0,
+                (inputs[10] or 0) * 2.25,
+                inputs[11] or 0,
+                inputs[12] or 0,
+                inputs[19] or 0
+            )
         end
-        if config.turbojetType ~= "dual" then
-            local rpm = (car_phys.scriptControllerInputs[15] or 0) * 2.25
-            turbineData.front = {
-                throttle = car_phys.scriptControllerInputs[13] or 0,
-                thrust = car_phys.scriptControllerInputs[14] or 0,
-                rpm = rpm,
-                fuelPumpEnabled = car_phys.scriptControllerInputs[16] or 0,
-                afterburner = car_phys.scriptControllerInputs[17] or 0,
-                damage = car_phys.scriptControllerInputs[18] or 0
-            }
+        if Config.turbojetType ~= "dual" then
+            setTurbineData(
+                turbineData.front,
+                inputs[13] or 0,
+                inputs[14] or 0,
+                (inputs[15] or 0) * 2.25,
+                inputs[16] or 0,
+                inputs[17] or 0,
+                inputs[18] or 0
+            )
         end
     end
 
-    -- Update audio systems
+    -- Audio systems
     for name, turbine in pairs(turbines) do
         local data = turbineData[name]
         if turbine.main and not turbine.main:isPlaying() then turbine.main:start() end
@@ -193,20 +243,28 @@ function script.update(dt)
     end
 
     -- Particle effects
-    local flameVector = config.vector or vec3(0, 0, -3)
-    local carVelComponent = car.localVelocity * -0.35
-    local particleScale = mapRange(car.speedKmh, 0, 400, 1, 0.1, true)
+    local flameVector = Config.vector or flameVectorDefault
 
-    for name, exhaustGroup in pairs(config.exhausts or {}) do
+    for name, exhaustGroup in pairs(Config.exhausts or {}) do
         local data = turbineData[name]
         if data and data.rpm and data.rpm > 0 then
-            for _, pos in ipairs(exhaustGroup) do
-                local particlePos = vec3(pos.x + car.localVelocity.x * 0.012, pos.y, pos.z + car.localVelocity.z * 0.01)
-                local baseVel = flameVector:clone():mul(vec3((pos.x < 0.0 and -1 or 1), 1, 1)) + carVelComponent
+            local boostAmount = mapRange(data.throttle, 0.9, 1, 0, 1, true) * mapRange(car.speedKmh, 0, 400, 0.5, 0.1, true)
+            local turboAmount = data.afterburner * mapRange(car.speedKmh, 0, 400, 0.6, 0.06, true)
+            local smokeVelocityScale = mapRange(data.throttle, 0, 1, 10, 20, true)
+            local smokeAmount = mapRange(data.throttle, 0, 1, 0.05, 0.2, true) * (1 + data.afterburner)
 
-                particles.flameBoost:emit(particlePos, baseVel, mapRange(data.throttle, 0.9, 1, 0, 1, true) * mapRange(car.speedKmh, 0, 400, 0.5, 0.1, true))
-                particles.flameTurbo:emit(particlePos, baseVel, data.afterburner * particleScale * 0.6)
-                particles.exhaustSmoke:emit(particlePos, baseVel * mapRange(data.throttle, 0, 1, 10, 20, true), mapRange(data.throttle, 0, 1, 0.05, 0.2, true) * (1 + data.afterburner))
+            for _, pos in ipairs(exhaustGroup) do
+                particlePos:set(pos.x + car.localVelocity.x * 0.012, pos.y, pos.z + car.localVelocity.z * 0.01)
+
+                baseVel:set(flameVector)
+                if pos.x < 0.0 then baseVel.x = -baseVel.x end
+                baseVel:addScaled(car.localVelocity, -0.35)
+
+                smokeVel:setScaled(baseVel, smokeVelocityScale)
+
+                particles.flameBoost:emit(particlePos, baseVel, boostAmount)
+                particles.flameTurbo:emit(particlePos, baseVel, turboAmount)
+                particles.exhaustSmoke:emit(particlePos, smokeVel, smokeAmount)
             end
         end
     end
@@ -216,63 +274,49 @@ function script.update(dt)
     local glowAfterburner = 0
     local glowDamage = 0
 
-    if config.turbojetType == "single" then
+    if Config.turbojetType == "single" then
         glowThrottle = turbineData.rear.throttle or 0
         glowAfterburner = turbineData.rear.afterburner or 0
         glowDamage = (turbineData.rear.damage or 0) ^ 1.5
-    elseif config.turbojetType == "dual" then
+    elseif Config.turbojetType == "dual" then
         -- Use max of both engines for glow effect
-        local leftThrottle = turbineData.left.throttle or 0
-        local rightThrottle = turbineData.right.throttle or 0
-        local leftAfterburner = turbineData.left.afterburner or 0
-        local rightAfterburner = turbineData.right.afterburner or 0
-        local leftDamage = (turbineData.left.damage or 0) ^ 1.5
-        local rightDamage = (turbineData.right.damage or 0) ^ 1.5
-
-        glowThrottle = math.max(leftThrottle, rightThrottle)
-        glowAfterburner = math.max(leftAfterburner, rightAfterburner)
-        glowDamage = math.max(leftDamage, rightDamage)
-    elseif config.turboshaftPresent then
+        glowThrottle = math.max(turbineData.left.throttle or 0, turbineData.right.throttle or 0)
+        glowAfterburner = math.max(turbineData.left.afterburner or 0, turbineData.right.afterburner or 0)
+        glowDamage = math.max((turbineData.left.damage or 0) ^ 1.5, (turbineData.right.damage or 0) ^ 1.5)
+    elseif Config.turboshaftPresent then
         glowThrottle = turbineData.rear.throttle or 0
         glowAfterburner = turbineData.rear.afterburner or 0
         glowDamage = (turbineData.rear.damage or 0) ^ 1.5
     end
 
-    turbineExhaustGlow:setMaterialProperty("ksEmissive", (vec3(2, 2, 4) * glowThrottle * 10) + (vec3(1, 1, 1) * glowAfterburner * 20))
-    turbineDamageGlow:setMaterialProperty("ksEmissive", rgb(300, 75, 0) * glowDamage / 10)
+    turbineExhaustGlowColor:set(turbineExhaustGlowThrottleBaseColor, glowThrottle):addScaled(turbineExhaustGlowAfterburnerBaseColor, glowAfterburner)
+    turbineDamageGlowColor:set(turbineDamageGlowBaseColor, glowDamage)
+
+    turbineExhaustGlow:setMaterialProperty("ksEmissive", turbineExhaustGlowColor)
+    turbineDamageGlow:setMaterialProperty("ksEmissive", turbineDamageGlowColor)
 
     -- Headlights
-    lighting.fadeout = math.lerp(lighting.fadeout, car.headlightsActive and 1 or 0, dt * 15)
-
-    local lightConfig = {
-        color = rgb(27, 25, 22),
-        singleFrequency = 0,
-        intensity = 0.5 * lighting.fadeout,
-        rangeGradientOffset = 0.2,
-        secondSpotIntensity = 0.2,
-        secondSpot = 160,
-        spot = 40,
-        spotSharpness = 0.2
-    }
+    headlightFade = math.lerp(headlightFade, car.headlightsActive and 1 or 0, dt * 15)
 
     for k, v in pairs(lightConfig) do
-        lighting.headlightLeft[k] = v
-        lighting.headlightRight[k] = v
+        headlightLeft[k] = v
+        headlightRight[k] = v
     end
 
-    lighting.headlightLeft.direction = vec3(0.1, 0, 1)
-    lighting.headlightRight.direction = vec3(-0.1, 0, 1)
+    headlightLeft.intensity = headlightFade
+    headlightRight.intensity = headlightFade
 
     -- Jump jack logic
-    local jumpJackLeft = ac.ControlButton("__EXT_LIGHT_JUMPJACK_LEFT"):down()
-    local jumpJackRight = ac.ControlButton("__EXT_LIGHT_JUMPJACK_RIGHT"):down()
-    local jumpJackFront = ac.ControlButton("__EXT_LIGHT_JUMPJACK_FRONT"):down()
-    local jumpJackRear = ac.ControlButton("__EXT_LIGHT_JUMPJACK_REAR"):down()
+    local jumpJackAll = car.extraA
+    local jumpJackLeft = jumpJack.controlLeft:down()
+    local jumpJackRight = jumpJack.controlRight:down()
+    local jumpJackFront = jumpJack.controlFront:down()
+    local jumpJackRear = jumpJack.controlRear:down()
 
-    if car.extraA and not jumpJack.extraALast then
+    if jumpJackAll and not jumpJack.allLast then
         jumpJack.chargeL:start()
         jumpJack.chargeR:start()
-    elseif car.extraA ~= jumpJack.extraALast then
+    elseif jumpJackAll ~= jumpJack.allLast then
         jumpJack.chargeL:stop()
         jumpJack.chargeR:stop()
         jumpJack.all:start()
@@ -306,32 +350,27 @@ function script.update(dt)
         jumpJack.rear:start()
     end
 
-    jumpJack.extraALast = car.extraA
+    jumpJack.allLast = jumpJackAll
     jumpJack.leftLast = jumpJackLeft
     jumpJack.rightLast = jumpJackRight
     jumpJack.frontLast = jumpJackFront
     jumpJack.rearLast = jumpJackRear
 
     -- Debug output
-    ac.debug("Config: Turbojet Type", config.turbojetType or "N/A")
-    ac.debug("Config: Turboshaft Present", config.turboshaftPresent and "Yes" or "No")
+    if DEBUG then
+        ac.debug("Config: Turbojet Type", Config.turbojetType or "N/A")
+        ac.debug("Config: Turboshaft Present", Config.turboshaftPresent and "Yes" or "No")
 
-    local debugLabels = {
-        rear = config.turbojetType == "single" and "TJ Single" or "TS Rear",
-        left = "TJ Left",
-        right = "TJ Right",
-        front = "TS Front"
-    }
-
-    for name, data in pairs(turbineData) do
-        if data.rpm and data.rpm > 0 and debugLabels[name] then
-            local label = debugLabels[name]
-            ac.debug(label .. ": Thr", data.throttle)
-            ac.debug(label .. ": RPM", data.rpm)
-            ac.debug(label .. ": Thrust", data.thrust)
-            ac.debug(label .. ": AB", data.afterburner)
-            ac.debug(label .. ": Pump", data.fuelPumpEnabled)
-            ac.debug(label .. ": Dmg", data.damage)
+        for name, data in pairs(turbineData) do
+            if data.rpm and data.rpm > 0 and debugLabels[name] then
+                local label = debugLabels[name]
+                ac.debug(label .. ": Thr", data.throttle)
+                ac.debug(label .. ": RPM", data.rpm)
+                ac.debug(label .. ": Thrust", data.thrust)
+                ac.debug(label .. ": AB", data.afterburner)
+                ac.debug(label .. ": Pump", data.fuelPumpEnabled)
+                ac.debug(label .. ": Dmg", data.damage)
+            end
         end
     end
 end
