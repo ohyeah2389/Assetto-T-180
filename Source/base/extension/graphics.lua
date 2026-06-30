@@ -1,10 +1,17 @@
 -- T-180 CSP Graphics Script
 -- Authored by ohyeah2389
 
+-- enables debug behavior, mostly debug graphs in Lua Debug app
 DEBUG = false
 
-Config = require("car_coordinates")
+-- set up globals
 Physics = ac.getCarPhysics(0) or {}
+Config = require("car_coordinates")
+
+-- load and instantiate car-specific display code
+Display = require("display")()
+local displayUpdateAccumulator = 0
+local displayUpdateRate = 1/40
 
 local fuelPumpRPMLUT = ac.DataLUT11():add(0, 4000):add(6000, 5000):add(18000, 4500)
 local turbineExhaustGlow = ac.findMeshes(Config.turbineExhaustGlowMesh):ensureUniqueMaterials()
@@ -355,6 +362,13 @@ function script.update(dt)
     jumpJack.rightLast = jumpJackRight
     jumpJack.frontLast = jumpJackFront
     jumpJack.rearLast = jumpJackRear
+
+    -- Run display if needed
+    displayUpdateAccumulator = displayUpdateAccumulator + dt
+    if displayUpdateAccumulator > displayUpdateRate then
+        Display:update()
+        displayUpdateAccumulator = 0
+    end
 
     -- Debug output
     if DEBUG then
