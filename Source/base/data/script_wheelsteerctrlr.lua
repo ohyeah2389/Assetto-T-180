@@ -195,10 +195,10 @@ function WheelSteerCtrlr:update(dt)
 
     self.lastDriftAngle = driftAngle
 
-    local cornerControl = (1 - Data.clutch)
+    local cornerControl = math.saturateN((1 - Data.clutch) + 0.3)
     local cornerControlGainF = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_10").value or 5) / 20
     local cornerControlGainR = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_11").value or 8) / 20
-    local cornerControlCurve = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_12").value or 1)
+    local cornerControlCurve = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_12").value or 2) - 6
     local cornerControlYawRateMult = (ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_15").value or 0) / 2
 
     local steerNormalizedInput = math.clamp(Data.steer / (self.maxSteer / 180), -1, 1)
@@ -220,8 +220,6 @@ function WheelSteerCtrlr:update(dt)
 
     local yawRateOutput = self.yawRatePID:update(targetYawRate, actualYawRate, dt)
 
-    local driftAngleMultiplier = helpers.mapRange(math.abs(driftAngle) * math.sign(steerNormalizedInput), math.rad(90), math.rad(180), 1, 8, true)
-
     local slipAngleFL = (Data.wheels[0].slipAngle ~= 0 and Data.wheels[0].slipAngle or self.slipAngleFL_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true) * math.clamp(Data.wheels[0].load, 0, 1)
     local slipAngleFR = (Data.wheels[1].slipAngle ~= 0 and Data.wheels[1].slipAngle or self.slipAngleFR_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true) * math.clamp(Data.wheels[1].load, 0, 1)
     local slipAngleRL = (Data.wheels[2].slipAngle ~= 0 and Data.wheels[2].slipAngle or self.slipAngleRL_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true) * math.clamp(Data.wheels[2].load, 0, 1)
@@ -232,10 +230,10 @@ function WheelSteerCtrlr:update(dt)
     self.slipAngleRL_prev = slipAngleRL
     self.slipAngleRR_prev = slipAngleRR
 
-    local slipOffsetFL = (yawRateOutput * -0.5 * driftAngleMultiplier * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainF)
-    local slipOffsetFR = (yawRateOutput * -0.5 * driftAngleMultiplier * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainF)
-    local slipOffsetRL = (yawRateOutput * 0.5 * driftAngleMultiplier * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainR)
-    local slipOffsetRR = (yawRateOutput * 0.5 * driftAngleMultiplier * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainR)
+    local slipOffsetFL = (yawRateOutput * -0.5 * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainF)
+    local slipOffsetFR = (yawRateOutput * -0.5 * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainF)
+    local slipOffsetRL = (yawRateOutput * 0.5 * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainR)
+    local slipOffsetRR = (yawRateOutput * 0.5 * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainR)
 
     -- Calculate base PID-controlled steering targets
     local pidSteerFL = self.steerFL_PID:update(slipOffsetFL, -math.clamp(slipAngleFL, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true)
@@ -317,6 +315,10 @@ function WheelSteerCtrlr:update(dt)
         ac.debug("steerctrl.calcSlipAngleFR", slipAngleFR)
         ac.debug("steerctrl.calcSlipAngleRL", slipAngleRL)
         ac.debug("steerctrl.calcSlipAngleRR", slipAngleRR)
+        ac.debug("steerctrl.slipOffsetFL", slipOffsetFL, -0.5, 0.5, 3)
+        ac.debug("steerctrl.slipOffsetFR", slipOffsetFR, -0.5, 0.5, 3)
+        ac.debug("steerctrl.slipOffsetRL", slipOffsetRL, -0.5, 0.5, 3)
+        ac.debug("steerctrl.slipOffsetRR", slipOffsetRR, -0.5, 0.5, 3)
         ac.debug("steerctrl.driftInversion", state.control.driftInversion)
         ac.debug("steerctrl.steerSigmoidInput", steerSigmoidInput)
         ac.debug("steerctrl.steerSigmoidDiff", steerSigmoidDiff)

@@ -190,11 +190,14 @@ function script.update(dt)
         end
     end
 
+    -- If we're off the ground (no wheels have load), then decrease the main throttle, otherwise car will pitch down too much in flight
+    local wheelsOnGroundMultiplier = math.remap(math.saturateN(Data.wheels[0].load + Data.wheels[1].load + Data.wheels[2].load + Data.wheels[3].load), 0, 1, 0.5, 1)
+
     -- Run turbojet system if we have one
     if config.turbojet.present then
         if config.turbojet.type == "single" and turbojetCenter then
             -- Determine throttle
-            local driftAngle = math.atan(Data.localVelocity.x / math.abs(Data.localVelocity.z))
+            local driftAngle = math.atan2(Data.localVelocity.x, Data.localVelocity.z) * helpers.mapRange(car.speedKmh, 2, 20, 0.1, 1, true)
             local baseThrottle = helpers.mapRange(Data.gas * helpers.mapRange(math.abs(driftAngle), math.rad(config.turbojet.helperStartAngle), math.rad(config.turbojet.helperEndAngle), 0, 1, true), 0, 1, config.turbojet.minThrottle, 1, true)
             local clutchFactor = ((1 - Data.clutch) * ((car.isInPit or Sim.isInMainMenu) and 0 or 1)) ^ 0.1
             local gasFactor = Data.gas * 0.4
@@ -210,7 +213,7 @@ function script.update(dt)
                 end
             else
                 turbojetCenter.targetThrottleAfterburner = (clutchFactor > 0.9 and 1 or 0) * (turbojetCenter.fuelPumpEnabled and 1 or 0)
-                turbojetCenter.targetThrottle = baseThrottle
+                turbojetCenter.targetThrottle = baseThrottle * wheelsOnGroundMultiplier
             end
 
             -- Update turbine
@@ -400,7 +403,7 @@ function script.update(dt)
     local suctionMult = math.clamp(math.remap(rideHeightSensor, 0.5, 2.0, 1, 0), 0, 1) * (rideHeightSensor == -1 and 0 or 1)
 
     -- If it's a protocar, it gets a different amount of downforce
-    local aeroForceBase = ((car.name == "ohyeah2389_proto_mach4") or (car.name == "ma_proto_uniron")) and -160 or -200
+    local aeroForceBase = ((car.name == "ohyeah2389_proto_mach4") or (car.name == "ma_proto_uniron")) and -160 or -125
 
     -- Find the speed of the car in its XZ plane
     local velocityMagnitude = math.sqrt(car.localVelocity.x * car.localVelocity.x + car.localVelocity.z * car.localVelocity.z)
@@ -409,7 +412,7 @@ function script.update(dt)
     local forwardAngle = math.atan2(car.localVelocity.x, car.localVelocity.z)
 
     -- Set how much force remains at 90 degrees (0.0 = full dropoff, 1.0 = no dropoff)
-    local directionalDropoff = 0.75
+    local directionalDropoff = 1.0
 
     -- Fade out the downforce with a cosine curve
     local cosineDropoff = math.lerp(directionalDropoff, 1.0, math.abs(math.cos(forwardAngle)))

@@ -7,21 +7,21 @@ local helpers = require('script_helpers')
 local physics = require('script_physics')
 local PIDController = require('script_pid')
 
-local thrustHeatCoefCore = 0.0625
-local burnerHeatCoefCore = 0.02
+local thrustHeatCoefCore = 0.03
+local burnerHeatCoefCore = 0.01
 
 local thrustHeatCoefFrame = 0.0005
-local burnerHeatCoefFrame = 0.045
+local burnerHeatCoefFrame = 0.03
 
 local coreTransferToFrame = 0.01
 local frameTransferToCore = 0.01
 
 local shaftSpeedCoolCoefCore = 0.05
-local airSpeedCoolCoefCore = 0.05
+local airSpeedCoolCoefCore = 0.15
 local staticCoolCoefCore = 0.02
 
 local bleedCoolCoefFrame = 50.0
-local airSpeedCoolCoefFrame = 0.08
+local airSpeedCoolCoefFrame = 0.15
 local staticCoolCoefFrame = 0.08
 
 local frameTempLimit = 1000
@@ -105,7 +105,7 @@ function turbojet:update(dt)
     self.shaft:step((self.fuelPumpEnabled and self.thrust * (helpers.mapRange(self.shaft.angularSpeed, 0, 2000, 1, 0, true) ^ 1.2) or 0), dt)
 
     -- Afterburner extra thrust calculation
-    self.thrustAfterburner = helpers.mapRange(self.throttleAfterburner, 0, 1, 0, 2500, true)
+    self.thrustAfterburner = helpers.mapRange(self.throttleAfterburner, 0, 1, 0, 4000, true)
     local thrustVector = vec3(0, 0, 0)
     if config.turbojet.thrustAngle then
         local angleRad = math.rad(config.turbojet.thrustAngle)
