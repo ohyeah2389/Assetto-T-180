@@ -11,7 +11,7 @@ local thrustHeatCoefCore = 0.03
 local burnerHeatCoefCore = 0.01
 
 local thrustHeatCoefFrame = 0.0005
-local burnerHeatCoefFrame = 0.03
+local burnerHeatCoefFrame = 0.02
 
 local coreTransferToFrame = 0.01
 local frameTransferToCore = 0.01
@@ -105,7 +105,7 @@ function turbojet:update(dt)
     self.shaft:step((self.fuelPumpEnabled and self.thrust * (helpers.mapRange(self.shaft.angularSpeed, 0, 2000, 1, 0, true) ^ 1.2) or 0), dt)
 
     -- Afterburner extra thrust calculation
-    self.thrustAfterburner = helpers.mapRange(self.throttleAfterburner, 0, 1, 0, 4000, true)
+    self.thrustAfterburner = helpers.mapRange(self.throttleAfterburner, 0, 1, 0, 6000, true)
     local thrustVector = vec3(0, 0, 0)
     if config.turbojet.thrustAngle then
         local angleRad = math.rad(config.turbojet.thrustAngle)
