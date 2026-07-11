@@ -403,7 +403,7 @@ function script.update(dt)
     local suctionMult = math.clamp(math.remap(rideHeightSensor, 0.5, 2.0, 1, 0), 0, 1) * (rideHeightSensor == -1 and 0 or 1)
 
     -- If it's a protocar, it gets a different amount of downforce
-    local aeroForceBase = ((car.name == "ohyeah2389_proto_mach4") or (car.name == "ma_proto_uniron")) and -160 or -125
+    local aeroForceBase = ((car.name == "ohyeah2389_proto_mach4") or (car.name == "ma_proto_uniron")) and -160 or -160
 
     -- Find the speed of the car in its XZ plane
     local velocityMagnitude = math.sqrt(car.localVelocity.x * car.localVelocity.x + car.localVelocity.z * car.localVelocity.z)
