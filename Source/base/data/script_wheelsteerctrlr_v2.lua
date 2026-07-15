@@ -1,4 +1,4 @@
--- T-180 CSP Physics Script - Steering Controller Module, Type B
+-- T-180 CSP Physics Script - Steering Controller Module Version 2
 -- Authored by ohyeah2389
 
 local state = require('script_state')

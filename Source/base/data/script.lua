@@ -21,7 +21,7 @@ local WheelSteerController = nil
 local ActiveSuspension = nil
 
 if not config.misc.traditionalSteering then
-    WheelSteerController = require('script_wheelsteerctrlr')
+    WheelSteerController = require('script_wheelsteerctrlr_v2')
     ActiveSuspension = require('script_activesusp')
 end
 
