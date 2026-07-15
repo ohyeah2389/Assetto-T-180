@@ -12,7 +12,7 @@ local steerGainAtSpeed = ac.DataLUT11():add(0, 10):add(400, 10):add(800, 10)
 local frontMultAtSpeed = ac.DataLUT11():add(0, -1.7):add(300, -1.7):add(800, -1.7)
 local rearMultAtSpeed = ac.DataLUT11():add(0, 1):add(200, 1):add(600, 1)
 
-local PIDController = require("script_pid")
+local PIDController = require("pid_v1")
 
 local Wheel = class("Wheel")
 

@@ -1,7 +1,7 @@
 -- T-180 CSP Physics Script - Turbine FADEC Module
 -- Authored by ohyeah2389
 
-local PIDController = require('script_pid')
+local PIDController = require('pid_v1')
 
 local FADEC = class("FADEC")
 

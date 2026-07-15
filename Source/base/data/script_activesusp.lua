@@ -1,7 +1,7 @@
 -- T-180 CSP Physics Script - Active Suspension Physics Module
 -- Authored by ohyeah2389
 
-local PID = require('script_pid')
+local PID = require('pid_v1')
 
 local activeSusp = class("ActiveSusp")
 

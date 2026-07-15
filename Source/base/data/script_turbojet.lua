@@ -5,7 +5,7 @@
 local config = require('car_config')
 local helpers = require('script_helpers')
 local physics = require('script_physics')
-local PIDController = require('script_pid')
+local PIDController = require('pid_v1')
 
 local thrustHeatCoefCore = 0.03
 local burnerHeatCoefCore = 0.01

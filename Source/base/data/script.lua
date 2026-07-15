@@ -17,11 +17,14 @@ local CustomDrivetrain = require('script_customDrivetrain')
 local PerfTracker = require('script_perfTracker')
 local Opponent = require('script_opponent')
 
-local WheelSteerController = nil
-local ActiveSuspension = nil
+local wheelSteerControllerSetup = ac.getScriptSetupValue("STEER_CONTROLLER_MODEL") or refnumber(0)
+local wheelSteerControllers = {
+    require('script_wheelsteerctrlr')(),
+    require('script_wheelsteerctrlr_v2')(),
+}
 
+local ActiveSuspension = nil
 if not config.misc.traditionalSteering then
-    WheelSteerController = require('script_wheelsteerctrlr_v2')
     ActiveSuspension = require('script_activesusp')
 end
 
@@ -68,7 +71,6 @@ local function brakeAutoHold()
 end
 
 
-local wheelSteerCtrlr = WheelSteerController and WheelSteerController() or nil
 local activeSusp = ActiveSuspension and ActiveSuspension() or nil
 
 -- Load and init turbojet engine(s)
@@ -136,9 +138,12 @@ local perfTracker = DEBUG_PERFTRACKER and PerfTracker(turbineInstances)
 -- Run every time the car resets (reset to pits, teleport, etc.)
 ---@diagnostic disable-next-line: duplicate-set-field
 function script.reset()
-    if wheelSteerCtrlr then wheelSteerCtrlr:reset() end
+    if wheelSteerControllers[wheelSteerControllerSetup.value] then wheelSteerControllers[wheelSteerControllerSetup.value]:reset() end
+
     jumpJackSystem:reset()
+
     if perfTracker then perfTracker:reset() end
+
     if config.turbojet.present then
         if config.turbojet.type == "single" and turbojetCenter then
             turbojetCenter:reset()
@@ -147,10 +152,12 @@ function script.reset()
             turbojetRight:reset()
         end
     end
+
     if config.turboshaft.present and turboshaftFront then
         turboshaftFront:reset()
         if turboshaftRear then turboshaftRear:reset() end
     end
+
     if activeSusp then
         activeSusp:reset()
     end
@@ -180,10 +187,11 @@ function script.update(dt)
             rearRight = state.jumpJackSystem.jackRR.active
         }, dt)
 
-        -- Run wheel steering controller code and FFB update if we have one
-        if wheelSteerCtrlr then
-            wheelSteerCtrlr:update(dt)
-            local ffb = wheelSteerCtrlr:calculateFFB(dt)
+        -- Run selected wheel steering controller code, its FFB algo, and update its setup values if we're in the pits
+        if wheelSteerControllers[wheelSteerControllerSetup.value] then
+            if Sim.isInMainMenu then wheelSteerControllers[wheelSteerControllerSetup.value]:updateSetupValues() end
+            wheelSteerControllers[wheelSteerControllerSetup.value]:update(dt)
+            local ffb = wheelSteerControllers[wheelSteerControllerSetup.value]:calculateFFB(dt)
             if ffb and ffb == ffb then -- Check if value exists and is not NaN
                 ac.setSteeringFFB(ffb)
             end

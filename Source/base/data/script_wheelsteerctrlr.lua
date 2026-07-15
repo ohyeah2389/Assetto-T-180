@@ -1,0 +1,389 @@
+-- T-180 CSP Physics Script - Steering Controller Module, Version 1.1
+-- Authored by ohyeah2389
+
+local state = require('script_state')
+local helpers = require('script_helpers')
+local PIDController = require('pid_v1')
+local threesixtyctrlr = require('script_threesixtyctrlr')
+
+local WheelSteerCtrlr = class("WheelSteerCtrlr_v1")
+
+local threesixtyctrlr_FL = threesixtyctrlr()
+local threesixtyctrlr_FR = threesixtyctrlr()
+local threesixtyctrlr_RL = threesixtyctrlr()
+local threesixtyctrlr_RR = threesixtyctrlr()
+
+local setup = {
+    maxSteer = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_20"),
+    ffbSmoothing = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_1"),
+    ffbMultiplier = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_0"),
+    ffbFrontSteerGain = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_2"),
+    ffbFrontSlipGain = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_3"),
+    ffbRearSteerGain = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_4"),
+    ffbRearSlipGain = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_5"),
+    ffbLatGGain = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_6"),
+    ffbSteerLimitGain = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_21"),
+    yawRateKP = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_7"),
+    steerPower = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_13"),
+    steerDamping = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_14"),
+    servoLimit = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_16"),
+    inversionEnabled = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_17"),
+    cornerControlGainFront = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_10"),
+    cornerControlGainRear = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_11"),
+    cornerControlCurve = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_12"),
+    cornerControlYawRateMult = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_15"),
+}
+
+function WheelSteerCtrlr:initialize()
+    self.steerInputLast = Data.steer
+    self.lastFFB = 0
+    self.steerChangeHistory = {0, 0, 0, 0, 0} -- Circular buffer for averaging
+    self.historyIndex = 1
+    self.maxSteer = 180
+
+    self.yawRatePID = PIDController(0.2, 0, 0, -1, 1, 1) -- power overridden by setup
+
+    self.steerFL_PID = PIDController(0.9, 0, 0, -2, 2, 0.3) -- power overridden by setup
+    self.steerFR_PID = PIDController(0.9, 0, 0, -2, 2, 0.3) -- power overridden by setup
+    self.steerRL_PID = PIDController(0.9, 0, 0, -2, 2, 0.3) -- power overridden by setup
+    self.steerRR_PID = PIDController(0.9, 0, 0, -2, 2, 0.3) -- power overridden by setup
+
+    self.desiredSteerFL = 0
+    self.desiredSteerFR = 0
+    self.desiredSteerRL = 0
+    self.desiredSteerRR = 0
+
+    self.steerStateFL = 0
+    self.steerStateFR = 0
+    self.steerStateRL = 0
+    self.steerStateRR = 0
+
+    self.steerStateFL_prev = 0
+    self.steerStateFR_prev = 0
+    self.steerStateRL_prev = 0
+    self.steerStateRR_prev = 0
+
+    self.slipAngleFL_prev = 0
+    self.slipAngleFR_prev = 0
+    self.slipAngleRL_prev = 0
+    self.slipAngleRR_prev = 0
+
+    self.isReversing = false
+
+    self.inversionBlendSpeed = 3.0 -- The time it takes for the wheels to move to their drift inversion position
+    self.inversionEnabled = true
+
+    self.lastDriftAngle = 0
+    self.inversionBlendState = 0
+
+    self:updateSetupValues()
+end
+
+function WheelSteerCtrlr:calculateFFB(dt)
+    -- Prevent division by zero
+    dt = math.max(dt, 0.001)
+
+    -- Add safety check for NaN/infinite values
+    if not Data.steer or not self.steerInputLast then
+        return 0
+    end
+
+    local steerOverLimitDelta = math.max(0, math.abs(car.steer) - self.maxSteer)
+
+    local steerChange = (Data.steer - self.steerInputLast) / dt
+    self.steerInputLast = Data.steer
+
+    -- Add null checks for wheel slip angles
+    local frontSlipAngle = (Data.wheels[0].slipAngle or 0) + (Data.wheels[1].slipAngle or 0)
+    local rearSlipAngle = (Data.wheels[2].slipAngle or 0) + (Data.wheels[3].slipAngle or 0)
+
+    -- Get FFB effect values
+    local frontSteerGain = (setup.ffbFrontSteerGain.value or 0) / 5
+    local frontSlipGain = (setup.ffbFrontSlipGain.value or 10) / 10
+    local rearSteerGain = (setup.ffbRearSteerGain.value or 0) / 5
+    local rearSlipGain = (setup.ffbRearSlipGain.value or 10) / 10
+    local latGGain = (setup.ffbLatGGain.value or 0) / 10
+    local steerLimitGain = (setup.ffbSteerLimitGain.value or 10) / 20
+
+    local frontSteerEffect = (self.desiredSteerFL + self.desiredSteerFR) * frontSteerGain
+    local frontSlipEffect = math.clamp(frontSlipAngle * -5, -6, 6) * frontSlipGain
+    local rearSteerEffect = (self.desiredSteerRL + self.desiredSteerRR) * rearSteerGain
+    local rearSlipEffect = math.clamp(rearSlipAngle * -15, -6, 6) * rearSlipGain
+    local latGEffect = math.clamp(Data.gForces.x or 0, -5, 5) * latGGain
+    local steerLimitEffect = math.clamp((steerOverLimitDelta ^ 2) * steerLimitGain, -(steerLimitGain * 2), (steerLimitGain * 2))
+    local helperEffect = frontSteerEffect + frontSlipEffect + rearSteerEffect + rearSlipEffect + latGEffect
+    if math.abs(steerLimitEffect) > 0 then
+        -- Ensure helperEffect works in same direction as steerLimitEffect
+        local steerSign = math.sign(car.steer)
+        helperEffect = steerLimitEffect * steerSign + math.clamp(helperEffect * steerSign, 0, math.huge) * steerSign
+    end
+
+    -- Debug values
+    if DEBUG then
+        ac.debug("ffb.helperEffect", helperEffect)
+        ac.debug("ffb.frontSteerEffect", frontSteerEffect)
+        ac.debug("ffb.frontSlipEffect", frontSlipEffect)
+        ac.debug("ffb.rearSteerEffect", rearSteerEffect)
+        ac.debug("ffb.rearSlipEffect", rearSlipEffect)
+        ac.debug("ffb.latGEffect", latGEffect)
+        ac.debug("ffb.steerOverLimitDelta", steerOverLimitDelta)
+        ac.debug("ffb.steerLimitEffect", steerLimitEffect)
+    end
+
+    -- Update circular buffer with safety check
+    if math.abs(steerChange) < 1000 then  -- Reasonable maximum value
+        self.steerChangeHistory[self.historyIndex] = (steerChange * 0.3) + helperEffect
+        self.historyIndex = (self.historyIndex % #self.steerChangeHistory) + 1
+    end
+
+    -- Calculate moving average
+    local avgSteerChange = 0
+    for _, v in ipairs(self.steerChangeHistory) do
+        avgSteerChange = avgSteerChange + (v or 0)  -- Use 0 if value is nil
+    end
+    avgSteerChange = avgSteerChange / #self.steerChangeHistory
+
+    -- Calculate new FFB with exponential smoothing
+    local targetFFB = (Data.steer * 0.2 or 0) + (avgSteerChange * 0.03)
+    local smoothedFFB = self.lastFFB * self.ffbSmoothing + targetFFB * (1 - self.ffbSmoothing)
+
+    -- Final safety check before returning
+    if math.abs(smoothedFFB) > 1000 or not (smoothedFFB == smoothedFFB) then  -- Check for NaN
+        smoothedFFB = 0
+    end
+
+    self.lastFFB = smoothedFFB
+    return math.clamp(smoothedFFB * self.ffbMultiplier, -1, 1)
+end
+
+function WheelSteerCtrlr:updateSetupValues()
+    self.yawRatePID.kP = (setup.yawRateKP.value or 6) / 150
+
+    self.steerPower = (setup.steerPower.value or 9) / 12
+    self.steerDamping = (setup.steerDamping.value or 12) / 40
+
+    local servoLimit = (setup.servoLimit.value or 2)
+
+    self.steerFL_PID.minOutput, self.steerFL_PID.maxOutput = -servoLimit, servoLimit
+    self.steerFR_PID.minOutput, self.steerFR_PID.maxOutput = -servoLimit, servoLimit
+    self.steerRL_PID.minOutput, self.steerRL_PID.maxOutput = -servoLimit, servoLimit
+    self.steerRR_PID.minOutput, self.steerRR_PID.maxOutput = -servoLimit, servoLimit
+
+    self.inversionEnabled = ((setup.inversionEnabled.value or 1) == 1 and true or false)
+
+    self.steerFL_PID.kP = self.steerPower
+    self.steerFR_PID.kP = self.steerPower
+    self.steerRL_PID.kP = self.steerPower
+    self.steerRR_PID.kP = self.steerPower
+    self.steerFL_PID.dampingFactor = self.steerDamping
+    self.steerFR_PID.dampingFactor = self.steerDamping
+    self.steerRL_PID.dampingFactor = self.steerDamping
+    self.steerRR_PID.dampingFactor = self.steerDamping
+
+    self.maxSteer = setup.maxSteer.value * 90
+    self.ffbSmoothing = (setup.ffbSmoothing.value or 10) / 100
+    self.ffbMultiplier = (setup.ffbMultiplier.value or 10) / 10
+end
+
+function WheelSteerCtrlr:update(dt)
+    self.isReversing = helpers.getWheelsOffGround() > 3 or Data.localVelocity.z < 0
+
+    local driftAngle = math.atan2(Data.localVelocity.x, Data.localVelocity.z) * helpers.mapRange(car.speedKmh, 2, 20, 0.1, 1, true)
+
+    -- Check for drift angle inversion (crossing +/-pi boundary)
+    local angleDiff = driftAngle - self.lastDriftAngle
+    if angleDiff > math.pi then
+        -- Crossed from +pi to -pi
+        state.control.driftInversion = true
+    elseif angleDiff < -math.pi then
+        -- Crossed from -pi to +pi
+        state.control.driftInversion = true
+    end
+
+    -- Reset inversion flag once car is drifting less than 120 deg
+    if math.abs(driftAngle) < math.rad(120) then
+        state.control.driftInversion = false
+    end
+
+    self.lastDriftAngle = driftAngle
+
+    local cornerControl = math.saturateN((1 - Data.clutch) + 0.3)
+    local cornerControlGainF = (setup.cornerControlGainFront.value or 5) / 20
+    local cornerControlGainR = (setup.cornerControlGainRear.value or 8) / 20
+    local cornerControlCurve = (setup.cornerControlCurve.value or 2) - 6
+    local cornerControlYawRateMult = (setup.cornerControlYawRateMult.value or 0) / 2
+
+    local steerNormalizedInput = math.clamp(Data.steer / (self.maxSteer / 180), -1, 1)
+    local steerSigmoidInput
+    if cornerControlCurve < 0 then
+        -- Inverted sigmoid
+        steerSigmoidInput = steerNormalizedInput * (1 + math.abs(cornerControlCurve) * math.abs(steerNormalizedInput)) / (1 + math.abs(cornerControlCurve))
+    elseif cornerControlCurve > 0 then
+        -- Normal sigmoid
+        steerSigmoidInput = steerNormalizedInput / (1 + cornerControlCurve * math.abs(steerNormalizedInput)) * (1 + cornerControlCurve)
+    else
+        -- Linear
+        steerSigmoidInput = steerNormalizedInput
+    end
+    local steerSigmoidDiff = steerNormalizedInput - steerSigmoidInput
+
+    local targetYawRate = steerNormalizedInput * -12
+    local actualYawRate = car.localAngularVelocity.y
+
+    local yawRateOutput = self.yawRatePID:update(targetYawRate, actualYawRate, dt)
+
+    local slipAngleFL = (Data.wheels[0].slipAngle ~= 0 and Data.wheels[0].slipAngle or self.slipAngleFL_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true) * math.clamp(Data.wheels[0].load, 0, 1)
+    local slipAngleFR = (Data.wheels[1].slipAngle ~= 0 and Data.wheels[1].slipAngle or self.slipAngleFR_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true) * math.clamp(Data.wheels[1].load, 0, 1)
+    local slipAngleRL = (Data.wheels[2].slipAngle ~= 0 and Data.wheels[2].slipAngle or self.slipAngleRL_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true) * math.clamp(Data.wheels[2].load, 0, 1)
+    local slipAngleRR = (Data.wheels[3].slipAngle ~= 0 and Data.wheels[3].slipAngle or self.slipAngleRR_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true) * math.clamp(Data.wheels[3].load, 0, 1)
+
+    self.slipAngleFL_prev = slipAngleFL
+    self.slipAngleFR_prev = slipAngleFR
+    self.slipAngleRL_prev = slipAngleRL
+    self.slipAngleRR_prev = slipAngleRR
+
+    local slipOffsetFL = (yawRateOutput * -0.5 * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainF)
+    local slipOffsetFR = (yawRateOutput * -0.5 * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainF)
+    local slipOffsetRL = (yawRateOutput * 0.5 * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainR)
+    local slipOffsetRR = (yawRateOutput * 0.5 * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainR)
+
+    -- Calculate base PID-controlled steering targets
+    local pidSteerFL = self.steerFL_PID:update(slipOffsetFL, -math.clamp(slipAngleFL, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true)
+    local pidSteerFR = self.steerFR_PID:update(slipOffsetFR, -math.clamp(slipAngleFR, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true)
+    local pidSteerRL = self.steerRL_PID:update(slipOffsetRL, -math.clamp(slipAngleRL, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true)
+    local pidSteerRR = self.steerRR_PID:update(slipOffsetRR, -math.clamp(slipAngleRR, -0.5, 0.5), dt) * helpers.mapRange(car.speedKmh, 10, 60, 0.1, 1, true)
+
+    -- Update inversion blend factor
+    if state.control.driftInversion and self.inversionEnabled then
+        self.inversionBlendState = math.min(self.inversionBlendState + dt * self.inversionBlendSpeed, 1)
+    else
+        self.inversionBlendState = math.max(self.inversionBlendState - dt * self.inversionBlendSpeed, 0)
+    end
+
+    -- Calculate inversion steering targets
+    local inversionSteerFL = steerNormalizedInput * 4
+    local inversionSteerFR = steerNormalizedInput * 4
+    local inversionSteerRL = steerNormalizedInput * -2
+    local inversionSteerRR = steerNormalizedInput * -2
+
+    -- Blend between normal and inversion steering
+    self.desiredSteerFL = math.lerp(pidSteerFL, inversionSteerFL, self.inversionBlendState)
+    self.desiredSteerFR = math.lerp(pidSteerFR, inversionSteerFR, self.inversionBlendState)
+    self.desiredSteerRL = math.lerp(pidSteerRL, inversionSteerRL, self.inversionBlendState)
+    self.desiredSteerRR = math.lerp(pidSteerRR, inversionSteerRR, self.inversionBlendState)
+
+    if car.gear == -1 then
+        state.control.driftInversion = false
+        self.desiredSteerFL = steerNormalizedInput * 0.5
+        self.desiredSteerFR = steerNormalizedInput * 0.5
+        self.desiredSteerRL = steerNormalizedInput * -0.2
+        self.desiredSteerRR = steerNormalizedInput * -0.2
+    end
+
+    self.steerStateFL = self.desiredSteerFL * (state.control.lockedFronts and 0 or 1)
+    self.steerStateFR = self.desiredSteerFR * (state.control.lockedFronts and 0 or 1)
+    self.steerStateRL = self.desiredSteerRL * (state.control.lockedRears and 0 or 1)
+    self.steerStateRR = self.desiredSteerRR * (state.control.lockedRears and 0 or 1)
+
+    Data.controllerInputs[0], Data.controllerInputs[1] = threesixtyctrlr_FL:update(self.steerStateFL, dt)
+    Data.controllerInputs[2], Data.controllerInputs[3] = threesixtyctrlr_FR:update(-self.steerStateFR, dt)
+    Data.controllerInputs[4], Data.controllerInputs[5] = threesixtyctrlr_RL:update(self.steerStateRL, dt)
+    Data.controllerInputs[6], Data.controllerInputs[7] = threesixtyctrlr_RR:update(-self.steerStateRR, dt)
+
+    self.steerStateFL_prev = self.steerStateFL
+    self.steerStateFR_prev = self.steerStateFR
+    self.steerStateRL_prev = self.steerStateRL
+    self.steerStateRR_prev = self.steerStateRR
+
+    --if any steer state is infinite, reset the steering states
+    if not (self.steerStateFL == self.steerStateFL) or not (self.steerStateFR == self.steerStateFR) or not (self.steerStateRL == self.steerStateRL) or not (self.steerStateRR == self.steerStateRR) then
+        self:reset()
+    end
+
+    if DEBUG then
+        ac.debug("steerctrl_v1.steerStateFL", self.steerStateFL)
+        ac.debug("steerctrl_v1.steerStateFR", self.steerStateFR)
+        ac.debug("steerctrl_v1.steerStateRL", self.steerStateRL)
+        ac.debug("steerctrl_v1.steerStateRR", self.steerStateRR)
+        ac.debug("steerctrl_v1.localVelocity.x", Data.localVelocity.x)
+        ac.debug("steerctrl_v1.localVelocity.y", Data.localVelocity.y)
+        ac.debug("steerctrl_v1.localVelocity.z", Data.localVelocity.z)
+        ac.debug("steerctrl_v1.Data.steer", Data.steer)
+        ac.debug("steerctrl_v1.rawDriftAngle", driftAngle)
+        ac.debug("steerctrl_v1.driftAngle", driftAngle)
+        ac.debug("steerctrl_v1.targetYawRate", targetYawRate)
+        ac.debug("steerctrl_v1.actualYawRate", actualYawRate)
+        ac.debug("steerctrl_v1.state.control.lockedRears", state.control.lockedRears)
+        ac.debug("steerctrl_v1.state.control.lockedFronts", state.control.lockedFronts)
+        ac.debug("steerctrl_v1.FL_slipTargetPID.previousError", self.steerFL_PID.previousError)
+        ac.debug("steerctrl_v1.FR_slipTargetPID.previousError", self.steerFR_PID.previousError)
+        ac.debug("steerctrl_v1.RL_slipTargetPID.previousError", self.steerRL_PID.previousError)
+        ac.debug("steerctrl_v1.RR_slipTargetPID.previousError", self.steerRR_PID.previousError)
+        ac.debug("steerctrl_v1.actualSlipAngleFL", Data.wheels[0].slipAngle)
+        ac.debug("steerctrl_v1.actualSlipAngleFR", Data.wheels[1].slipAngle)
+        ac.debug("steerctrl_v1.actualSlipAngleRL", Data.wheels[2].slipAngle)
+        ac.debug("steerctrl_v1.actualSlipAngleRR", Data.wheels[3].slipAngle)
+        ac.debug("steerctrl_v1.calcSlipAngleFL", slipAngleFL)
+        ac.debug("steerctrl_v1.calcSlipAngleFR", slipAngleFR)
+        ac.debug("steerctrl_v1.calcSlipAngleRL", slipAngleRL)
+        ac.debug("steerctrl_v1.calcSlipAngleRR", slipAngleRR)
+        ac.debug("steerctrl_v1.slipOffsetFL", slipOffsetFL, -0.5, 0.5, 3)
+        ac.debug("steerctrl_v1.slipOffsetFR", slipOffsetFR, -0.5, 0.5, 3)
+        ac.debug("steerctrl_v1.slipOffsetRL", slipOffsetRL, -0.5, 0.5, 3)
+        ac.debug("steerctrl_v1.slipOffsetRR", slipOffsetRR, -0.5, 0.5, 3)
+        ac.debug("steerctrl_v1.driftInversion", state.control.driftInversion)
+        ac.debug("steerctrl_v1.steerSigmoidInput", steerSigmoidInput)
+        ac.debug("steerctrl_v1.steerSigmoidDiff", steerSigmoidDiff)
+        ac.debug("steerctrl_v1.steerNormalizedInput", steerNormalizedInput)
+        ac.debug("steerctrl_v1.acceleration.y", car.acceleration.y)
+        ac.debug("steerctrl_v1.cornerControl", cornerControl)
+    end
+end
+
+function WheelSteerCtrlr:reset()
+    -- Reset direction and blend states
+    self.currentDirectionBlend = 1.0
+    self.inversionBlendState = 0
+    state.control.driftInversion = false
+    self.lastDriftAngle = 0
+
+    -- Reset steering states and their previous values
+    self.steerStateFL_prev = 0
+    self.steerStateFR_prev = 0
+    self.steerStateRL_prev = 0
+    self.steerStateRR_prev = 0
+
+    self.steerStateFL = 0
+    self.steerStateFR = 0
+    self.steerStateRL = 0
+    self.steerStateRR = 0
+
+    -- Reset desired steering values
+    self.desiredSteerFL = 0
+    self.desiredSteerFR = 0
+    self.desiredSteerRL = 0
+    self.desiredSteerRR = 0
+
+    -- Reset slip angle history
+    self.slipAngleFL_prev = 0
+    self.slipAngleFR_prev = 0
+    self.slipAngleRL_prev = 0
+    self.slipAngleRR_prev = 0
+
+    -- Reset PID controllers
+    self.yawRatePID:reset()
+    self.steerFL_PID:reset()
+    self.steerFR_PID:reset()
+    self.steerRL_PID:reset()
+    self.steerRR_PID:reset()
+
+    -- Reset FFB-related values
+    self.steerInputLast = 0
+    self.lastFFB = 0
+    for i = 1, #self.steerChangeHistory do
+        self.steerChangeHistory[i] = 0
+    end
+    self.historyIndex = 1
+end
+
+return WheelSteerCtrlr
