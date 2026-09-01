@@ -17,14 +17,13 @@ local config = {
             vec3(0.0, 0.37, -2.37)
         }
     },
-    flame = {
-        color = rgbm(1, 0.8, 0.8, 1),
-        afterburnerColor = rgbm(1, 1, 1, 1),
-        size = 3.2,
-        temperatureMultiplier = 1,
-        afterburnerTemperatureMultiplier = 2,
-        intensity = 0.9,
-        afterburnerIntensity = 1
+    plume = {
+        radiusStart = 0.0,
+        radiusChoke = 0.15,
+        radiusEnd = 0.1,
+        chokeFixedLength = 0.3,
+        tempK = 1800,
+        fadePower = 0.5,
     },
     turbineDamageGlowMesh = "Turbine.001"
 }

@@ -14,17 +14,14 @@ local config = {
     },
     exhausts = {
         rear = {
-            vec3(0, 1.108, -2.479)
+            vec3(0, 1.108, -2.45)
         }
     },
-    flame = {
-        color = rgbm(1, 0.8, 0.8, 1),
-        afterburnerColor = rgbm(1, 0.8, 0.8, 1),
-        size = 3.2,
-        temperatureMultiplier = 1,
-        afterburnerTemperatureMultiplier = 1.5,
-        intensity = 0.8,
-        afterburnerIntensity = 0.9
+    plume = {
+        radiusStart = 0.115,
+        radiusChoke = 0.1,
+        radiusEnd = 0.06,
+        chokeFixedLength = 0.1
     },
     turbineDamageGlowMesh = "turbine"
 }

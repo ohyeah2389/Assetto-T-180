@@ -1,4 +1,4 @@
--- T-180 Effect Coordinates - Gigerbon/TypeC
+-- T-180 Effect Coordinates - Gigerbon
 -- Authored by ohyeah2389
 
 local config = {
@@ -14,18 +14,18 @@ local config = {
     },
     exhausts = {
         rear = {
-            vec3(0.349, 0.757, -2.42),
-            vec3(-0.349, 0.757, -2.42),
+            vec3(0.347, 0.753, -2.38),
+            vec3(-0.347, 0.753, -2.38),
         }
     },
-    flame = {
-        color = rgbm(0.6, 0.2, 1.0, 1),
-        afterburnerColor = rgbm(0.6, 0.2, 1.0, 1),
-        size = 3.2,
-        temperatureMultiplier = 1,
-        afterburnerTemperatureMultiplier = 1.2,
-        intensity = 0.8,
-        afterburnerIntensity = 0.9
+    plume = {
+        radiusStart = 0.03,
+        radiusChoke = 0.15,
+        radiusEnd = 0.08,
+        chokeFixedLength = 0.25,
+        color = rgb(0.6, 0.05, 1),
+        length = 3.5,
+        fadePower = 6
     },
     turbineDamageGlowMesh = "Cilindro.013"
 }

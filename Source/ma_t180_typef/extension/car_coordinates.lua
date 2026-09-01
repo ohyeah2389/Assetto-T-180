@@ -18,14 +18,12 @@ local config = {
             vec3(-0.2155, 0.4925, -2.29)
         }
     },
-    flame = {
-        color = rgbm(1, 0.8, 0.7, 1),
-        afterburnerColor = rgbm(1, 0.8, 0.7, 1),
-        size = 3.5,
-        temperatureMultiplier = 1,
-        afterburnerTemperatureMultiplier = 1.5,
-        intensity = 0.8,
-        afterburnerIntensity = 0.9
+    plume = {
+        radiusStart = 0.0,
+        radiusChoke = 0.125,
+        radiusEnd = 0.07,
+        chokeFixedLength = 0.2,
+        tempK = 4000,
     },
     turbineDamageGlowMesh = "exhausts"
 }

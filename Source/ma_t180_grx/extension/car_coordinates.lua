@@ -24,15 +24,6 @@ local config = {
             --vec3(-0.168, 1.09, -2.0)
         }
     },
-    flame = {
-        color = rgbm(1, 0.8, 0.7, 1),
-        afterburnerColor = rgbm(1, 0.9, 0.8, 1),
-        size = 2.0,
-        temperatureMultiplier = 0.95,
-        afterburnerTemperatureMultiplier = 1.15,
-        intensity = 0.5,
-        afterburnerIntensity = 0.65
-    },
     vector = vec3(0.35, 1.8, -1.0),
     turbineDamageGlowMesh = "air_intake"
 }

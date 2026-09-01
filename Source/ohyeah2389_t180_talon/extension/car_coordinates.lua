@@ -20,20 +20,17 @@ local config = {
     },
     exhausts = {
         left = {
-            vec3(-0.268, 0.618, -1.665)
+            vec3(-0.268, 0.62, -1.77)
         },
         right = {
-            vec3(0.268, 0.618, -1.665)
+            vec3(0.268, 0.62, -1.77)
         }
     },
-    flame = {
-        color = rgbm(1, 0.8, 0.8, 1),
-        afterburnerColor = rgbm(1, 0.9, 0.9, 1),
-        size = 3.3,
-        temperatureMultiplier = 1.0,
-        afterburnerTemperatureMultiplier = 1.2,
-        intensity = 0.5,
-        afterburnerIntensity = 1.0
+    plume = {
+        radiusStart = 0.0,
+        radiusChoke = 0.13,
+        radiusEnd = 0.1,
+        chokeFixedLength = 0.3
     },
     turbineDamageGlowMesh = "TalonEngines_SUB0"
 }
