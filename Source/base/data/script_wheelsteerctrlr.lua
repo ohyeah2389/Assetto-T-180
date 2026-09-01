@@ -13,25 +13,29 @@ local threesixtyctrlr_FR = threesixtyctrlr()
 local threesixtyctrlr_RL = threesixtyctrlr()
 local threesixtyctrlr_RR = threesixtyctrlr()
 
+local function setupItem(name, default)
+    return ac.getScriptSetupValue(name) or refnumber(default)
+end
+
 local setup = {
-    maxSteer = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_20"),
-    ffbSmoothing = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_1"),
-    ffbMultiplier = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_0"),
-    ffbFrontSteerGain = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_2"),
-    ffbFrontSlipGain = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_3"),
-    ffbRearSteerGain = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_4"),
-    ffbRearSlipGain = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_5"),
-    ffbLatGGain = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_6"),
-    ffbSteerLimitGain = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_21"),
-    yawRateKP = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_7"),
-    steerPower = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_13"),
-    steerDamping = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_14"),
-    servoLimit = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_16"),
-    inversionEnabled = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_17"),
-    cornerControlGainFront = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_10"),
-    cornerControlGainRear = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_11"),
-    cornerControlCurve = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_12"),
-    cornerControlYawRateMult = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_15"),
+    maxSteer = setupItem("CUSTOM_SCRIPT_ITEM_20", 2),
+    ffbSmoothing = setupItem("CUSTOM_SCRIPT_ITEM_1", 10),
+    ffbMultiplier = setupItem("CUSTOM_SCRIPT_ITEM_0", 10),
+    ffbFrontSteerGain = setupItem("CUSTOM_SCRIPT_ITEM_2", 0),
+    ffbFrontSlipGain = setupItem("CUSTOM_SCRIPT_ITEM_3", 10),
+    ffbRearSteerGain = setupItem("CUSTOM_SCRIPT_ITEM_4", 0),
+    ffbRearSlipGain = setupItem("CUSTOM_SCRIPT_ITEM_5", 10),
+    ffbLatGGain = setupItem("CUSTOM_SCRIPT_ITEM_6", 0),
+    ffbSteerLimitGain = setupItem("CUSTOM_SCRIPT_ITEM_21", 10),
+    yawRateKP = setupItem("CUSTOM_SCRIPT_ITEM_7", 6),
+    steerPower = setupItem("CUSTOM_SCRIPT_ITEM_13", 9),
+    steerDamping = setupItem("CUSTOM_SCRIPT_ITEM_14", 12),
+    servoLimit = setupItem("CUSTOM_SCRIPT_ITEM_16", 2),
+    inversionEnabled = setupItem("CUSTOM_SCRIPT_ITEM_17", 1),
+    cornerControlGainFront = setupItem("CUSTOM_SCRIPT_ITEM_10", 5),
+    cornerControlGainRear = setupItem("CUSTOM_SCRIPT_ITEM_11", 8),
+    cornerControlCurve = setupItem("CUSTOM_SCRIPT_ITEM_12", 2),
+    cornerControlYawRateMult = setupItem("CUSTOM_SCRIPT_ITEM_15", 0),
 }
 
 function WheelSteerCtrlr:initialize()
@@ -180,7 +184,7 @@ function WheelSteerCtrlr:updateSetupValues()
     self.steerRL_PID.dampingFactor = self.steerDamping
     self.steerRR_PID.dampingFactor = self.steerDamping
 
-    self.maxSteer = setup.maxSteer.value * 90
+    self.maxSteer = (setup.maxSteer.value or 2) * 90
     self.ffbSmoothing = (setup.ffbSmoothing.value or 10) / 100
     self.ffbMultiplier = (setup.ffbMultiplier.value or 10) / 10
 end
