@@ -1,7 +1,6 @@
 -- T-180 CSP Physics Script - Config and Parameters Module
 -- Authored by ohyeah2389
 
-
 local config = {
     misc = {
         brakeAutoHold = {
@@ -16,25 +15,24 @@ local config = {
         type = "dual",  -- "single" or "dual"
         leftEngineThrustApplicationPoint = vec3(0.268, 0.618, -1.665),
         rightEngineThrustApplicationPoint = vec3(-0.268, 0.618, -1.665),
-        helperStartAngle = -60,         -- Angle in degrees at which the turbojet starts to automatically apply throttle
+        helperStartAngle = 60,         -- Angle in degrees at which the turbojet starts to automatically apply throttle
         helperEndAngle = 60,            -- Angle in degrees at which the turbojet ends automatically applying throttle
         frictionCoef = 0.08,            -- Friction coefficient of the turbine shaft
         inertia = 0.25,                  -- Inertia of the turbine shaft
         minThrottle = 0.05,              -- Idle throttle of the turbine
-        throttleLag = 0.65,              -- 0 to 1 where 0 represents instant turbine throttle response (unrealistic) and 1 represents no change in throttle
+        throttleLag = 0.75,              -- 0 to 1 where 0 represents instant turbine throttle response (unrealistic) and 1 represents no change in throttle
         throttleLagAfterburner = 0.65,   -- 0 to 1 as above, but for afterburner fuel delivery
         gearRatio = 5.0,                -- value:1, turbine:engine
         thrustMultiplier = 3.5,         -- Multiplier on turbine output thrust
         boostThrustFactor = 0.00001,    -- Multiplier on turbine output thrust to form bleed air boost thrust component (speed component is added to this for total bleed air boost value)
         boostSpeedFactor = 0.001,       -- Multiplier on turbine angular speed to form bleed air boost speed component (thrust component is added to this for total bleed air boost value)
         thrustCurveExponent = 0.75,     -- Exponent for the thrust curve from 0 to Mach 1.0 (higher = more aggressive increase)
-        thrustCurveLevel = 0.3,         -- Level of thrust increase/decrease with speed: >0 increases thrust, <0 decreases thrust, 0 is neutral
-        supersonicDeratingFactor = 0.7, -- Multiplier for thrust above Mach 1.0 due to shock intake effects (0-1, where 1 = no derate)
+        thrustCurveLevel = 0.2,         -- Level of thrust increase/decrease with speed: >0 increases thrust, <0 decreases thrust, 0 is neutral
+        supersonicDeratingFactor = 1.0, -- Multiplier for thrust above Mach 1.0 due to shock intake effects (0-1, where 1 = no derate)
     },
     turboshaft = {
         present = false
     }
 }
-
 
 return config
