@@ -25,7 +25,7 @@ local flameVectorDefault = vec3(0, 0, -3)
 local particlePos = vec3()
 local baseVel = vec3()
 local smokeVel = vec3()
-
+local localVel = vec3()
 local debugLabels = {
     rear = Config.turbojetType == "single" and "TJ Single" or "TS Rear",
     left = "TJ Left",
@@ -55,18 +55,6 @@ end
 
 -- MARK: Particle Systems
 local particles = {
-    flameBoost = ac.Particles.Flame({
-        color = Config.flame.color,
-        size = Config.flame.size,
-        temperatureMultiplier = Config.flame.temperatureMultiplier,
-        flameIntensity = Config.flame.intensity
-    }),
-    flameTurbo = ac.Particles.Flame({
-        color = Config.flame.afterburnerColor,
-        size = Config.flame.size,
-        temperatureMultiplier = Config.flame.afterburnerTemperatureMultiplier,
-        flameIntensity = Config.flame.afterburnerIntensity
-    }),
     exhaustSmoke = ac.Particles.Smoke({
         color = rgbm(0.3, 0.32, 0.35, 0.08),
         life = 10,
@@ -77,6 +65,29 @@ local particles = {
         flags = ac.Particles.SmokeFlags.FadeIn
     })
 }
+
+-- MARK: Afterburner Plumes
+local AfterburnerPlume = require("afterburner_plume")
+local plumes = {}
+do
+    local shared = Config.plume or {}
+    local function spawn(spec)
+        local p = {}
+        for k, v in pairs(shared) do p[k] = v end
+        for k, v in pairs(spec) do p[k] = v end
+        plumes[#plumes + 1] = AfterburnerPlume(p)
+    end
+    if Config.plumes then
+        for _, spec in ipairs(Config.plumes) do spawn(spec) end
+    elseif Config.plume then
+        for name, group in pairs(Config.exhausts or {}) do
+            local turb = (Config.turbines or {})[name]
+            for i, pos in ipairs(group) do
+                spawn({ from = pos, direction = turb and turb.direction, source = name, light = i == 1 })
+            end
+        end
+    end
+end
 
 -- MARK: Jump Jack Config
 local jumpJack = {
@@ -171,6 +182,20 @@ for name, value in pairs(Config.turbines or {}) do
 end
 
 
+-- MARK: Draw
+render.on('main.track.transparent', function()
+    local any = false
+    for i = 1, #plumes do
+        if plumes[i].level > 0.001 then any = true break end
+    end
+    if not any then return end
+    render.setBlendMode(render.BlendMode.BlendAdd)
+    render.setCullMode(render.CullMode.None)
+    render.setDepthMode(render.DepthMode.ReadOnlyLessEqual)
+    for i = 1, #plumes do plumes[i]:draw() end
+end)
+
+
 -- MARK: Update
 ---@diagnostic disable-next-line: duplicate-set-field
 function script.update(dt)
@@ -249,28 +274,24 @@ function script.update(dt)
         end
     end
 
-    -- Particle effects
+    -- Exhaust smoke
     local flameVector = Config.vector or flameVectorDefault
 
     for name, exhaustGroup in pairs(Config.exhausts or {}) do
         local data = turbineData[name]
         if data and data.rpm and data.rpm > 0 then
-            local boostAmount = mapRange(data.throttle, 0.9, 1, 0, 1, true) * mapRange(car.speedKmh, 0, 400, 0.5, 0.1, true)
-            local turboAmount = data.afterburner * mapRange(car.speedKmh, 0, 400, 0.6, 0.06, true)
             local smokeVelocityScale = mapRange(data.throttle, 0, 1, 10, 20, true)
             local smokeAmount = mapRange(data.throttle, 0, 1, 0.05, 0.2, true) * (1 + data.afterburner)
 
+            localVel:set(math.dot(car.velocity, car.side), math.dot(car.velocity, car.up), math.dot(car.velocity, car.look))
             for _, pos in ipairs(exhaustGroup) do
-                particlePos:set(pos.x + car.localVelocity.x * 0.012, pos.y, pos.z + car.localVelocity.z * 0.01)
+                particlePos:set(pos.x + localVel.x * 0.012, pos.y, pos.z + localVel.z * 0.01)
 
                 baseVel:set(flameVector)
                 if pos.x < 0.0 then baseVel.x = -baseVel.x end
-                baseVel:addScaled(car.localVelocity, -0.35)
+                baseVel:addScaled(localVel, -0.35)
 
                 smokeVel:setScaled(baseVel, smokeVelocityScale)
-
-                particles.flameBoost:emit(particlePos, baseVel, boostAmount)
-                particles.flameTurbo:emit(particlePos, baseVel, turboAmount)
                 particles.exhaustSmoke:emit(particlePos, smokeVel, smokeAmount)
             end
         end
@@ -286,7 +307,6 @@ function script.update(dt)
         glowAfterburner = turbineData.rear.afterburner or 0
         glowDamage = (turbineData.rear.damage or 0) ^ 1.5
     elseif Config.turbojetType == "dual" then
-        -- Use max of both engines for glow effect
         glowThrottle = math.max(turbineData.left.throttle or 0, turbineData.right.throttle or 0)
         glowAfterburner = math.max(turbineData.left.afterburner or 0, turbineData.right.afterburner or 0)
         glowDamage = math.max((turbineData.left.damage or 0) ^ 1.5, (turbineData.right.damage or 0) ^ 1.5)
@@ -294,6 +314,11 @@ function script.update(dt)
         glowThrottle = turbineData.rear.throttle or 0
         glowAfterburner = turbineData.rear.afterburner or 0
         glowDamage = (turbineData.rear.damage or 0) ^ 1.5
+    end
+
+    for i = 1, #plumes do
+        local data = turbineData[plumes[i].source]
+        plumes[i]:update(data and data.afterburner or 0, dt)
     end
 
     turbineExhaustGlowColor:set(turbineExhaustGlowThrottleBaseColor, glowThrottle):addScaled(turbineExhaustGlowAfterburnerBaseColor, glowAfterburner)
