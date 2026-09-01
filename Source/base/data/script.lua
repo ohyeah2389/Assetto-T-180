@@ -18,10 +18,18 @@ local PerfTracker = require('script_perfTracker')
 local Opponent = require('script_opponent')
 
 local wheelSteerControllerSetup = ac.getScriptSetupValue("STEER_CONTROLLER_MODEL") or refnumber(0)
-local wheelSteerControllers = {
-    require('script_wheelsteerctrlr')(),
-    require('script_wheelsteerctrlr_v2')(),
+local wheelSteerControllerLoaders = {
+    function() return require('script_wheelsteerctrlr')() end,
+    function() return require('script_wheelsteerctrlr_v2')() end,
 }
+local wheelSteerControllers = {}
+
+local function getWheelSteerController()
+    local i = wheelSteerControllerSetup.value
+    if not wheelSteerControllerLoaders[i] then return nil end
+    wheelSteerControllers[i] = wheelSteerControllers[i] or wheelSteerControllerLoaders[i]()
+    return wheelSteerControllers[i]
+end
 
 local ActiveSuspension = nil
 if not config.misc.traditionalSteering then
@@ -58,17 +66,6 @@ local jumpJackSystem = JumpJacks({
         }
     }
 })
-
-
-local function brakeAutoHold()
-    if Data.speedKmh < config.misc.brakeAutoHold.speed and not (Data.gas > 0.05) then
-        ac.overrideBrakesTorque(2, config.misc.brakeAutoHold.torque, config.misc.brakeAutoHold.torque)
-        ac.overrideBrakesTorque(3, config.misc.brakeAutoHold.torque, config.misc.brakeAutoHold.torque)
-    else
-        ac.overrideBrakesTorque(2, math.nan, math.nan)
-        ac.overrideBrakesTorque(3, math.nan, math.nan)
-    end
-end
 
 
 local activeSusp = ActiveSuspension and ActiveSuspension() or nil
@@ -138,7 +135,8 @@ local perfTracker = DEBUG_PERFTRACKER and PerfTracker(turbineInstances)
 -- Run every time the car resets (reset to pits, teleport, etc.)
 ---@diagnostic disable-next-line: duplicate-set-field
 function script.reset()
-    if wheelSteerControllers[wheelSteerControllerSetup.value] then wheelSteerControllers[wheelSteerControllerSetup.value]:reset() end
+    local steerCtrlr = getWheelSteerController()
+    if steerCtrlr then steerCtrlr:reset() end
 
     jumpJackSystem:reset()
 
@@ -172,10 +170,6 @@ function script.update(dt)
     if car.index ~= 0 then -- If car is AI-controlled (not the player car) then...
         aiDriver:update(dt) -- ...run the AI control system
     else -- Car must be the player's, so...
-        -- Disable the stock "lock car in place" system, and run brake holding to stop car from rolling around
-        ac.awakeCarPhysics()
-        brakeAutoHold()
-
         -- Prime controls table with current inputs
         controls.update()
 
@@ -188,10 +182,11 @@ function script.update(dt)
         }, dt)
 
         -- Run selected wheel steering controller code, its FFB algo, and update its setup values if we're in the pits
-        if wheelSteerControllers[wheelSteerControllerSetup.value] then
-            if Sim.isInMainMenu then wheelSteerControllers[wheelSteerControllerSetup.value]:updateSetupValues() end
-            wheelSteerControllers[wheelSteerControllerSetup.value]:update(dt)
-            local ffb = wheelSteerControllers[wheelSteerControllerSetup.value]:calculateFFB(dt)
+        local steerCtrlr = getWheelSteerController()
+        if steerCtrlr then
+            if Sim.isInMainMenu then steerCtrlr:updateSetupValues() end
+            steerCtrlr:update(dt)
+            local ffb = steerCtrlr:calculateFFB(dt)
             if ffb and ffb == ffb then -- Check if value exists and is not NaN
                 ac.setSteeringFFB(ffb)
             end
@@ -205,9 +200,9 @@ function script.update(dt)
     if config.turbojet.present then
         if config.turbojet.type == "single" and turbojetCenter then
             -- Determine throttle
-            local driftAngle = math.atan2(Data.localVelocity.x, Data.localVelocity.z) * helpers.mapRange(car.speedKmh, 2, 20, 0.1, 1, true)
+            local driftAngle = math.atan2(Data.localVelocity.x, Data.localVelocity.z) * helpers.mapRange(Data.speedKmh, 2, 20, 0.1, 1, true)
             local baseThrottle = helpers.mapRange(Data.gas * helpers.mapRange(math.abs(driftAngle), math.rad(config.turbojet.helperStartAngle), math.rad(config.turbojet.helperEndAngle), 0, 1, true), 0, 1, config.turbojet.minThrottle, 1, true)
-            local clutchFactor = ((1 - Data.clutch) * ((car.isInPit or Sim.isInMainMenu) and 0 or 1)) ^ 0.1
+            local clutchFactor = ((1 - Data.clutch) * ((car.isInPit or Sim.isInMainMenu) and 0 or 1)) ^ 0.2
             local gasFactor = Data.gas * 0.4
             baseThrottle = math.min(math.max(baseThrottle, clutchFactor, gasFactor), 1) * (turbojetCenter.fuelPumpEnabled and 1 or 0)
 
@@ -220,7 +215,7 @@ function script.update(dt)
                     turbojetCenter.targetThrottleAfterburner = 0
                 end
             else
-                turbojetCenter.targetThrottleAfterburner = (clutchFactor > 0.9 and 1 or 0) * (turbojetCenter.fuelPumpEnabled and 1 or 0)
+                turbojetCenter.targetThrottleAfterburner = (clutchFactor > 0.95 and 1 or 0) * (turbojetCenter.fuelPumpEnabled and 1 or 0)
                 turbojetCenter.targetThrottle = baseThrottle * wheelsOnGroundMultiplier
             end
 
@@ -405,19 +400,22 @@ function script.update(dt)
     -- Synthetic downforce code:
 
     -- Find the car's ride height
-    local rideHeightSensor = physics.raycastTrack(car.position + (car.up * 0.4) + (car.look * 1.0), -car.up, 2.0)
+    local rideHeightSensor = physics.raycastTrack(Data.position + (Data.up * 0.4), -Data.up, 2.0)
 
     -- Determine if the car is close enough to the ground for the downforce to take effect, else fade it out
     local suctionMult = math.clamp(math.remap(rideHeightSensor, 0.5, 2.0, 1, 0), 0, 1) * (rideHeightSensor == -1 and 0 or 1)
 
-    -- If it's a protocar, it gets a different amount of downforce
-    local aeroForceBase = ((car.name == "ohyeah2389_proto_mach4") or (car.name == "ma_proto_uniron")) and -160 or -160
+    -- Decrease downforce if the ride height is TOO low (stalling, combats "clipping")
+    local suctionStalling = math.clamp(math.remap(rideHeightSensor, 0.4, 0.5, 0, 1), -1, 1) * (rideHeightSensor == -1 and 0 or 1)
+
+    -- Starting level of downforce
+    local aeroForceBase = -150
 
     -- Find the speed of the car in its XZ plane
-    local velocityMagnitude = math.sqrt(car.localVelocity.x * car.localVelocity.x + car.localVelocity.z * car.localVelocity.z)
+    local velocityMagnitude = math.sqrt(Data.localVelocity.x * Data.localVelocity.x + Data.localVelocity.z * Data.localVelocity.z)
 
     -- Find the direction of the car in its XZ plane
-    local forwardAngle = math.atan2(car.localVelocity.x, car.localVelocity.z)
+    local forwardAngle = math.atan2(Data.localVelocity.x, Data.localVelocity.z)
 
     -- Set how much force remains at 90 degrees (0.0 = full dropoff, 1.0 = no dropoff)
     local directionalDropoff = 1.0
@@ -426,7 +424,7 @@ function script.update(dt)
     local cosineDropoff = math.lerp(directionalDropoff, 1.0, math.abs(math.cos(forwardAngle)))
 
     -- Final downforce magnitude product
-    local aeroForce = aeroForceBase * velocityMagnitude * cosineDropoff * suctionMult
+    local aeroForce = aeroForceBase * velocityMagnitude * cosineDropoff * suctionMult * suctionStalling
 
     -- Apply the downforce to the car
     ac.addForce(vec3(0, 0, 0), true, vec3(0, aeroForce, 0), true)
@@ -444,8 +442,9 @@ function script.update(dt)
 
 
     if DEBUG then
-        ac.debug("aeroForce", -aeroForce, 0, 20000, 2)
-        ac.debug("suctionMult", suctionMult, 0, 1, 2)
-        ac.debug("rideHeightSensor", rideHeightSensor, 0, 2, 2)
+        ac.debug("aero.suctionStalling", suctionStalling, 0, 1, 3)
+        ac.debug("aero.aeroForce", -aeroForce, 0, 20000, 3)
+        ac.debug("aero.suctionMult", suctionMult, 0, 1, 3)
+        ac.debug("aero.rideHeightSensor", rideHeightSensor, 0, 2, 3)
     end
 end
