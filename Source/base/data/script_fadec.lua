@@ -1,14 +1,26 @@
 -- T-180 CSP Physics Script - Turbine FADEC Module
 -- Authored by ohyeah2389
 
-local PIDController = require('pid_v1')
+local PID = require('pid_v2')
 
 local FADEC = class("FADEC")
 
 function FADEC:initialize(turbineId)
     -- Control parameters
-    self.n1PID = PIDController(0.0001, 0, 1e-6, 0, 1, 1)
-    self.tempPID = PIDController(0.1, 0, 0, 1e-2, 1, 1)
+    self.n1PID = PID({
+        kP = 0.0001,
+        kI = 0,
+        kD = 1e-6,
+        minOutput = 0,
+        maxOutput = 1
+    })
+    self.tempPID = PID({
+        kP = 0.1,
+        kI = 0,
+        kD = 0,
+        minOutput = 1e-2,
+        maxOutput = 1
+    })
 
     self.turbineId = turbineId
 

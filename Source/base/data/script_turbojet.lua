@@ -5,7 +5,7 @@
 local config = require('car_config')
 local helpers = require('script_helpers')
 local physics = require('script_physics')
-local PIDController = require('pid_v1')
+local PID = require('pid_v2')
 
 local thrustHeatCoefCore = 0.03
 local burnerHeatCoefCore = 0.01
@@ -48,9 +48,21 @@ function turbojet:initialize(params)
     self.burnerDerate = 1
     self.thermalDerate = 1
 
-    self.pidDerateHeatCore = PIDController(0.01, 0, 0, 0, 1)
-    self.pidDerateHeatFrame = PIDController(0.04, 0, 0, 0, 1)
-    self.pidValveCoolFrame = PIDController(0.01, 0, 0, 0, 1)
+    self.pidDerateHeatCore = PID({
+        kP = 0.01,
+        minOutput = 0,
+        maxOutput = 1
+    })
+    self.pidDerateHeatFrame = PID({
+        kP = 0.04,
+        minOutput = 0,
+        maxOutput = 1
+    })
+    self.pidValveCoolFrame = PID({
+        kP = 0.01,
+        minOutput = 0,
+        maxOutput = 1
+    })
 
     self.thrustApplicationPoint = params.thrustApplicationPoint or config.turbojet.thrustApplicationPoint or vec3(0.0, 0.77, -2)
     self.shaft = physics({

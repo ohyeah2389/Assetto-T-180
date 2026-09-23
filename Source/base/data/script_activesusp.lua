@@ -1,15 +1,25 @@
 -- T-180 CSP Physics Script - Active Suspension Physics Module
 -- Authored by ohyeah2389
 
-local PID = require('pid_v1')
+local PID = require('pid_v2')
 
 local activeSusp = class("ActiveSusp")
 
 function activeSusp:initialize(params)
-    self.pidLF = PID(0, 40000, 200, -10000, 5000, 0.7)
-    self.pidRF = PID(0, 40000, 200, -10000, 5000, 0.7)
-    self.pidLR = PID(0, 40000, 200, -10000, 5000, 0.7)
-    self.pidRR = PID(0, 40000, 200, -10000, 5000, 0.7)
+    self.suspensionControlParams = {
+        kP = 0,
+        kI = 40000,
+        kD = 200,
+        minOutput = -10000,
+        maxOutput = 5000,
+        dampingFactor = 0.1
+    }
+
+    self.pidLF = PID(self.suspensionControlParams)
+    self.pidRF = PID(self.suspensionControlParams)
+    self.pidLR = PID(self.suspensionControlParams)
+    self.pidRR = PID(self.suspensionControlParams)
+
     self.speedLUT = ac.DataLUT11.parse("(| 0=0 | 100=80 | 200=300 | 400=800 | 600=1800 | 1000=4500 |)")
 end
 
