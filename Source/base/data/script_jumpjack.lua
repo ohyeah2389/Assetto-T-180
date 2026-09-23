@@ -68,28 +68,29 @@ function JumpJacks:initialize(params)
 
     for name, jackParams in pairs(params.jacks) do
         self.jacks[name] = {
-            position = jackParams.position,   -- Local-space mounting point in meters from the car origin
-            length = jackParams.length,       -- Meters, maximum downward extension travel
-            baseForce = jackParams.baseForce, -- Newtons, extension force at full release
+            position = jackParams.position,                   -- Local-space mounting point in meters from the car origin
+            length = jackParams.length,                       -- Meters, maximum downward extension travel
+            baseForce = jackParams.baseForce,                 -- Newtons, extension force at full release
             physicsObject = physicsObject({
-                posMin = 0,                   -- Meters, minimum extension
-                posMax = jackParams.length,   -- Meters, maximum extension
-                center = 0,                   -- Meters, neutral extension target
-                position = 0,                 -- Meters, current extension state
-                mass = 10,                    -- Kilograms, simulated jack mass
-                springCoef = jackParams.springCoef or 4000,            -- N/m natural spring force, unused for jump jacks
-                frictionCoef = jackParams.frictionCoef or 20,            -- Dynamic damping/friction coefficient
-                staticFrictionCoef = 1,       -- Static friction coefficient
-                expFrictionCoef = 0.0001,     -- Exponential friction smoothing coefficient
-                forceMax = 1000000,           -- Newtons, maximum internal actuator force
+                posMin = 0,                                   -- Meters, minimum extension
+                posMax = jackParams.length,                   -- Meters, maximum extension
+                center = 0,                                   -- Meters, neutral extension target
+                position = 0,                                 -- Meters, current extension state
+                mass = 10,                                    -- Kilograms, simulated jack mass
+                springCoef = jackParams.springCoef or 4000,   -- N/m natural spring force, unused for jump jacks
+                frictionCoef = jackParams.frictionCoef or 20, -- Dynamic damping/friction coefficient
+                staticFrictionCoef = 1,                       -- Static friction coefficient
+                expFrictionCoef = 0.0001,                     -- Exponential friction smoothing coefficient
+                forceMax = 1000000,                           -- Newtons, maximum internal actuator force
             }),
-            raycast = -1,                     -- Meters to track hit, or -1 if no surface was found
-            isTouching = false,               -- True when the jack foot is contacting the ground
-            penetrationDepth = 0,             -- Meters the jack has pushed into the contacted surface
-            penetrationForce = 0,             -- Newtons, support force generated from penetration
-            chargeState = 0,                  -- Charge: 0 = no charge and no force, 1 = full charge and full force after chargeTime seconds
-            jackCharging = false,             -- True while the activation input is being held
-            jackActive = false,               -- True after release while the stored charge is firing
+            raycast = -1,                                     -- Meters to track hit, or -1 if no surface was found
+            isTouching = false,                               -- True when the jack foot is contacting the ground
+            penetrationDepth = 0,                             -- Meters the jack has pushed into the contacted surface
+            penetrationForce = 0,                             -- Newtons, support force generated from penetration
+            chargeState = 0,                                  -- Charge: 0 = no charge and no force, 1 = full charge and full force after chargeTime seconds
+            jackCharging = false,                             -- True while the activation input is being held
+            jackActive = false,                               -- True after release while the stored charge is firing
+            appliedForce = 0,                                 -- Newtons, actuator force applied while firing
         }
     end
 end
@@ -104,6 +105,7 @@ function JumpJacks:reset()
         jack.chargeState = 0            -- 0 = no charge and no force, 1 = full charge and full force after chargeTime seconds
         jack.jackCharging = false       -- True while the activation input is being held
         jack.jackActive = false         -- True after release while the stored charge is firing
+        jack.appliedForce = 0           -- Newtons, actuator force applied while firing
     end
 end
 
@@ -284,6 +286,7 @@ function JumpJacks:update(activationPattern, dt)
         end
 
         local jackInputForce = jack.jackActive and jack.baseForce * jack.chargeState or 0
+        jack.appliedForce = jackInputForce
         jack.physicsObject:step(jackInputForce - jack.penetrationForce * self.penetrationDrag, dt)
 
         if not pressed then

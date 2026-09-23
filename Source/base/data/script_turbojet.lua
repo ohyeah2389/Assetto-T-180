@@ -44,6 +44,9 @@ function turbojet:initialize(params)
     self.bleedBoost = 0.0
     self.heatFrame = Sim.ambientTemperature + 273.15
     self.heatCore = Sim.ambientTemperature + 273.15
+    self.throttleDerate = 1
+    self.burnerDerate = 1
+    self.thermalDerate = 1
 
     self.pidDerateHeatCore = PIDController(0.01, 0, 0, 0, 1)
     self.pidDerateHeatFrame = PIDController(0.04, 0, 0, 0, 1)
@@ -71,16 +74,20 @@ function turbojet:reset()
     self.bleedBoost = 0.0
     self.heatFrame = Sim.ambientTemperature + 273.15
     self.heatCore = Sim.ambientTemperature + 273.15
+    self.throttleDerate = 1
+    self.burnerDerate = 1
+    self.thermalDerate = 1
 end
 
 function turbojet:update(dt)
     -- Update heat derating PIDs (inverted: output 1 when cool, reduce when over limit)
-    local throttleDerate = 1 - self.pidDerateHeatCore:update(self.heatCore, coreTempLimit, dt)
-    local burnerDerate = 1 - self.pidDerateHeatFrame:update(self.heatFrame, frameTempLimit, dt)
+    self.throttleDerate = 1 - self.pidDerateHeatCore:update(self.heatCore, coreTempLimit, dt)
+    self.burnerDerate = 1 - self.pidDerateHeatFrame:update(self.heatFrame, frameTempLimit, dt)
+    self.thermalDerate = math.min(self.throttleDerate, self.burnerDerate)
 
     -- Apply throttle values with lag
-    self.throttle = math.applyLag(self.throttle, self.targetThrottle * throttleDerate, config.turbojet.throttleLag, dt)
-    self.throttleAfterburner = math.applyLag(self.throttleAfterburner, self.targetThrottleAfterburner * burnerDerate, config.turbojet.throttleLagAfterburner, dt)
+    self.throttle = math.applyLag(self.throttle, self.targetThrottle * self.throttleDerate, config.turbojet.throttleLag, dt)
+    self.throttleAfterburner = math.applyLag(self.throttleAfterburner, self.targetThrottleAfterburner * self.burnerDerate, config.turbojet.throttleLagAfterburner, dt)
 
     -- Calculate speed in Mach number (assuming speed of sound = 1225 km/h at sea level)
     local machNumber = Data.speedKmh / 1225
@@ -167,8 +174,9 @@ function turbojet:update(dt)
         ac.debug(debugPrefix .. "pidDerateHeatCore.previousOutput", self.pidDerateHeatCore.previousOutput)
         ac.debug(debugPrefix .. "pidValveCoolFrame.previousOutput", self.pidValveCoolFrame.previousOutput)
         ac.debug(debugPrefix .. "pidDerateHeatFrame.previousOutput", self.pidDerateHeatFrame.previousOutput)
-        ac.debug(debugPrefix .. "throttleDerate", throttleDerate)
-        ac.debug(debugPrefix .. "burnerDerate", burnerDerate)
+        ac.debug(debugPrefix .. "throttleDerate", self.throttleDerate)
+        ac.debug(debugPrefix .. "burnerDerate", self.burnerDerate)
+        ac.debug(debugPrefix .. "thermalDerate", self.thermalDerate)
     end
 end
 

@@ -12,6 +12,7 @@ local config = require('car_config')
 local state = require('script_state')
 local controls = require('script_controls')
 local helpers = require('script_helpers')
+local Telemetry = require('script_telemetry')
 local JumpJacks = require('script_jumpjack')
 local CustomDrivetrain = require('script_customDrivetrain')
 local PerfTracker = require('script_perfTracker')
@@ -167,6 +168,8 @@ script.reset()
 -- Run by game every physics tick (333 Hz)
 ---@diagnostic disable-next-line: duplicate-set-field
 function script.update(dt)
+    local controlPedal = 1 - (Data.clutch or 0)
+
     if car.index ~= 0 then -- If car is AI-controlled (not the player car) then...
         aiDriver:update(dt) -- ...run the AI control system
     else -- Car must be the player's, so...
@@ -428,6 +431,30 @@ function script.update(dt)
 
     -- Apply the downforce to the car
     ac.addForce(vec3(0, 0, 0), true, vec3(0, aeroForce, 0), true)
+
+    local jet = turbojetCenter or turbojetLeft
+    local coreThrust = (jet and jet.thrust or 0) + (turbojetRight and turbojetRight.thrust or 0)
+    local afterburnerThrust = (jet and jet.thrustAfterburner or 0) + (turbojetRight and turbojetRight.thrustAfterburner or 0)
+    local forward = Data.look
+    local wheelForce = 0
+    for i = 0, 3 do
+        local w = Data.wheels[i]
+        wheelForce = wheelForce + w.look:dot(forward) * w.fx + w.side:dot(forward) * w.fy
+    end
+    Telemetry.publish({
+        rpm = jet and jet.shaft.angularSpeed * 60 / (2 * math.pi) or 0,
+        throttle = jet and jet.throttle or 0,
+        afterburner = jet and jet.throttleAfterburner or 0,
+        fuelPump = (jet and jet.fuelPumpEnabled) and 1 or 0,
+        derate = math.min(jet and jet.thermalDerate or 1, turbojetRight and turbojetRight.thermalDerate or 1),
+        coreThrust = coreThrust,
+        afterburnerThrust = afterburnerThrust,
+        systemTotalThrust = (coreThrust + afterburnerThrust) * math.cos(math.rad(config.turbojet.thrustAngle or 0)) + wheelForce,
+        driftAngle = math.deg(math.atan2(Data.localVelocity.x, Data.localVelocity.z)),
+        syntheticDownforce = -aeroForce,
+        controlPedal = controlPedal,
+        jacks = jumpJackSystem.jacks,
+    })
 
     -- Roll control code:
 
