@@ -1,6 +1,22 @@
 -- PID Controller, Version 2
 -- Authored by ohyeah2389
 
+--[[
+
+This is a fully-featured PID controller implementation.
+It supports the following:
+- proportional, integral, derivative, and feed-forward gains
+- minimum and maximum output value
+- time-constant-driven output damping and derivative low-pass filtering
+- derivative-on-measurement support
+- setpoint weighting for proportional and derivative
+- asymmetrical output slew limiting
+- integral clamping
+- auto-reset on detected instability (NaN/inf) and a manual reset method
+- debug switch which prints various internal values to CSP Lua Debug
+
+]]--
+
 local PIDController = class("PIDController")
 
 local function isFinite(x)
