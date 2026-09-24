@@ -22,6 +22,7 @@ local wheelSteerControllerSetup = ac.getScriptSetupValue("STEER_CONTROLLER_MODEL
 local wheelSteerControllerLoaders = {
     function() return require('script_wheelsteerctrlr')() end,
     function() return require('script_wheelsteerctrlr_v2')() end,
+    function() return require('script_wheelsteerctrlr_active')() end,
 }
 local wheelSteerControllers = {}
 
@@ -41,6 +42,8 @@ local aiDriver = Opponent({})
 
 local linkageRatioSetup = ac.getScriptSetupValue("LINKAGE_RATIO") or refnumber(0)
 local steeringRangeSetup = ac.getScriptSetupValue("STEERING_RANGE") or refnumber(180)
+local cornerAfterburnerLevel = ac.getScriptSetupValue("CORNER_AFTERBURNER_LEVEL") or refnumber(10)
+local cornerTurbineOnClutch = ac.getScriptSetupValue("CORNER_TURBINE_ON_CLUTCH") or refnumber(1)
 
 -- Configure jump jacks
 local jumpJackSystem = JumpJacks({
@@ -189,7 +192,7 @@ function script.update(dt)
         if steerCtrlr then
             if Sim.isInMainMenu then steerCtrlr:updateSetupValues() end
             steerCtrlr:update(dt)
-            local ffb = steerCtrlr:calculateFFB(dt)
+            local ffb = steerCtrlr.ffb(steerCtrlr, dt)
             if ffb and ffb == ffb then -- Check if value exists and is not NaN
                 ac.setSteeringFFB(ffb)
             end
@@ -205,9 +208,13 @@ function script.update(dt)
             -- Determine throttle
             local driftAngle = math.atan2(Data.localVelocity.x, Data.localVelocity.z) * helpers.mapRange(Data.speedKmh, 2, 20, 0.1, 1, true)
             local baseThrottle = helpers.mapRange(Data.gas * helpers.mapRange(math.abs(driftAngle), math.rad(config.turbojet.helperStartAngle), math.rad(config.turbojet.helperEndAngle), 0, 1, true), 0, 1, config.turbojet.minThrottle, 1, true)
-            local clutchFactor = ((1 - Data.clutch) * ((car.isInPit or Sim.isInMainMenu) and 0 or 1)) ^ 0.2
+            local clutchDepressed = (1 - Data.clutch) > 0.01 and not (car.isInPit or Sim.isInMainMenu)
+            local clutchFactor = (clutchDepressed and (1 - Data.clutch) or 0) ^ 0.2
             local gasFactor = Data.gas * 0.4
-            baseThrottle = math.min(math.max(baseThrottle, clutchFactor, gasFactor), 1) * (turbojetCenter.fuelPumpEnabled and 1 or 0)
+            if cornerTurbineOnClutch.value ~= 0 then
+                baseThrottle = math.max(baseThrottle, clutchFactor)
+            end
+            baseThrottle = math.min(math.max(baseThrottle, gasFactor), 1) * (turbojetCenter.fuelPumpEnabled and 1 or 0)
 
             -- Set throttles
             if controls.turbine.burner:down() and turbojetCenter.fuelPumpEnabled then
@@ -218,7 +225,8 @@ function script.update(dt)
                     turbojetCenter.targetThrottleAfterburner = 0
                 end
             else
-                turbojetCenter.targetThrottleAfterburner = (clutchFactor > 0.95 and 1 or 0) * (turbojetCenter.fuelPumpEnabled and 1 or 0)
+                local clutchAfterburner = (cornerTurbineOnClutch.value ~= 0 and clutchFactor > 0.95) and (cornerAfterburnerLevel.value / 10) or 0
+                turbojetCenter.targetThrottleAfterburner = clutchAfterburner * (turbojetCenter.fuelPumpEnabled and 1 or 0)
                 turbojetCenter.targetThrottle = baseThrottle * wheelsOnGroundMultiplier
             end
 

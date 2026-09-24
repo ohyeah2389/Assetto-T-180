@@ -3,12 +3,28 @@
 
 local state = {
     control = {
-        countersteer = 0.0,     -- Angle of countersteer: 0 if neutral or steering into slide, up to steering max angle (e.g. 90) if steering against slide
-        lockedRears = false,    -- Whether the rears are locked forwards
-        lockedFronts = false,   -- Whether the fronts are locked forwards
-        rearAntiCrab = false,   -- Whether the rear anti-crab is engaged
-        spinMode = false,       -- Whether spin mode is engaged
-        driftInversion = false, -- True when the car is sliding backwards in a 360 spin
+        countersteer = 0.0,          -- Angle of countersteer: 0 if neutral or steering into slide, up to steering max angle (e.g. 90) if steering against slide
+        lockedRears = false,         -- Whether the rears are locked forwards
+        lockedFronts = false,        -- Whether the fronts are locked forwards
+        autoCenter = true,           -- Active only: Twin stick springs back to center when true
+        captureCurrentAngle = false, -- Active only
+        rearAntiCrab = false,        -- Whether the rear anti-crab is engaged
+        spinMode = false,            -- Whether spin mode is engaged
+        driftInversion = false,      -- True when the car is sliding backwards in a 360 spin
+        twinStickSpinSteer = 0.0,    -- Active only
+        heldSpinAngle = 0.0,         -- Active only
+        leftStick = {
+            x = 0.0,
+            y = 0.0,
+            mag = 0.0,
+            angle = 0.0
+        }, -- Active only
+        rightStick = {
+            x = 0.0,
+            y = 0.0,
+            mag = 0.0,
+            angle = 0.0
+        }, -- Active only
     },
     jumpJackSystem = {
         jackFL = {

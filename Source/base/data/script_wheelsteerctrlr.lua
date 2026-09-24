@@ -80,6 +80,7 @@ function WheelSteerCtrlr:initialize()
     self.lastDriftAngle = 0
     self.inversionBlendState = 0
 
+    self.ffb = self.calculateFFB
     self:updateSetupValues()
 end
 

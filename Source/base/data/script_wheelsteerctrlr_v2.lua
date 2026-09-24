@@ -62,6 +62,7 @@ function WheelSteerCtrlr:initialize()
     self.driftGain = 2.75 -- overridden by setup
     self.frontSteerGain = 0.3 -- overridden by setup
 
+    self.ffb = self.calculateFFB
     self:updateSetupValues()
 end
 
