@@ -29,6 +29,8 @@ local setup = {
     ffbSteerLimitGain = setupItem("FFB_STEER_LIMIT_GAIN", 10),
     driftGain = setupItem("V2_DRIFT_GAIN", 7),
     frontSteerGain = setupItem("V2_FRONT_STEER_GAIN", 6),
+    frontSteerGainAtSpeed = setupItem("V2_FRONT_STEER_GAIN_AT_SPEED", 6),
+    frontSteerGainSpeed = setupItem("V2_FRONT_STEER_GAIN_SPEED", 200),
 }
 
 local driftPIDParams = {
@@ -154,7 +156,7 @@ function WheelSteerCtrlr:update(dt)
     local targetDriftAngle = self.steerNormalizedInput * -driftGain
     self.driftOffsetCommand = self.driftPID:update(targetDriftAngle, driftAngleRad, dt)
 
-    local frontSteerGain = (setup.frontSteerGain.value or 6) / 20
+    local frontSteerGain = helpers.mapRange(Data.speedKmh, 0, setup.frontSteerGainSpeed.value or 200, (setup.frontSteerGain.value or 6) / 20, (setup.frontSteerGainAtSpeed.value or 6) / 20, true)
     self.desiredSteerFL = (math.deg(driftAngleRad) / 180) + self.steerNormalizedInput * frontSteerGain
     self.desiredSteerFR = (math.deg(driftAngleRad) / 180) + self.steerNormalizedInput * frontSteerGain
     self.desiredSteerRL = (math.deg(driftAngleRad) / 180) + self.driftOffsetCommand
