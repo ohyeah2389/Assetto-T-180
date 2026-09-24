@@ -13,18 +13,22 @@ local threesixtyctrlr_FR = threesixtyctrlr()
 local threesixtyctrlr_RL = threesixtyctrlr()
 local threesixtyctrlr_RR = threesixtyctrlr()
 
+local function setupItem(id, default)
+    return ac.getScriptSetupValue(id) or refnumber(default)
+end
+
 local setup = {
-    maxSteer = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_20"),
-    ffbSmoothing = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_1"),
-    ffbMultiplier = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_0"),
-    ffbFrontSteerGain = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_2"),
-    ffbFrontSlipGain = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_3"),
-    ffbRearSteerGain = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_4"),
-    ffbRearSlipGain = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_5"),
-    ffbLatGGain = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_6"),
-    ffbSteerLimitGain = ac.getScriptSetupValue("CUSTOM_SCRIPT_ITEM_21"),
-    driftGain = ac.getScriptSetupValue("V2_DRIFT_GAIN"),
-    frontSteerGain = ac.getScriptSetupValue("V2_FRONT_STEER_GAIN"),
+    maxSteer = setupItem("STEERING_RANGE", 3),
+    ffbSmoothing = setupItem("FFB_SMOOTHING", 10),
+    ffbMultiplier = setupItem("FFB_GAIN", 10),
+    ffbFrontSteerGain = setupItem("FFB_FRONT_ANGLE_GAIN", 0),
+    ffbFrontSlipGain = setupItem("FFB_FRONT_SLIP_GAIN", 10),
+    ffbRearSteerGain = setupItem("FFB_REAR_ANGLE_GAIN", 0),
+    ffbRearSlipGain = setupItem("FFB_REAR_SLIP_GAIN", 10),
+    ffbLatGGain = setupItem("FFB_LATERAL_G", 0),
+    ffbSteerLimitGain = setupItem("FFB_STEER_LIMIT_GAIN", 10),
+    driftGain = setupItem("V2_DRIFT_GAIN", 7),
+    frontSteerGain = setupItem("V2_FRONT_STEER_GAIN", 6),
 }
 
 local driftPIDParams = {
