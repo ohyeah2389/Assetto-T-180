@@ -67,6 +67,8 @@ function WheelSteerCtrlr:initialize()
     self.steerStateRL_prev = 0
     self.steerStateRR_prev = 0
 
+    self.resetFade = 0 -- moves to 1 over one second; when 1, normal control is resumed
+
     self.slipAngleFL_prev = 0
     self.slipAngleFR_prev = 0
     self.slipAngleRL_prev = 0
@@ -285,10 +287,12 @@ function WheelSteerCtrlr:update(dt)
         self.desiredSteerRR = steerNormalizedInput * -0.2
     end
 
-    self.steerStateFL = self.desiredSteerFL * (state.control.lockedFronts and 0 or 1)
-    self.steerStateFR = self.desiredSteerFR * (state.control.lockedFronts and 0 or 1)
-    self.steerStateRL = self.desiredSteerRL * (state.control.lockedRears and 0 or 1)
-    self.steerStateRR = self.desiredSteerRR * (state.control.lockedRears and 0 or 1)
+    self.resetFade = math.min(1, self.resetFade + dt)
+    local fade = math.smootherstep(self.resetFade)
+    self.steerStateFL = self.desiredSteerFL * (state.control.lockedFronts and 0 or 1) * fade
+    self.steerStateFR = self.desiredSteerFR * (state.control.lockedFronts and 0 or 1) * fade
+    self.steerStateRL = self.desiredSteerRL * (state.control.lockedRears and 0 or 1) * fade
+    self.steerStateRR = self.desiredSteerRR * (state.control.lockedRears and 0 or 1) * fade
 
     Data.controllerInputs[0], Data.controllerInputs[1] = threesixtyctrlr_FL:update(self.steerStateFL, dt)
     Data.controllerInputs[2], Data.controllerInputs[3] = threesixtyctrlr_FR:update(-self.steerStateFR, dt)
@@ -346,6 +350,8 @@ function WheelSteerCtrlr:update(dt)
 end
 
 function WheelSteerCtrlr:reset()
+    self.resetFade = 0
+
     -- Reset direction and blend states
     self.currentDirectionBlend = 1.0
     self.inversionBlendState = 0

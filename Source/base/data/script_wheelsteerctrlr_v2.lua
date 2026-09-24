@@ -54,6 +54,8 @@ function WheelSteerCtrlr:initialize()
     self.desiredSteerRL = 0
     self.desiredSteerRR = 0
 
+    self.resetFade = 0 -- moves to 1 over one second; when 1, normal control is resumed
+
     self.steerNormalizedInput = 0
     self.driftOffsetCommand = 0
 
@@ -172,11 +174,13 @@ function WheelSteerCtrlr:update(dt)
         self.desiredSteerRR = self.steerNormalizedInput * -0.2
     end
 
-    -- Wheel lock overrides
-    self.steerStateFL = self.desiredSteerFL * (state.control.lockedFronts and 0 or 1)
-    self.steerStateFR = self.desiredSteerFR * (state.control.lockedFronts and 0 or 1)
-    self.steerStateRL = self.desiredSteerRL * (state.control.lockedRears and 0 or 1)
-    self.steerStateRR = self.desiredSteerRR * (state.control.lockedRears and 0 or 1)
+    -- Wheel lock overrides, reset fading
+    self.resetFade = math.min(1, self.resetFade + dt)
+    local fade = math.smootherstep(self.resetFade)
+    self.steerStateFL = self.desiredSteerFL * (state.control.lockedFronts and 0 or 1) * fade
+    self.steerStateFR = self.desiredSteerFR * (state.control.lockedFronts and 0 or 1) * fade
+    self.steerStateRL = self.desiredSteerRL * (state.control.lockedRears and 0 or 1) * fade
+    self.steerStateRR = self.desiredSteerRR * (state.control.lockedRears and 0 or 1) * fade
 
     -- Send results of ThreeSixtyController to pistons
     Data.controllerInputs[0], Data.controllerInputs[1] = threesixtyctrlr_FL:update(self.steerStateFL, dt)
@@ -210,6 +214,8 @@ function WheelSteerCtrlr:update(dt)
 end
 
 function WheelSteerCtrlr:reset()
+    self.resetFade = 0
+
     -- Reset PID controllers
     self.driftPID:reset()
 

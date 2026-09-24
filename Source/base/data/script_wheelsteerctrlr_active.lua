@@ -138,6 +138,8 @@ function WheelSteerCtrlr:initialize()
 
     state.control.autoCenter = true
 
+    self.resetFade = 0 -- moves to 1 over one second; when 1, normal control is resumed
+
     -- Per-wheel telemetry tables
     self.wheelVelocities = { lf = vec2(0, 0), rf = vec2(0, 0), rl = vec2(0, 0), rr = vec2(0, 0) }
     self.wheelSlipAngles = { lf = 0, rf = 0, rl = 0, rr = 0 }
@@ -594,6 +596,8 @@ function WheelSteerCtrlr:update(dt)
     local baseSlewRate = 1200.0 * (servoDampingSetup / 15.0)
 
     local staticOffset = steerInputNormalized * (self.maxMomentSteerAngle / 180.0)
+    self.resetFade = math.min(1, self.resetFade + dt)
+    local fade = math.smootherstep(self.resetFade)
     -- 4. DETECT REVERSE GEAR
     if car.gear == -1 then
         if self.yawPID then self.yawPID:reset() end
@@ -603,7 +607,7 @@ function WheelSteerCtrlr:update(dt)
             if (w.isFront and state.control.lockedFronts) or (not w.isFront and state.control.lockedRears) then cmd = 0 end
             self.wheelSlipAngles[w.id] = 0
             self.desiredSteers[w.id] = cmd
-            Data.controllerInputs[w.outIdx], Data.controllerInputs[w.outIdx + 1] = w.servo:update(cmd * w.cmdSign, dt)
+            Data.controllerInputs[w.outIdx], Data.controllerInputs[w.outIdx + 1] = w.servo:update(cmd * fade * w.cmdSign, dt)
         end
         return
     end
@@ -664,7 +668,7 @@ function WheelSteerCtrlr:update(dt)
         local cmd_scaled = cmd * activeMultiplier
         self.wheelSlipAngles[w.id] = normalizeAngle(math.atan2(v_w.x, v_w.y) - cmd_scaled * math.pi)
         w.servo.maxServoSlewRate = baseSlewRate * math.clamp(loadRatios[w.index + 1] or 1.0, 0.4, 1.2)
-        Data.controllerInputs[w.outIdx], Data.controllerInputs[w.outIdx + 1] = w.servo:update(cmd_scaled * w.cmdSign, dt)
+        Data.controllerInputs[w.outIdx], Data.controllerInputs[w.outIdx + 1] = w.servo:update(cmd_scaled * fade * w.cmdSign, dt)
     end
 
     -- 6. INVERSION ASSIST & TELEMETRY DISPLAY
@@ -678,6 +682,7 @@ function WheelSteerCtrlr:update(dt)
 end
 
 function WheelSteerCtrlr:reset()
+    self.resetFade = 0
     self.smoothedYaw = 0
     self.prevSuspTravelL = 0
     self.prevSuspTravelR = 0
