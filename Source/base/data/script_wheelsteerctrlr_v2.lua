@@ -41,13 +41,10 @@ local driftPIDParams = {
 }
 
 function WheelSteerCtrlr:initialize()
-    self.maxSteer = 180
     self.previousSteer = Data.steer
     self.lastFFB = 0
     self.steerChangeHistory = {0, 0, 0, 0, 0} -- Circular buffer for averaging
     self.historyIndex = 1
-    self.ffbSmoothing = 0.9 -- overridden by setup
-    self.ffbMultiplier = 0 -- overridden by setup
 
     self.desiredSteerFL = 0
     self.desiredSteerFR = 0
@@ -61,48 +58,44 @@ function WheelSteerCtrlr:initialize()
 
     self.driftPID = PID(driftPIDParams)
 
-    self.driftGain = 2.75 -- overridden by setup
-    self.frontSteerGain = 0.3 -- overridden by setup
-
     self.ffb = self.calculateFFB
-    self:updateSetupValues()
 end
 
 function WheelSteerCtrlr:calculateFFB(dt)
-    -- Prevent division by zero
+    -- stable deltatime
     dt = math.max(dt, 0.001)
 
-    -- Add safety check for NaN/infinite values
-    if not Data.steer or not self.previousSteer then
-        return 0
-    end
+    -- safety check steer values
+    if not Data.steer or not self.previousSteer then return 0 end
 
-    local steerOverLimitDelta = math.max(0, math.abs(car.steer) - self.maxSteer)
-
-    local steerChange = (Data.steer - self.previousSteer) / dt
-    self.previousSteer = Data.steer
-
-    -- Add null checks for wheel slip angles
+    local steerOverLimitDelta = math.max(0, math.abs(car.steer) - setup.maxSteer.value * 90)
     local frontSlipAngle = (Data.wheels[0].slipAngle or 0) + (Data.wheels[1].slipAngle or 0)
     local rearSlipAngle = (Data.wheels[2].slipAngle or 0) + (Data.wheels[3].slipAngle or 0)
 
-    -- Get FFB effect values
+    -- grab setup values, then calc each effect
     local frontSteerGain = (setup.ffbFrontSteerGain.value or 0) / 5
-    local frontSlipGain = (setup.ffbFrontSlipGain.value or 10) / 10
-    local rearSteerGain = (setup.ffbRearSteerGain.value or 0) / 5
-    local rearSlipGain = (setup.ffbRearSlipGain.value or 10) / 10
-    local latGGain = (setup.ffbLatGGain.value or 0) / 10
-    local steerLimitGain = (setup.ffbSteerLimitGain.value or 10) / 20
-
     local frontSteerEffect = (self.desiredSteerFL + self.desiredSteerFR) * frontSteerGain
+
+    local frontSlipGain = (setup.ffbFrontSlipGain.value or 10) / 10
     local frontSlipEffect = math.clamp(frontSlipAngle * -10, -6, 6) * frontSlipGain
+
+    local rearSteerGain = (setup.ffbRearSteerGain.value or 0) / 5
     local rearSteerEffect = (self.desiredSteerRL + self.desiredSteerRR) * rearSteerGain
+
+    local rearSlipGain = (setup.ffbRearSlipGain.value or 10) / 10
     local rearSlipEffect = 0 --math.clamp(rearSlipAngle * -15, -6, 6) * rearSlipGain
+
+    local latGGain = (setup.ffbLatGGain.value or 0) / 10
     local latGEffect = math.clamp(Data.gForces.x or 0, -5, 5) * latGGain
-    local steerLimitEffect = math.clamp((steerOverLimitDelta ^ 2) * steerLimitGain, -(steerLimitGain * 2), (steerLimitGain * 2))
+
+    local steerLimitGain = (setup.ffbSteerLimitGain.value or 10) / 10
+    local steerLimitEffect = math.clamp((steerOverLimitDelta ^ 2) * steerLimitGain, -(steerLimitGain * 4), (steerLimitGain * 4))
+
+    -- sum all effects
     local helperEffect = frontSteerEffect + frontSlipEffect + rearSteerEffect + rearSlipEffect + latGEffect
+
+    -- ensure helperEffect works in same direction as steerLimitEffect
     if math.abs(steerLimitEffect) > 0 then
-        -- Ensure helperEffect works in same direction as steerLimitEffect
         local steerSign = math.sign(car.steer)
         helperEffect = steerLimitEffect * steerSign + math.clamp(helperEffect * steerSign, 0, math.huge) * steerSign
     end
@@ -119,50 +112,51 @@ function WheelSteerCtrlr:calculateFFB(dt)
         ac.debug("ffb.steerLimitEffect", steerLimitEffect)
     end
 
-    -- Update circular buffer with safety check
-    if math.abs(steerChange) < 1000 then  -- Reasonable maximum value
+    local steerChange = (Data.steer - self.previousSteer) / dt
+    self.previousSteer = Data.steer
+
+    -- update steer delta buffer
+    if math.abs(steerChange) < 1000 then
         self.steerChangeHistory[self.historyIndex] = (steerChange * 0.3) + helperEffect
         self.historyIndex = (self.historyIndex % #self.steerChangeHistory) + 1
     end
 
-    -- Calculate moving average
+    -- calc smoothed steer delta using steer delta buffer
     local avgSteerChange = 0
     for _, v in ipairs(self.steerChangeHistory) do
-        avgSteerChange = avgSteerChange + (v or 0)  -- Use 0 if value is nil
+        avgSteerChange = avgSteerChange + (v or 0)
     end
     avgSteerChange = avgSteerChange / #self.steerChangeHistory
 
-    -- Calculate new FFB with exponential smoothing
+    -- prepare final FFB from smoothed steer delta
+    local ffbSmoothing = (setup.ffbSmoothing.value or 10) / 100
     local targetFFB = (Data.steer * 0.2 or 0) + (avgSteerChange * 0.03)
-    local smoothedFFB = (self.lastFFB * self.ffbSmoothing) + (targetFFB * (1 - self.ffbSmoothing))
+    local smoothedFFB = (self.lastFFB * ffbSmoothing) + (targetFFB * (1 - ffbSmoothing))
 
-    -- Final safety check before returning
+    -- safety check final FFB value
     if math.abs(smoothedFFB) > 1000 or not (smoothedFFB == smoothedFFB) then  -- Check for NaN
         smoothedFFB = 0
     end
 
+    -- return final safe FFB value, scaled by FFB multiplier
     self.lastFFB = smoothedFFB
-    return math.clamp(smoothedFFB * self.ffbMultiplier, -1, 1)
+    return math.clamp(smoothedFFB * ((setup.ffbMultiplier.value or 10) / 10), -1, 1)
 end
 
-function WheelSteerCtrlr:updateSetupValues()
-    self.maxSteer = setup.maxSteer.value * 90
-    self.ffbSmoothing = (setup.ffbSmoothing.value or 10) / 100
-    self.ffbMultiplier = (setup.ffbMultiplier.value or 10) / 10
-    self.driftGain = (((setup.driftGain.value or 7) * 0.25) + 1.0)
-    self.frontSteerGain = (setup.frontSteerGain.value or 6) / 20
-end
+function WheelSteerCtrlr:updateSetupValues() end
 
 function WheelSteerCtrlr:update(dt)
-    local driftAngleRad = -math.atan2(Data.localVelocity.x, Data.localVelocity.z) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true)
+    local driftAngleRad = -math.atan2(Data.localVelocity.x, Data.localVelocity.z) * helpers.mapRange(Data.speedKmh, 2, 20, 0, 1, true)
 
-    self.steerNormalizedInput = math.clamp(Data.steer / (self.maxSteer / 90), -1, 1)
+    self.steerNormalizedInput = math.clamp(Data.steer / setup.maxSteer.value, -1, 1)
 
-    local targetDriftAngle = self.steerNormalizedInput * -self.driftGain
+    local driftGain = ((setup.driftGain.value or 7) * 0.25) + 1.0
+    local targetDriftAngle = self.steerNormalizedInput * -driftGain
     self.driftOffsetCommand = self.driftPID:update(targetDriftAngle, driftAngleRad, dt)
 
-    self.desiredSteerFL = (math.deg(driftAngleRad) / 180) + self.steerNormalizedInput * self.frontSteerGain
-    self.desiredSteerFR = (math.deg(driftAngleRad) / 180) + self.steerNormalizedInput * self.frontSteerGain
+    local frontSteerGain = (setup.frontSteerGain.value or 6) / 20
+    self.desiredSteerFL = (math.deg(driftAngleRad) / 180) + self.steerNormalizedInput * frontSteerGain
+    self.desiredSteerFR = (math.deg(driftAngleRad) / 180) + self.steerNormalizedInput * frontSteerGain
     self.desiredSteerRL = (math.deg(driftAngleRad) / 180) + self.driftOffsetCommand
     self.desiredSteerRR = (math.deg(driftAngleRad) / 180) + self.driftOffsetCommand
 
