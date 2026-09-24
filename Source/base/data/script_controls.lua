@@ -46,26 +46,34 @@ controls.steeringModes.autoCenter:onPressed(function()
     end
 end)
 
+local rightStickGUID = nil
+local rightStickPad = nil
+local axisRest = {}
+
+local function pollGamepadRightStick()
+    if rightStickPad then return ac.getGamepadAxisValue(rightStickPad, ac.GamepadAxis.RightThumbX) end
+    for padIdx = 0, 7 do
+        local x = ac.getGamepadAxisValue(padIdx, ac.GamepadAxis.RightThumbX)
+        if math.abs(x) > 0.5 then
+            rightStickPad = padIdx
+            return x
+        end
+    end
+    return nil
+end
+
 local function pollDirectInputAxis(targetAxis)
-    if ac.getJoystickAxisValue then
-        for devIdx = 0, 3 do
-            local val = ac.getJoystickAxisValue(devIdx, targetAxis)
-            if val and math.abs(val) > 0.05 then return val end
+    local devIdx = rightStickGUID and ac.getJoystickIndexByInstanceGUID(rightStickGUID)
+    if devIdx then return ac.getJoystickAxisValue(devIdx, targetAxis) end
+    for i = 0, ac.getJoystickCount() - 1 do
+        local val = ac.getJoystickAxisValue(i, targetAxis)
+        axisRest[i] = axisRest[i] or val
+        if math.abs(val - axisRest[i]) > 0.5 then
+            rightStickGUID = ac.getJoystickInstanceGUID(i)
+            return val
         end
     end
-    if ac.getGamepadState then
-        for padIdx = 0, 3 do
-            local gp = ac.getGamepadState(padIdx)
-            local rStick = gp and (gp.rightThumbstick or gp.rightStick or gp.thumbstickRight)
-            if rStick then
-                local rx = rStick.x or rStick[1] or rStick.X or 0.0
-                local ry = rStick.y or rStick[2] or rStick.Y or 0.0
-                if targetAxis == 3 and math.abs(rx) > 0.01 then return rx end
-                if targetAxis == 4 and math.abs(ry) > 0.01 then return ry end
-            end
-        end
-    end
-    return ac.getJoystickAxisValue and ac.getJoystickAxisValue(0, targetAxis) or 0.0
+    return 0.0
 end
 
 local function updateStickInputs()
@@ -73,26 +81,8 @@ local function updateStickInputs()
     local right = { x = 0.0, y = 0.0, mag = 0.0, angle = 0.0 }
 
     local axisChoice = rightStickAxis.value
-
-    if ac.getGamepadState then
-        for padIdx = 0, 3 do
-            local gp = ac.getGamepadState(padIdx)
-            local lStick = gp and (gp.leftThumbstick or gp.leftStick or gp.thumbstickLeft)
-            if lStick then
-                local lx = lStick.x or lStick[1] or lStick.X or 0.0
-                local ly = lStick.y or lStick[2] or lStick.Y or 0.0
-                if math.abs(lx) > 0.01 or math.abs(ly) > 0.01 then
-                    left.x, left.y = lx, ly
-                    break
-                end
-            end
-        end
-    end
-
-    if axisChoice == 0 then
-        right.x = 0.0
-    else
-        right.x = pollDirectInputAxis(axisChoice - 1)
+    if axisChoice ~= 0 then
+        right.x = pollGamepadRightStick() or pollDirectInputAxis(axisChoice - 1)
     end
 
     local leftBtn = controls.steeringModes.spinLeft:down() and 1.0 or 0.0
