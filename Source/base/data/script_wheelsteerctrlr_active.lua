@@ -216,7 +216,7 @@ function WheelSteerCtrlr:calculateFFB(dt)
     avgSteerChange = avgSteerChange / #self.steerChangeHistory
 
     local output = smoothFFB(self, (steerVal * 0.2) + (avgSteerChange * 0.03))
-    ac.debug("Force Feedback", string.format("%d%% [Legacy]", math.floor(math.abs(output) * 100)))
+    ac.debug("Force Feedback", output, -1, 1)
     return output
 end
 
@@ -287,7 +287,7 @@ function WheelSteerCtrlr:calculateFFBNextGen(dt)
     end
 
     local output = smoothFFB(self, centeringForce + aligningTorqueFront + aligningTorqueRear + latGForce + frontServoResistance + rearServoResistance + roadTextureEffect + viscousDamping + bumpstopForce)
-    ac.debug("Force Feedback", string.format("%d%% [Next-Gen]", math.floor(math.abs(output) * 100)))
+    ac.debug("Force Feedback", output, -1, 1)
     return output
 end
 
