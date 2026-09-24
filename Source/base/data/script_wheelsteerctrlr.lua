@@ -184,10 +184,10 @@ function WheelSteerCtrlr:update(dt)
 
     self.lastDriftAngle = driftAngle
 
-    local cornerControl = math.saturateN((1 - Data.clutch) + 0.3)
+    local cornerControl = (1 - Data.clutch)
     local cornerControlGainF = (setup.cornerControlGainFront.value or 5) / 20
     local cornerControlGainR = (setup.cornerControlGainRear.value or 8) / 20
-    local cornerControlCurve = (setup.cornerControlCurve.value or 2) - 6
+    local cornerControlCurve = (setup.cornerControlCurve.value or 1)
     local cornerControlYawRateMult = (setup.cornerControlYawRateMult.value or 0) / 2
 
     local steerNormalizedInput = math.clamp(Data.steer / ((setup.maxSteer.value or 2) / 2), -1, 1)
@@ -210,6 +210,8 @@ function WheelSteerCtrlr:update(dt)
     self.yawRatePID.kP = (setup.yawRateKP.value or 6) / 150
     local yawRateOutput = self.yawRatePID:update(targetYawRate, actualYawRate, dt)
 
+    local driftAngleMultiplier = helpers.mapRange(math.abs(driftAngle) * math.sign(steerNormalizedInput), math.rad(90), math.rad(180), 1, 8, true)
+
     local slipAngleFL = (Data.wheels[0].slipAngle ~= 0 and Data.wheels[0].slipAngle or self.slipAngleFL_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true) * math.clamp(Data.wheels[0].load, 0, 1)
     local slipAngleFR = (Data.wheels[1].slipAngle ~= 0 and Data.wheels[1].slipAngle or self.slipAngleFR_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true) * math.clamp(Data.wheels[1].load, 0, 1)
     local slipAngleRL = (Data.wheels[2].slipAngle ~= 0 and Data.wheels[2].slipAngle or self.slipAngleRL_prev) * helpers.mapRange(car.speedKmh, 2, 20, 0, 1, true) * math.clamp(Data.wheels[2].load, 0, 1)
@@ -220,10 +222,10 @@ function WheelSteerCtrlr:update(dt)
     self.slipAngleRL_prev = slipAngleRL
     self.slipAngleRR_prev = slipAngleRR
 
-    local slipOffsetFL = (yawRateOutput * -0.5 * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainF)
-    local slipOffsetFR = (yawRateOutput * -0.5 * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainF)
-    local slipOffsetRL = (yawRateOutput * 0.5 * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainR)
-    local slipOffsetRR = (yawRateOutput * 0.5 * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainR)
+    local slipOffsetFL = (yawRateOutput * -0.5 * driftAngleMultiplier * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainF)
+    local slipOffsetFR = (yawRateOutput * -0.5 * driftAngleMultiplier * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainF)
+    local slipOffsetRL = (yawRateOutput * 0.5 * driftAngleMultiplier * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainR)
+    local slipOffsetRR = (yawRateOutput * 0.5 * driftAngleMultiplier * (1 + (cornerControl * cornerControlYawRateMult)) * helpers.mapRange(car.acceleration.y, 3, 6, 1, 0.5, true)) + (cornerControl * -steerSigmoidInput * cornerControlGainR)
 
     local steerPower = (setup.steerPower.value or 9) / 12
     local steerDamping = (setup.steerDamping.value or 12) / 40
