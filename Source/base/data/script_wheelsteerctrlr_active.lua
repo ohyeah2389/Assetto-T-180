@@ -377,6 +377,7 @@ function WheelSteerCtrlr:update(dt)
     -- 1. STANCE TARGET MANAGEMENT & CONFLICT MONITORING
     local spinSteerInput = 0.0
     local targetAngle = 0.0
+    local conflictFactor = 0.0
 
     if isTwinStick then
         if isNoAutocenter then
@@ -387,13 +388,15 @@ function WheelSteerCtrlr:update(dt)
                     self.heldSpinInput = inputSpin
                     self.hasHeldAngle = true
                 end
-            -- Loose Spin Speed: Command rotation rate, freeze angle upon release
-            elseif stickDeflected then
-                self.heldSpinInput = inputSpin
-            elseif self.wasDeflectedLast then
-                self.heldSpinAngle = currentBeta
-                self.heldSpinInput = math.clamp(currentBeta / math.pi, -1.0, 1.0)
-                self.hasHeldAngle = true
+            else
+                -- Loose Spin Speed: Command rotation rate, freeze angle upon release
+                if stickDeflected then
+                    self.heldSpinInput = inputSpin
+                elseif self.wasDeflectedLast then
+                    self.heldSpinAngle = currentBeta
+                    self.heldSpinInput = math.clamp(currentBeta / math.pi, -1.0, 1.0)
+                    self.hasHeldAngle = true
+                end
             end
             self.wasDeflectedLast = stickDeflected
             if stickDeflected then
@@ -403,19 +406,37 @@ function WheelSteerCtrlr:update(dt)
                 spinSteerInput = self.heldSpinInput or 0.0
                 targetAngle = self.heldSpinAngle or 0.0
             end
-        -- Auto-centering: Revert to 0 when stick is released
-        elseif stickDeflected then
-            spinSteerInput = inputSpin
-            targetAngle = (spinStyle == 0) and inputAngle or (inputSpin * math.pi)
+        else
+            -- Auto-centering: Revert to 0 when stick is released
+            if stickDeflected then
+                spinSteerInput = inputSpin
+                targetAngle = (spinStyle == 0) and inputAngle or (inputSpin * math.pi)
+            else
+                spinSteerInput = 0.0
+                targetAngle = 0.0
+            end
         end
+
         state.control.heldSpinAngle = self.heldSpinAngle or 0.0
+
+        if stickDeflected and (steerInputNormalized * spinSteerInput) < -0.0001 then
+            conflictFactor = math.min(math.abs(steerInputNormalized), math.abs(spinSteerInput))
+        end
     end
 
     local stanceActive = false
     if isTwinStick then
-        stanceActive = isNoAutocenter or stickDeflected or (math.abs(spinSteerInput) > 0.0001)
+        if isNoAutocenter then
+            stanceActive = true
+        else
+            stanceActive = stickDeflected or (math.abs(spinSteerInput) > 0.0001)
+        end
     end
+
     local spinFactor = stanceActive and math.max(math.abs(spinSteerInput), 0.25) or 0.0
+
+    if not self.lastClutchFactor then self.lastClutchFactor = 0 end
+    if not self.lastSpinFactor then self.lastSpinFactor = 0 end
 
     -- Reset PID integrators when releasing stick stance
     if isTwinStick and not stanceActive and self.lastSpinFactor > 0 then
@@ -596,14 +617,27 @@ function WheelSteerCtrlr:update(dt)
         local v_w = vec2(localVel.x + r_physics * (w.isFront and self.a or -self.b), localVel.z + r_physics * w.distLat)
         self.wheelVelocities[w.id] = v_w
 
-        local staticOffset_w = steerInputNormalized * (self.maxMomentSteerAngle / 180.0)
+        local staticOffset_w = 0
         if isTwinStick then
-            local spinOffsetInput = (isNoAutocenter and not stickDeflected) and (self.heldSpinInput or 0) or spinSteerInput
+            local rawOffset = (isNoAutocenter and not stickDeflected) and (self.heldSpinInput or 0) or spinSteerInput
+            local spinOffsetInput = rawOffset
+
             -- Blend rear wheels into spin mode when clutch is pressed without right stick input
             if clutchSteerMode == 1 and clutchFactor > 0 and not stickDeflected then
-                spinOffsetInput = math.lerp(spinOffsetInput, steerInputNormalized, clutchFactor)
+                spinOffsetInput = math.lerp(rawOffset, steerInputNormalized, clutchFactor)
             end
-            staticOffset_w = (w.isFront and steerInputNormalized or spinOffsetInput) * (self.maxMomentSteerAngle / 180.0)
+
+            if conflictFactor > 0.0001 then
+                if w.isFront then
+                    staticOffset_w = steerInputNormalized * (self.maxMomentSteerAngle / 180.0)
+                else
+                    staticOffset_w = spinOffsetInput * (self.maxMomentSteerAngle / 180.0)
+                end
+            else
+                staticOffset_w = (w.isFront and steerInputNormalized or spinOffsetInput) * (self.maxMomentSteerAngle / 180.0)
+            end
+        else
+            staticOffset_w = steerInputNormalized * (self.maxMomentSteerAngle / 180.0)
         end
 
         local transitionBlend = lowSpeedTransition
