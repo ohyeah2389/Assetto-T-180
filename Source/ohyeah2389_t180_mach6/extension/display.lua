@@ -148,17 +148,17 @@ end
 function display:initialize()
     self.screens = {
         {
-            mesh = ac.findMeshes("SteerWheelKnobsNStuff_SUB2"),
+            mesh = ac.findMeshes("SteerWheelKnobsNStuff_SUB1"),
             canvas = ui.ExtraCanvas(displaySizes.center, 2),
             drawFn = drawScreen1
         },
         {
-            mesh = ac.findMeshes("Cockpit.001_SUB5"),
+            mesh = ac.findMeshes("Mach6Cockpit_SUB6"),
             canvas = ui.ExtraCanvas(displaySizes.side, 2),
             drawFn = drawScreen2
         },
         {
-            mesh = ac.findMeshes("Cockpit.001_SUB4"),
+            mesh = ac.findMeshes("Mach6Cockpit_SUB5"),
             canvas = ui.ExtraCanvas(displaySizes.side, 2),
             drawFn = drawScreen3
         },

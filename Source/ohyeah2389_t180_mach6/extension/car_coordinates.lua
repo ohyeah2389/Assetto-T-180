@@ -26,7 +26,7 @@ local config = {
         fadePower = 2,
         length = 1.5,
     },
-    turbineExhaustGlowMesh = "Mach6Turbine_SUB3",
+    turbineExhaustGlowMesh = "Mach6TurbineGlow",
     turbineDamageGlowMesh = "Mach6Turbine_SUB0"
 }
 
