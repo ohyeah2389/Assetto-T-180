@@ -9,6 +9,7 @@ local display = class("Display")
 local vec2Zero = vec2(0, 0)
 local fontSquare = ui.DWriteFont("ST-SimpleSquare.ttf")
 local fontTime = ui.DWriteFont("EHSMB.ttf")
+local fontBahnschrift = ui.DWriteFont("Bahnschrift")
 
 local colors = {
     white = rgbm(1, 1, 1, 1),
@@ -51,6 +52,10 @@ local uiItemPos = {
     realTime = vec2(displaySizes.center.x * 0.29, displaySizes.center.y * 0.125),
     currentLapTime = vec2(displaySizes.center.x * 0.29, displaySizes.center.y * 0.19625),
     bestLapTime = vec2(displaySizes.center.x * 0.29, displaySizes.center.y * 0.2675),
+    steerLR = vec2(displaySizes.center.x * 0.12, displaySizes.center.y * 0.488),
+    steerLF = vec2(displaySizes.center.x * 0.21, displaySizes.center.y * 0.488),
+    steerFR = vec2(displaySizes.center.x * 0.29, displaySizes.center.y * 0.488),
+    steerRR = vec2(displaySizes.center.x * 0.38, displaySizes.center.y * 0.488),
 }
 
 local rpmBoxes = {
@@ -140,6 +145,20 @@ local function drawRpmBoxes()
     end
 end
 
+local function wheelSteerDeg(index)
+    local look = car.wheels[index].look
+    return math.deg(math.atan2(car.side:dot(look), car.look:dot(look)))
+end
+
+local function drawSteerReadouts()
+    ui.pushDWriteFont(fontBahnschrift)
+    ui.dwriteDrawText(string.format("%+.0f°", wheelSteerDeg(2)), 11, uiItemPos.steerLR, colors.red)
+    ui.dwriteDrawText(string.format("%+.0f°", wheelSteerDeg(0)), 11, uiItemPos.steerLF, colors.red)
+    ui.dwriteDrawText(string.format("%+.0f°", wheelSteerDeg(1)), 11, uiItemPos.steerFR, colors.red)
+    ui.dwriteDrawText(string.format("%+.0f°", wheelSteerDeg(3)), 11, uiItemPos.steerRR, colors.red)
+    ui.popDWriteFont()
+end
+
 local function drawScreen1(dt)
     ui.drawImage("dynamic::rear_view_0_post", cameraRenderPositions.center.pos, cameraRenderPositions.center.size, ui.ImageFit.Stretch)
     ui.drawImage("Center 1.png", vec2Zero + backgroundInset.center, displaySizes.center - backgroundInset.center, colors.white, ui.ImageFit.Stretch)
@@ -147,6 +166,7 @@ local function drawScreen1(dt)
 
     ui.dwriteDrawText(uiState.useImperialUnits and "MPH" or "KPH", 18, uiItemPos.speedUnits, colors.red)
     ui.dwriteDrawText(string.format("%.0f", uiState.useImperialUnits and car.speedKmh * 0.621371 or car.speedKmh), 29, uiItemPos.speedValue, colors.red)
+    drawSteerReadouts()
 end
 
 local function drawScreen2(dt)
