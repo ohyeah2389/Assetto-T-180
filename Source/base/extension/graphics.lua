@@ -89,6 +89,10 @@ do
     end
 end
 
+-- MARK: Vapor Cone
+local VaporCone = require("vapor_cone")
+local vapor = VaporCone(Config.vapor)
+
 -- MARK: Jump Jack Config
 local jumpJack = {
     left = sound("jumpjack", vec3(0, 0, 0), nil, nil, 2.5, nil, false),
@@ -193,6 +197,14 @@ render.on('main.track.transparent', function()
     render.setCullMode(render.CullMode.None)
     render.setDepthMode(render.DepthMode.ReadOnlyLessEqual)
     for i = 1, #plumes do plumes[i]:draw() end
+end)
+
+render.on('main.track.transparent', function()
+    if vapor.level < 0.001 then return end
+    render.setBlendMode(render.BlendMode.AlphaBlend)
+    render.setCullMode(render.CullMode.None)
+    render.setDepthMode(render.DepthMode.ReadOnlyLessEqual)
+    vapor:draw()
 end)
 
 
@@ -321,6 +333,8 @@ function script.update(dt)
         plumes[i]:update(data and data.afterburner or 0, dt)
     end
 
+    vapor:update(dt)
+
     turbineExhaustGlowColor:set(turbineExhaustGlowThrottleBaseColor, glowThrottle):addScaled(turbineExhaustGlowAfterburnerBaseColor, glowAfterburner)
     turbineDamageGlowColor:set(turbineDamageGlowBaseColor, glowDamage)
 
@@ -399,6 +413,10 @@ function script.update(dt)
     if DEBUG then
         ac.debug("Config: Turbojet Type", Config.turbojetType or "N/A")
         ac.debug("Config: Turboshaft Present", Config.turboshaftPresent and "Yes" or "No")
+        ac.debug("Vapor: Mach", vapor.mach)
+        ac.debug("Vapor: Humidity", vapor.humidity)
+        ac.debug("Vapor: Level", vapor.level)
+        ac.debug("Vapor: Cone deg", vapor.coneDeg)
 
         for name, data in pairs(turbineData) do
             if data.rpm and data.rpm > 0 and debugLabels[name] then
