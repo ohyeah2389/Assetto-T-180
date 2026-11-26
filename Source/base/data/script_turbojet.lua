@@ -115,16 +115,25 @@ function turbojet:update(dt)
         speedThrustMultiplier = (1.0 + config.turbojet.thrustCurveLevel) * config.turbojet.supersonicDeratingFactor
     end
 
+    -- Find the direction of the car in its XZ plane
+    local driftAngle = math.atan2(Data.localVelocity.x, Data.localVelocity.z)
+
+    -- Set how much force remains at zero drift angle (0.0 = full dropoff, 1.0 = no dropoff)
+    local directionalDropoff = 0.6
+
+    -- Fade out the thrust with a cosine curve
+    local cosineDropoff = math.lerp(1.0, directionalDropoff, math.abs(math.cos(driftAngle)))
+
     -- Main thrust calculation
     local coreThrust = self.shaft.angularSpeed * config.turbojet.thrustMultiplier * self.throttle * speedThrustMultiplier * (self.fuelPumpEnabled and 1 or 0)
     ac.addForce(self.thrustApplicationPoint, true, vec3(0, 0, coreThrust), true)
-    self.thrust = coreThrust
+    self.thrust = coreThrust * cosineDropoff
 
     -- Turbine torque application from itself
     self.shaft:step((self.fuelPumpEnabled and self.thrust * (helpers.mapRange(self.shaft.angularSpeed, 0, 2000, 1, 0, true) ^ 1.2) or 0), dt)
 
     -- Afterburner extra thrust calculation
-    self.thrustAfterburner = helpers.mapRange(self.throttleAfterburner, 0, 1, 0, 6000, true)
+    self.thrustAfterburner = helpers.mapRange(self.throttleAfterburner, 0, 1, 0, 6000, true) * cosineDropoff
     local thrustVector = vec3(0, 0, 0)
     if config.turbojet.thrustAngle then
         local angleRad = math.rad(config.turbojet.thrustAngle)
@@ -142,7 +151,7 @@ function turbojet:update(dt)
         local baseBoost = self.thrust * config.turbojet.boostThrustFactor + self.shaft.angularSpeed * config.turbojet.boostSpeedFactor
         bleedCoolingFrame = baseBoost * self.pidValveCoolFrame:update(self.heatFrame, bleedRedirectThreshold, dt)
         local remainingBoost = baseBoost - bleedCoolingFrame
-        self.bleedBoost = math.remap(remainingBoost, 0, 2.0, 1.0, 2.0)
+        self.bleedBoost = math.remap(remainingBoost, 0, 2.0, 0.5, 1.5)
         ac.overrideTurboBoost(0, self.bleedBoost, self.bleedBoost)
     end
 
@@ -166,8 +175,8 @@ function turbojet:update(dt)
         local debugPrefix = "turbojet." .. self.id .. "."
         ac.debug(debugPrefix .. "throttle", self.throttle, 0, 1, 3)
         ac.debug(debugPrefix .. "throttleAfterburner", self.throttleAfterburner, 0, 1, 3)
-        ac.debug(debugPrefix .. "thrust", self.thrust, 0, 4000, 3)
-        ac.debug(debugPrefix .. "thrustAfterburner", self.thrustAfterburner, 0, 4000, 3)
+        ac.debug(debugPrefix .. "thrust", self.thrust, 0, 8000, 3)
+        ac.debug(debugPrefix .. "thrustAfterburner", self.thrustAfterburner, 0, 8000, 3)
         if self.id == 'single' then
             ac.debug(debugPrefix .. "bleedBoost", self.bleedBoost)
         end
