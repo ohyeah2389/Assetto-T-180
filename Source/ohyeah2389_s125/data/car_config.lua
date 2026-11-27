@@ -16,6 +16,10 @@ local config = {
     },
     turboshaft = {
         present = false
+    },
+    turbothruster = {
+        present = true,
+        thrustFactor = 3000, -- amount of thrust generated at 1.0x boost
     }
 }
 

@@ -119,6 +119,14 @@ if config.turboshaft.present then
     })
 end
 
+-- Load and init turbothruster
+local Turbothruster = require('script_turbothruster')
+local turbothrusterCenter = nil
+
+if config.turbothruster and config.turbothruster.present then
+    turbothrusterCenter = Turbothruster({ id = 'single' })
+end
+
 
 -- Initialize perfTracker, passing turbine references
 local turbineInstances = {}
@@ -132,6 +140,8 @@ if config.turbojet.present then
 elseif config.turboshaft.present then
     turbineInstances.front = turboshaftFront
     turbineInstances.rear = turboshaftRear
+elseif config.turbothruster.present then
+    turbineInstances.center = turbothrusterCenter
 end
 
 local perfTracker = DEBUG_PERFTRACKER and PerfTracker(turbineInstances)
@@ -159,6 +169,8 @@ function script.reset()
         turboshaftFront:reset()
         if turboshaftRear then turboshaftRear:reset() end
     end
+
+    if turbothrusterCenter then turbothrusterCenter:reset() end
 
     if activeSusp then
         activeSusp:reset()
@@ -395,6 +407,9 @@ function script.update(dt)
             turboshaftFront.feedbackTorque = drivetrainFeedback
         end
     end
+
+    -- Run turbothruster system if we have one
+    if turbothrusterCenter then turbothrusterCenter:update(dt) end
 
     -- If we're drifting backwards, don't allow clutch input
     if state.control.driftInversion then Data.clutch = 0 end
